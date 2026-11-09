@@ -11,7 +11,9 @@ on:
   push: { branches: [main] }
   pull_request:
 
-concurrency: { group: ci-${{ github.ref }}, cancel-in-progress: true }
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # ---------------- Phase 1 ----------------
@@ -106,7 +108,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: cp .env.example .env
-      - run: docker compose up -d --build --wait
+      - run: docker compose up -d --build
+      - name: Wait for the stack (migrator done, API answering through nginx)
+        run: ./.github/scripts/wait-for-stack.sh
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm ci && npx playwright install --with-deps chromium && npx playwright test
@@ -124,6 +128,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cp .env.example .env && docker compose up -d --build --wait
+      - run: cp .env.example .env && docker compose up -d --build
+      - run: ./.github/scripts/wait-for-stack.sh
       - uses: grafana/setup-k6-action@v1
       - run: k6 run -e BASE_URL=http://localhost -e PROFILE=smoke load-tests/k6/api.js
