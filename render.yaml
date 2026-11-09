@@ -4,11 +4,11 @@
 #
 #   erpwithfastapi      static site (React). Proxies /api and /ai, so the browser only ever talks to
 #                       one origin: the HttpOnly, SameSite=Strict refresh cookie works, no CORS needed.
-#   erpwithfastapi-api  ASP.NET Core API
+#   erpwithfastapi-server  ASP.NET Core API
 #   erpwithfastapi-ai   FastAPI AI service
 #
 # The rewrite destinations below must match the public URLs Render gives the two backends. If Render
-# adds a suffix to a name (e.g. erpwithfastapi-api-a1b2), update them here and push.
+# adds a suffix to a name (e.g. erpwithfastapi-server-a1b2), update them here and push.
 #
 # Backend deploys are triggered by GitHub Actions (.github/workflows/deploy.yml) AFTER database
 # migrations, via each service's Deploy Hook, so auto-deploy on push is off for them.
@@ -28,10 +28,10 @@ services:
     routes:                         # first match wins; /* must stay last
       - type: rewrite
         source: /api/*
-        destination: https://erpwithfastapi-api.onrender.com/api/*
+        destination: https://erpwithfastapi-server.onrender.com/api/*
       - type: rewrite
         source: /health/*
-        destination: https://erpwithfastapi-api.onrender.com/health/*
+        destination: https://erpwithfastapi-server.onrender.com/health/*
       - type: rewrite
         source: /ai/*
         destination: https://erpwithfastapi-ai.onrender.com/ai/*
@@ -59,7 +59,7 @@ services:
         value: max-age=31536000; includeSubDomains
 
   - type: web
-    name: erpwithfastapi-api
+    name: erpwithfastapi-server
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
@@ -118,7 +118,7 @@ services:
       - key: GROQ_MODEL
         value: openai/gpt-oss-120b
       - key: JWT_SECRET
-        sync: false              # same value as erpwithfastapi-api
+        sync: false              # same value as erpwithfastapi-server
       - key: JWT_ISSUER
         value: erp-api
       - key: JWT_AUDIENCE

@@ -22,7 +22,7 @@ jobs:
     steps:
       - name: Ping API and AI service
         env:
-          API: ${{ vars.API_ORIGIN || 'https://erpwithfastapi-api.onrender.com' }}
+          API: ${{ vars.API_ORIGIN || 'https://erpwithfastapi-server.onrender.com' }}
           AI: ${{ vars.AI_ORIGIN || 'https://erpwithfastapi-ai.onrender.com' }}
         run: |
           curl -fsS --retry 3 --retry-delay 20 --max-time 90 "$API/health/live"; echo " api ok"

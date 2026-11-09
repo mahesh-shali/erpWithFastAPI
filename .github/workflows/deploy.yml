@@ -11,7 +11,7 @@ name: Deploy (production)
 #   PROD_PG_CONNECTION   Host=...;Port=20124;Database=erp_prod;Username=avnadmin;Password=...;SSL Mode=Require
 #   PROD_JWT_SECRET      same value as on both Render backends
 #   PROD_AI_DB_PASSWORD  password for the AI login role (same as in erpwithfastapi-ai's DATABASE_URL)
-#   RENDER_DEPLOY_HOOK     erpwithfastapi-api > Settings > Deploy Hook URL
+#   RENDER_DEPLOY_HOOK     erpwithfastapi-server > Settings > Deploy Hook URL
 #   RENDER_DEPLOY_HOOK_AI  erpwithfastapi-ai > Settings > Deploy Hook URL
 #   BOOTSTRAP_ORG_NAME / BOOTSTRAP_EMAIL / BOOTSTRAP_PASSWORD / BOOTSTRAP_FULL_NAME
 #                        (optional, first deploy only) creates your organization + SuperAdmin; delete afterwards

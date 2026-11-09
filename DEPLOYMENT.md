@@ -2,9 +2,9 @@
 
 ```
 Browser ── https://erpwithfastapi.onrender.com ── Render static site (React, free)
-                     ├─ /api/*  ──proxy──▶  erpwithfastapi-api  (ASP.NET Core, Docker, free, Singapore)
+                     ├─ /api/*  ──proxy──▶  erpwithfastapi-server  (ASP.NET Core, Docker, free, Singapore)
                      └─ /ai/*   ──proxy──▶  erpwithfastapi-ai   (FastAPI, Docker, free, Singapore)
-erpwithfastapi-api ──▶ Aiven Postgres `erp_prod` (Bengaluru)
+erpwithfastapi-server ──▶ Aiven Postgres `erp_prod` (Bengaluru)
 erpwithfastapi-ai  ──▶ Aiven Postgres (read-only role) · Upstash Redis · Groq LLM
 GitHub Actions: CI → database migrations → deploy API + AI · keep-alive pings in working hours
 ```
@@ -65,15 +65,15 @@ Public sign-up is **disabled in production**. After this you add users from *Mas
 1. Go to render.com → *New → Blueprint* → connect GitHub → choose this repository. Render reads
    [`render.yaml`](render.yaml), which defines the static site and both backends.
 2. Paste the values it asks for, from `.env.deploy-values`:
-   - **erpwithfastapi-api:** `ConnectionStrings__Postgres`, `JWT_SECRET`
+   - **erpwithfastapi-server:** `ConnectionStrings__Postgres`, `JWT_SECRET`
    - **erpwithfastapi-ai:** `DATABASE_URL`, `REDIS_URL`, `GROQ_API_KEY`, `JWT_SECRET` (the same value)
 3. Wait for the first deploys, then check that the URLs Render shows match the rewrite destinations
    in `render.yaml`. If Render added a suffix to a name, update `render.yaml`, and set GitHub
    variables `API_ORIGIN` and `AI_ORIGIN` to the real URLs.
-4. Open `https://erpwithfastapi-api.onrender.com/health/live` (should show `Healthy`) and
+4. Open `https://erpwithfastapi-server.onrender.com/health/live` (should show `Healthy`) and
    `https://erpwithfastapi-ai.onrender.com/ai/health` (should show `{"status":"ok"}`).
 5. On each backend, go to *Settings → Deploy Hook*, copy the URL, and add it as a GitHub secret:
-   - erpwithfastapi-api → **`RENDER_DEPLOY_HOOK`**
+   - erpwithfastapi-server → **`RENDER_DEPLOY_HOOK`**
    - erpwithfastapi-ai → **`RENDER_DEPLOY_HOOK_AI`**
 
 From now on, a push to `main` runs CI, then migrations, then both backend deploys. Render rebuilds
