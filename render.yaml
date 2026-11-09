@@ -1,16 +1,69 @@
-# Render Blueprint: ASP.NET Core API (free web service, Docker).
+# Render Blueprint: the whole app on free Render services.
 # Render dashboard > New > Blueprint > pick this repo. Values marked `sync: false` are asked once
-# during creation (paste them from your password manager / .env.production - never commit them).
+# during creation (paste them from .env.deploy-values - never commit them).
 #
-# Deploys are triggered by GitHub Actions (.github/workflows/deploy.yml) AFTER database migrations,
-# via the service's Deploy Hook, so auto-deploy on push is off.
+#   erpwithfastapi      static site (React). Proxies /api and /ai, so the browser only ever talks to
+#                       one origin: the HttpOnly, SameSite=Strict refresh cookie works, no CORS needed.
+#   erpwithfastapi-api  ASP.NET Core API
+#   erpwithfastapi-ai   FastAPI AI service
+#
+# The rewrite destinations below must match the public URLs Render gives the two backends. If Render
+# adds a suffix to a name (e.g. erpwithfastapi-api-a1b2), update them here and push.
+#
+# Backend deploys are triggered by GitHub Actions (.github/workflows/deploy.yml) AFTER database
+# migrations, via each service's Deploy Hook, so auto-deploy on push is off for them.
 services:
   - type: web
-    name: erp-api
+    name: erpwithfastapi
+    runtime: static
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: ./frontend/dist
+    autoDeployTrigger: checksPass   # rebuild after CI passes on main
+    buildFilter:
+      paths:
+        - frontend/**
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+    routes:                         # first match wins; /* must stay last
+      - type: rewrite
+        source: /api/*
+        destination: https://erpwithfastapi-api.onrender.com/api/*
+      - type: rewrite
+        source: /health/*
+        destination: https://erpwithfastapi-api.onrender.com/health/*
+      - type: rewrite
+        source: /ai/*
+        destination: https://erpwithfastapi-ai.onrender.com/ai/*
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /assets/*             # hashed file names can be cached forever
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=()
+      - path: /*
+        name: Strict-Transport-Security
+        value: max-age=31536000; includeSubDomains
+
+  - type: web
+    name: erpwithfastapi-api
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    plan: free                 # 512 MB, 0.1 CPU, sleeps after 15 min idle (keep-alive workflow pings it)
+    plan: free                 # sleeps after 15 min idle; the keep-alive workflow pings it in working hours
     region: singapore          # closest Render region to the Aiven database (Bengaluru)
     healthCheckPath: /health/live
     autoDeployTrigger: "off"
@@ -21,17 +74,54 @@ services:
         value: "8080"
       - key: DOTNET_gcServer     # workstation GC: much smaller memory footprint on a 512 MB instance
         value: "0"
-      - key: Proxy__ForwardLimit # browser -> Netlify -> Render: two proxies append X-Forwarded-For
+      - key: Proxy__ForwardLimit # browser -> static site proxy -> API: two proxies append X-Forwarded-For
         value: "2"
       - key: ConnectionStrings__Postgres
         sync: false              # Host=...;Port=20124;Database=erp_prod;Username=avnadmin;Password=...;SSL Mode=Require;Maximum Pool Size=3
       - key: ConnectionStrings__Redis
         value: ""                # empty = in-memory cache (fine for a single instance; saves Upstash quota)
       - key: JWT_SECRET
-        sync: false              # same value as the AI service (Koyeb)
+        sync: false              # same value as erpwithfastapi-ai
       - key: JWT_ISSUER
         value: erp-api
       - key: JWT_AUDIENCE
         value: erp-clients
       - key: Cors__Origins__0
-        sync: false              # https://<your-site>.netlify.app
+        value: https://erpwithfastapi.onrender.com
+
+  - type: web
+    name: erpwithfastapi-ai
+    runtime: docker
+    dockerfilePath: ./ai-service/Dockerfile
+    dockerContext: ./ai-service
+    plan: free
+    region: singapore
+    healthCheckPath: /ai/health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: PORT                # the Dockerfile binds gunicorn to $PORT
+        value: "8000"
+      - key: WEB_CONCURRENCY     # one worker fits in 512 MB and keeps DB connections low
+        value: "1"
+      - key: DB_POOL_MIN
+        value: "1"
+      - key: DB_POOL_MAX
+        value: "2"
+      - key: DATABASE_URL
+        sync: false              # postgresql://erp_ai_ro_prod:<password>@<aiven-host>:<port>/erp_prod?sslmode=require
+      - key: REDIS_URL
+        sync: false              # rediss://default:<upstash-password>@<upstash-endpoint>:<port>
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: JWT_SECRET
+        sync: false              # same value as erpwithfastapi-api
+      - key: JWT_ISSUER
+        value: erp-api
+      - key: JWT_AUDIENCE
+        value: erp-clients
+      - key: CORS_ORIGINS
+        value: https://erpwithfastapi.onrender.com

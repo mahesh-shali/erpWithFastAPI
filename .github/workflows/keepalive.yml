@@ -1,17 +1,18 @@
 name: Keep-alive
 
-# Free Render (sleeps after 15 min idle) and Koyeb (after 1 h) instances take ~30-60 s to wake up,
-# longer than Netlify's 26 s proxy timeout. Pinging them every 10 minutes keeps them warm.
-# One always-on Render service uses ~730 of the 750 free instance-hours a month.
+# Free Render web services sleep after 15 min idle and take about a minute to wake up.
+# Pinging every 10 minutes keeps them awake during working hours only, because both backends share
+# one pool of 750 free instance-hours a month. Using them up suspends every free service until the
+# next month, and two services awake around the clock would need about 1,488 hours.
 #
-# Repository variables (Settings > Secrets and variables > Actions > Variables):
-#   API_ORIGIN  https://erp-api.onrender.com
-#   AI_ORIGIN   https://<app>-<org>.koyeb.app
+# Window: 03:00-13:59 UTC (08:30-19:30 IST), about 11 hours a day x 2 services x 31 days = 690 hours.
+# Widening it past 12 hours a day exceeds the allowance.
+#
 # Note: GitHub pauses scheduled workflows after 60 days without repository activity.
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/10 3-13 * * *'
   workflow_dispatch:
 
 jobs:
@@ -21,8 +22,8 @@ jobs:
     steps:
       - name: Ping API and AI service
         env:
-          API: ${{ vars.API_ORIGIN }}
-          AI: ${{ vars.AI_ORIGIN }}
+          API: ${{ vars.API_ORIGIN || 'https://erpwithfastapi-api.onrender.com' }}
+          AI: ${{ vars.AI_ORIGIN || 'https://erpwithfastapi-ai.onrender.com' }}
         run: |
-          if [ -n "$API" ]; then curl -fsS --retry 3 --retry-delay 20 --max-time 90 "$API/health/live"; echo " api ok"; fi
-          if [ -n "$AI" ];  then curl -fsS --retry 3 --retry-delay 20 --max-time 90 "$AI/ai/health"; echo " ai ok"; fi
+          curl -fsS --retry 3 --retry-delay 20 --max-time 90 "$API/health/live"; echo " api ok"
+          curl -fsS --retry 3 --retry-delay 20 --max-time 90 "$AI/ai/health"; echo " ai ok"

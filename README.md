@@ -28,8 +28,8 @@ defined in C# (EF Core entities + migrations). No hand-written schema SQL to run
 
 ---
 
-> **Deploying to the cloud for free?** See [DEPLOYMENT.md](DEPLOYMENT.md): Netlify (frontend) + Render (API)
-> + Koyeb (AI) + Aiven + Upstash + Groq, with GitHub Actions for migrations and deploys.
+> **Deploying to the cloud for free?** See [DEPLOYMENT.md](DEPLOYMENT.md): Render (frontend, API and AI)
+> + Aiven + Upstash + Groq, with GitHub Actions for migrations and deploys.
 
 ## Prerequisites
 

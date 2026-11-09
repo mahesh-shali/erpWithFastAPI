@@ -2,18 +2,17 @@ name: Deploy (production)
 
 # Order matters: database migrations first, then the new API / AI service versions.
 #   1. Apply EF Core migrations to the production database (Aiven) - and, once, create the first SuperAdmin.
-#   2. Trigger the Render deploy hook (API) and redeploy the Koyeb service (AI).
-# Netlify builds the frontend on its own when main changes.
+#   2. Trigger the Render deploy hooks (API and AI service).
+# Render rebuilds the static frontend on its own after CI passes on main.
 #
 # Runs after CI succeeds on main, or manually (Actions > Deploy (production) > Run workflow).
 #
 # Repository secrets (Settings > Secrets and variables > Actions > Secrets):
 #   PROD_PG_CONNECTION   Host=...;Port=20124;Database=erp_prod;Username=avnadmin;Password=...;SSL Mode=Require
-#   PROD_JWT_SECRET      same value as on Render and Koyeb
-#   PROD_AI_DB_PASSWORD  password for the AI login role (same as in Koyeb's DATABASE_URL)
-#   RENDER_DEPLOY_HOOK   Render service > Settings > Deploy Hook URL
-#   KOYEB_TOKEN          (optional) Koyeb > Settings > API > token; with KOYEB_SERVICE_ID
-#   KOYEB_SERVICE_ID     (optional) id of the AI service (from its URL in the Koyeb console)
+#   PROD_JWT_SECRET      same value as on both Render backends
+#   PROD_AI_DB_PASSWORD  password for the AI login role (same as in erpwithfastapi-ai's DATABASE_URL)
+#   RENDER_DEPLOY_HOOK     erpwithfastapi-api > Settings > Deploy Hook URL
+#   RENDER_DEPLOY_HOOK_AI  erpwithfastapi-ai > Settings > Deploy Hook URL
 #   BOOTSTRAP_ORG_NAME / BOOTSTRAP_EMAIL / BOOTSTRAP_PASSWORD / BOOTSTRAP_FULL_NAME
 #                        (optional, first deploy only) creates your organization + SuperAdmin; delete afterwards
 
@@ -60,11 +59,8 @@ jobs:
         run: |
           if [ -z "$HOOK" ]; then echo "::warning::RENDER_DEPLOY_HOOK not set; skipping"; exit 0; fi
           curl -fsS -X POST "$HOOK" > /dev/null && echo "Render deploy triggered"
-      - name: Deploy AI service (Koyeb)
-        env:
-          TOKEN: ${{ secrets.KOYEB_TOKEN }}
-          SERVICE: ${{ secrets.KOYEB_SERVICE_ID }}
+      - name: Deploy AI service (Render)
+        env: { HOOK: '${{ secrets.RENDER_DEPLOY_HOOK_AI }}' }
         run: |
-          if [ -z "$TOKEN" ] || [ -z "$SERVICE" ]; then echo "::warning::Koyeb secrets not set; skipping"; exit 0; fi
-          curl -fsS -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-            -d '{}' "https://app.koyeb.com/v1/services/$SERVICE/redeploy" > /dev/null && echo "Koyeb redeploy triggered"
+          if [ -z "$HOOK" ]; then echo "::warning::RENDER_DEPLOY_HOOK_AI not set; skipping"; exit 0; fi
+          curl -fsS -X POST "$HOOK" > /dev/null && echo "Render AI deploy triggered"
