@@ -1,0 +1,104 @@
+# Production-style manifests. Stateless API/AI pods scale horizontally behind
+# an Ingress; Postgres should be a managed service (RDS/Cloud SQL/Azure PG) with
+# read replicas, and Redis a managed cluster (ElastiCache/Memorystore).
+apiVersion: v1
+kind: Namespace
+metadata: { name: erp }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: erp-api, namespace: erp }
+spec:
+  replicas: 4
+  selector: { matchLabels: { app: erp-api } }
+  template:
+    metadata: { labels: { app: erp-api } }
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/your-org/erp-api:latest
+          ports: [{ containerPort: 8080 }]
+          envFrom: [{ secretRef: { name: erp-secrets } }]
+          resources:
+            requests: { cpu: "500m", memory: "256Mi" }
+            limits:   { cpu: "2",    memory: "1Gi" }
+          readinessProbe: { httpGet: { path: /health/ready, port: 8080 }, periodSeconds: 5 }
+          livenessProbe:  { httpGet: { path: /health/live,  port: 8080 }, periodSeconds: 10 }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: erp-api, namespace: erp }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: erp-api }
+  minReplicas: 4
+  maxReplicas: 200
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 60 } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: erp-api, namespace: erp }
+spec:
+  selector: { app: erp-api }
+  ports: [{ port: 80, targetPort: 8080 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: erp-ai, namespace: erp }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: erp-ai } }
+  template:
+    metadata: { labels: { app: erp-ai } }
+    spec:
+      containers:
+        - name: ai
+          image: ghcr.io/your-org/erp-ai:latest
+          ports: [{ containerPort: 8000 }]
+          envFrom: [{ secretRef: { name: erp-secrets } }]
+          resources:
+            requests: { cpu: "250m", memory: "256Mi" }
+            limits:   { cpu: "1",    memory: "768Mi" }
+          readinessProbe: { httpGet: { path: /ai/health, port: 8000 }, periodSeconds: 5 }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: erp-ai, namespace: erp }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: erp-ai }
+  minReplicas: 2
+  maxReplicas: 100
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: erp-ai, namespace: erp }
+spec:
+  selector: { app: erp-ai }
+  ports: [{ port: 80, targetPort: 8000 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: erp
+  namespace: erp
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - { path: /api, pathType: Prefix, backend: { service: { name: erp-api, port: { number: 80 } } } }
+          - { path: /ai,  pathType: Prefix, backend: { service: { name: erp-ai,  port: { number: 80 } } } }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: erp-api, namespace: erp }
+spec:
+  minAvailable: 50%
+  selector: { matchLabels: { app: erp-api } }

@@ -1,0 +1,129 @@
+name: CI
+
+# Test phases:
+#   Phase 1  Static     - lint, typecheck (fast, fail early)
+#   Phase 2  Unit       - .NET xUnit, pytest (mocked LLM), Vitest
+#   Phase 3  Integration- .NET + Testcontainers Postgres/Redis; pytest vs real Postgres (RLS)
+#   Phase 4  E2E        - full docker-compose stack + Playwright
+#   Phase 5  Load       - k6 smoke load test against the stack (main branch only)
+
+on:
+  push: { branches: [main] }
+  pull_request:
+
+concurrency: { group: ci-${{ github.ref }}, cancel-in-progress: true }
+
+jobs:
+  # ---------------- Phase 1 ----------------
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install ruff==0.8.4 && ruff check ai-service
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci && npm run typecheck
+        working-directory: frontend
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '8.0.x' }
+      - run: dotnet build backend/ErpPlatform.sln
+
+  # ---------------- Phase 2 ----------------
+  unit-dotnet:
+    needs: static
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '8.0.x' }
+      - run: dotnet test backend/tests/Erp.Api.UnitTests --collect:"XPlat Code Coverage"
+
+  unit-python:
+    needs: static
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: ai-service } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12', cache: pip }
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -m "not integration" --cov=app --cov-fail-under=85
+
+  unit-frontend:
+    needs: static
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci && npm run test:coverage
+
+  # ---------------- Phase 3 ----------------
+  integration-dotnet:
+    needs: unit-dotnet
+    runs-on: ubuntu-latest   # Docker available for Testcontainers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '8.0.x' }
+      - run: dotnet test backend/tests/Erp.Api.IntegrationTests
+
+  integration-python:
+    needs: unit-python
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_DB: erp, POSTGRES_USER: erp_app, POSTGRES_PASSWORD: erp_app_dev }
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '8.0.x' }
+      # Code-first: build the schema from the EF Core migrations, then seed demo data
+      - run: dotnet run --project backend/src/Erp.Api -- --migrate --seed
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ConnectionStrings__Postgres: Host=localhost;Port=5432;Database=erp;Username=erp_app;Password=erp_app_dev
+          AI_DB_PASSWORD: ai_readonly_dev
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12', cache: pip }
+      - run: pip install -r requirements-dev.txt
+        working-directory: ai-service
+      - run: pytest -m integration -v
+        working-directory: ai-service
+        env:
+          TEST_AI_DATABASE_URL: postgresql://erp_ai_ro:ai_readonly_dev@localhost:5432/erp
+
+  # ---------------- Phase 4 ----------------
+  e2e:
+    needs: [integration-dotnet, integration-python, unit-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - run: docker compose up -d --build --wait
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci && npx playwright install --with-deps chromium && npx playwright test
+        working-directory: frontend
+      - if: failure()
+        run: docker compose logs --tail=200
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with: { name: playwright-report, path: frontend/playwright-report }
+
+  # ---------------- Phase 5 ----------------
+  load:
+    if: github.ref == 'refs/heads/main'
+    needs: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env && docker compose up -d --build --wait
+      - uses: grafana/setup-k6-action@v1
+      - run: k6 run -e BASE_URL=http://localhost -e PROFILE=smoke load-tests/k6/api.js

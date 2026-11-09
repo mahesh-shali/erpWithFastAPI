@@ -1,0 +1,107 @@
+# Project name per environment, so dev and prod stacks never share containers/volumes.
+name: erp-${APP_ENV:-development}
+
+# Database schema is code-first (EF Core migrations in backend/src/Erp.Api/Data/Migrations).
+# The `migrator` job applies migrations (+ demo seed when SEED_DEMO_DATA=true), then the API and AI service start.
+#
+# Environments: --env-file .env.development (default) or .env.production
+#               (+ -f docker-compose.prod.yml). See `make up ENV=...`.
+#
+# Postgres: local container (COMPOSE_PROFILES=localdb) or any managed server (e.g. Aiven):
+# point POSTGRES_HOST/PORT/DB/USER/PASSWORD/SSLMODE at it and leave COMPOSE_PROFILES empty.
+
+x-common-env: &common-env
+  ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+  JWT_SECRET: ${JWT_SECRET}
+  JWT_ISSUER: ${JWT_ISSUER}
+  JWT_AUDIENCE: ${JWT_AUDIENCE}
+
+x-api-db: &api-db
+  ConnectionStrings__Postgres: Host=${POSTGRES_HOST};Port=${POSTGRES_PORT};Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};SSL Mode=${POSTGRES_SSLMODE:-disable};Pooling=true;Maximum Pool Size=${API_DB_POOL_SIZE:-100};No Reset On Close=true;Max Auto Prepare=0
+
+services:
+  postgres:
+    profiles: [localdb]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    command: >
+      postgres -c max_connections=500 -c shared_buffers=512MB
+               -c effective_cache_size=1536MB -c work_mem=8MB
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      retries: 10
+
+  # One-off: `dotnet Erp.Api.dll --migrate` (EF Core migrations, demo data if SEED_DEMO_DATA=true), then exits.
+  migrator:
+    build: ./backend
+    image: erp-platform-api
+    command: ["--migrate"]
+    environment:
+      <<: [*common-env, *api-db]
+      Database__SeedDemoData: ${SEED_DEMO_DATA:-false}
+      AI_DB_USER: ${AI_DB_USER:-erp_ai_ro}
+      AI_DB_PASSWORD: ${AI_DB_PASSWORD}
+    restart: "no"
+    depends_on:
+      postgres: { condition: service_healthy, required: false }
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+
+  api:
+    build: ./backend
+    image: erp-platform-api
+    environment:
+      <<: [*common-env, *api-db]
+      ConnectionStrings__Redis: redis:6379
+      AiService__BaseUrl: http://ai-service:8000
+      ASPNETCORE_URLS: http://+:8080
+      Cors__Origins__0: ${CORS_ORIGINS:-http://localhost}
+    depends_on:
+      migrator: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    deploy:
+      replicas: ${API_REPLICAS:-2}
+
+  ai-service:
+    build: ./ai-service
+    environment:
+      <<: *common-env
+      APP_ENV: ${APP_ENV:-development}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
+      DATABASE_URL: postgresql://${AI_DB_USER}:${AI_DB_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=${POSTGRES_SSLMODE:-disable}
+      DB_POOL_MIN: ${DB_POOL_MIN:-2}
+      DB_POOL_MAX: ${DB_POOL_MAX:-20}
+      WEB_CONCURRENCY: ${AI_WORKERS:-4}   # gunicorn workers; each has its own DB pool
+      REDIS_URL: ${REDIS_URL}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+    depends_on:
+      migrator: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    deploy:
+      replicas: ${AI_REPLICAS:-2}
+
+  frontend:
+    build: ./frontend
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports: ["${HTTP_PORT:-80}:80"]
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on: [api, ai-service, frontend]
+
+volumes:
+  pgdata:

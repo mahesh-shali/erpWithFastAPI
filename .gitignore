@@ -1,0 +1,19 @@
+# Real env files hold secrets; only the *.example templates are committed
+.env
+.env.*
+!.env.example
+!.env.*.example
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/coverage/
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.coverage
+frontend/playwright-report/
+frontend/test-results/
+
+# Local DB client config (host/user)
+pgConnect.json

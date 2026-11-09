@@ -1,0 +1,38 @@
+# Production overrides. Use together with the base file:
+#   docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# (or: make up ENV=production)
+
+x-prod-logging: &prod-logging
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+services:
+  migrator:
+    <<: *prod-logging
+
+  redis:
+    <<: *prod-logging
+    restart: unless-stopped
+
+  api:
+    <<: *prod-logging
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 512M }
+
+  ai-service:
+    <<: *prod-logging
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 512M }
+
+  frontend:
+    <<: *prod-logging
+    restart: unless-stopped
+
+  nginx:
+    <<: *prod-logging
+    restart: unless-stopped
