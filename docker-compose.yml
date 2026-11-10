@@ -64,7 +64,8 @@ services:
     image: erp-platform-api
     environment:
       <<: [*common-env, *api-db]
-      ConnectionStrings__Redis: redis:6379
+      # Local container by default; set API_REDIS_CONNECTION to use a managed Redis (e.g. Upstash).
+      ConnectionStrings__Redis: ${API_REDIS_CONNECTION:-redis:6379}
       AiService__BaseUrl: http://ai-service:8000
       ASPNETCORE_URLS: http://+:8080
       Cors__Origins__0: ${CORS_ORIGINS:-http://localhost}

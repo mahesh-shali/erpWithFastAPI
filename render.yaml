@@ -79,7 +79,7 @@ services:
       - key: ConnectionStrings__Postgres
         sync: false              # Host=...;Port=20124;Database=erp_prod;Username=avnadmin;Password=...;SSL Mode=Require;Maximum Pool Size=3
       - key: ConnectionStrings__Redis
-        value: ""                # empty = in-memory cache (fine for a single instance; saves Upstash quota)
+        sync: false              # <upstash-endpoint>:6379,password=<upstash-password>,ssl=True,abortConnect=False
       - key: JWT_SECRET
         sync: false              # same value as erpwithfastapi-ai
       - key: JWT_ISSUER

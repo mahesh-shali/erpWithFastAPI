@@ -65,7 +65,7 @@ Public sign-up is **disabled in production**. After this you add users from *Mas
 1. Go to render.com → *New → Blueprint* → connect GitHub → choose this repository. Render reads
    [`render.yaml`](render.yaml), which defines the static site and both backends.
 2. Paste the values it asks for, from `.env.deploy-values`:
-   - **erpwithfastapi-server:** `ConnectionStrings__Postgres`, `JWT_SECRET`
+   - **erpwithfastapi-server:** `ConnectionStrings__Postgres`, `ConnectionStrings__Redis`, `JWT_SECRET`
    - **erpwithfastapi-ai:** `DATABASE_URL`, `REDIS_URL`, `GROQ_API_KEY`, `JWT_SECRET` (the same value)
 3. Wait for the first deploys, then check that the URLs Render shows match the rewrite destinations
    in `render.yaml`. If Render added a suffix to a name, update `render.yaml`, and set GitHub
@@ -97,7 +97,7 @@ the frontend once CI passes.
 | Render web services | 750 instance-hours per workspace per month, shared. Sleeps after 15 min idle, wakes in about a minute. | Keep-alive holds both backends awake about 11 hours a day (about 690 hours in a 31-day month). Using all the hours suspends every free service until next month, so don't add other free services or widen the window past 12 hours. |
 | Render bandwidth and builds | Limits per workspace; see *Billing* in the dashboard | Without a payment method, going over bandwidth suspends free services for the month, and going over build minutes stops new builds. |
 | Aiven Postgres | 20 connections (3 reserved) | Prod uses ≤ 5 (API 3 + AI 2) and dev uses ≤ 5. Leave headroom for migrations. |
-| Upstash Redis | 500k commands/month, 256 MB | Only the AI service uses it: a few commands per question. |
+| Upstash Redis | 500k commands/month, 256 MB | The API (session and permission cache, on every signed-in request) and the AI service (a few commands per question) share it, in dev as well as production. If you run out, unset `ConnectionStrings__Redis` on the API to fall back to its in-memory cache. |
 | Groq | Daily request and token limits for `gpt-oss-120b` (see console.groq.com) | Use a smaller model or a paid tier if you reach them. |
 
 Outside the keep-alive window, the first request wakes the services and can take about a minute.
