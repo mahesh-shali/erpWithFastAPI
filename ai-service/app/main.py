@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
     s = get_settings()
     s.check_production()
     executor = await PostgresExecutor.create(s.database_url, s.db_pool_min, s.db_pool_max)
-    redis = Redis.from_url(s.redis_url, decode_responses=False, max_connections=200)
+    redis = Redis.from_url(s.effective_redis_url, decode_responses=False, max_connections=200)
     client = groq.AsyncGroq(api_key=s.groq_api_key, max_retries=3, timeout=60)
     app.state.executor = executor
     app.state.agent = NL2SQLAgent(

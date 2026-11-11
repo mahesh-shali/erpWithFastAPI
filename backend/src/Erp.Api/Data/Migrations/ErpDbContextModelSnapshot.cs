@@ -232,6 +232,14 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 106,
+                            Key = "master-inventory-setup",
+                            ModuleId = 1,
+                            Name = "Inventory Setup",
+                            SortOrder = 45
+                        },
+                        new
+                        {
                             Id = 105,
                             Key = "master-settings",
                             ModuleId = 1,
@@ -272,6 +280,22 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 303,
+                            Key = "sales-labour-work",
+                            ModuleId = 3,
+                            Name = "Labour Work",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = 304,
+                            Key = "sales-dispatch",
+                            ModuleId = 3,
+                            Name = "Dispatch",
+                            SortOrder = 40
+                        },
+                        new
+                        {
                             Id = 401,
                             Key = "purchase-orders",
                             ModuleId = 4,
@@ -288,11 +312,35 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 403,
+                            Key = "purchase-subcontract",
+                            ModuleId = 4,
+                            Name = "Subcontract",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = 404,
+                            Key = "purchase-goods-receipt",
+                            ModuleId = 4,
+                            Name = "Goods Receipt",
+                            SortOrder = 40
+                        },
+                        new
+                        {
                             Id = 501,
                             Key = "production-planning",
-                            ModuleId = 5,
-                            Name = "Planning",
+                            ModuleId = 10,
+                            Name = "Production Planning",
                             SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 1001,
+                            Key = "planning-material",
+                            ModuleId = 10,
+                            Name = "Material Planning",
+                            SortOrder = 20
                         },
                         new
                         {
@@ -301,6 +349,22 @@ namespace Erp.Api.Data.Migrations
                             ModuleId = 5,
                             Name = "Work Orders",
                             SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = 503,
+                            Key = "production-shop-floor",
+                            ModuleId = 5,
+                            Name = "Shop Floor",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = 504,
+                            Key = "production-engineering",
+                            ModuleId = 5,
+                            Name = "Engineering",
+                            SortOrder = 40
                         },
                         new
                         {
@@ -320,6 +384,22 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 603,
+                            Key = "accounts-vouchers",
+                            ModuleId = 6,
+                            Name = "Vouchers",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = 604,
+                            Key = "accounts-ledgers",
+                            ModuleId = 6,
+                            Name = "Ledgers",
+                            SortOrder = 40
+                        },
+                        new
+                        {
                             Id = 701,
                             Key = "inspection-incoming",
                             ModuleId = 7,
@@ -328,11 +408,51 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 703,
+                            Key = "inspection-in-process",
+                            ModuleId = 7,
+                            Name = "In-Process",
+                            SortOrder = 15
+                        },
+                        new
+                        {
                             Id = 702,
                             Key = "inspection-quality",
                             ModuleId = 7,
                             Name = "Quality",
                             SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = 704,
+                            Key = "inspection-final",
+                            ModuleId = 7,
+                            Name = "Final",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = 1101,
+                            Key = "maintenance-machines",
+                            ModuleId = 11,
+                            Name = "Machines",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 1102,
+                            Key = "maintenance-preventive",
+                            ModuleId = 11,
+                            Name = "Preventive",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = 1103,
+                            Key = "maintenance-breakdown",
+                            ModuleId = 11,
+                            Name = "Breakdown",
+                            SortOrder = 30
                         },
                         new
                         {
@@ -352,6 +472,22 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 803,
+                            Key = "hr-payroll",
+                            ModuleId = 8,
+                            Name = "Payroll",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = 804,
+                            Key = "hr-leave",
+                            ModuleId = 8,
+                            Name = "Leave",
+                            SortOrder = 40
+                        },
+                        new
+                        {
                             Id = 901,
                             Key = "reports-sales",
                             ModuleId = 9,
@@ -365,6 +501,22 @@ namespace Erp.Api.Data.Migrations
                             ModuleId = 9,
                             Name = "Inventory",
                             SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = 903,
+                            Key = "reports-production",
+                            ModuleId = 9,
+                            Name = "Production",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = 904,
+                            Key = "reports-purchase",
+                            ModuleId = 9,
+                            Name = "Purchase",
+                            SortOrder = 40
                         });
                 });
 
@@ -416,26 +568,26 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
-                            Id = 2,
-                            Icon = "box",
-                            Key = "inventory",
-                            Name = "Inventory",
-                            SortOrder = 20
-                        },
-                        new
-                        {
                             Id = 3,
                             Icon = "cart",
                             Key = "sales",
-                            Name = "Sales",
-                            SortOrder = 30
+                            Name = "Sales & Labour Work",
+                            SortOrder = 20
                         },
                         new
                         {
                             Id = 4,
                             Icon = "truck",
                             Key = "purchase",
-                            Name = "Purchase",
+                            Name = "Purchase & Subcontract",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Icon = "calendar",
+                            Key = "planning",
+                            Name = "Planning",
                             SortOrder = 40
                         },
                         new
@@ -448,27 +600,43 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 2,
+                            Icon = "box",
+                            Key = "inventory",
+                            Name = "Inventory",
+                            SortOrder = 60
+                        },
+                        new
+                        {
                             Id = 6,
                             Icon = "wallet",
                             Key = "cash-flow",
-                            Name = "Cash Flow",
-                            SortOrder = 60
+                            Name = "Accounts",
+                            SortOrder = 70
                         },
                         new
                         {
                             Id = 7,
                             Icon = "check",
                             Key = "inspection",
-                            Name = "Inspection",
-                            SortOrder = 70
+                            Name = "Inspection (QC)",
+                            SortOrder = 80
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Icon = "wrench",
+                            Key = "maintenance",
+                            Name = "Maintenance",
+                            SortOrder = 90
                         },
                         new
                         {
                             Id = 8,
                             Icon = "people",
                             Key = "human-resource",
-                            Name = "Human Resource",
-                            SortOrder = 80
+                            Name = "HRMS",
+                            SortOrder = 100
                         },
                         new
                         {
@@ -476,7 +644,7 @@ namespace Erp.Api.Data.Migrations
                             Icon = "chart",
                             Key = "reports",
                             Name = "Reports",
-                            SortOrder = 90
+                            SortOrder = 110
                         });
                 });
 
@@ -749,6 +917,28 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 26,
+                            GroupId = 106,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "uom",
+                            Name = "Units of Measure",
+                            Route = "/master/uom",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 27,
+                            GroupId = 106,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "stores",
+                            Name = "Stores",
+                            Route = "/master/stores",
+                            SortOrder = 20
+                        },
+                        new
+                        {
                             Id = 9,
                             GroupId = 105,
                             IsActive = true,
@@ -756,28 +946,6 @@ namespace Erp.Api.Data.Migrations
                             Key = "master-pages",
                             Name = "Pages",
                             Route = "/master/pages",
-                            SortOrder = 10
-                        },
-                        new
-                        {
-                            Id = 11,
-                            GroupId = 201,
-                            IsActive = true,
-                            IsImplemented = false,
-                            Key = "stock-position",
-                            Name = "Stock Position",
-                            Route = "/inventory/stock-position",
-                            SortOrder = 10
-                        },
-                        new
-                        {
-                            Id = 12,
-                            GroupId = 202,
-                            IsActive = true,
-                            IsImplemented = false,
-                            Key = "stock-addition",
-                            Name = "Stock Addition",
-                            Route = "/inventory/stock-addition",
                             SortOrder = 10
                         },
                         new
@@ -804,6 +972,39 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 28,
+                            GroupId = 303,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "labour-work-orders",
+                            Name = "Labour Work Orders",
+                            Route = "/sales/labour-work-orders",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 29,
+                            GroupId = 303,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "labour-work-invoices",
+                            Name = "Labour Work Invoices",
+                            Route = "/sales/labour-work-invoices",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = 30,
+                            GroupId = 304,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "delivery-challans",
+                            Name = "Delivery Challans",
+                            Route = "/sales/delivery-challans",
+                            SortOrder = 10
+                        },
+                        new
+                        {
                             Id = 14,
                             GroupId = 401,
                             IsActive = true,
@@ -826,13 +1027,57 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 31,
+                            GroupId = 403,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "subcontract-orders",
+                            Name = "Subcontract Orders",
+                            Route = "/purchase/subcontract-orders",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 32,
+                            GroupId = 403,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "subcontract-challans",
+                            Name = "Subcontract Challans",
+                            Route = "/purchase/subcontract-challans",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = 33,
+                            GroupId = 404,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "goods-receipts",
+                            Name = "Goods Receipt Notes",
+                            Route = "/purchase/grn",
+                            SortOrder = 10
+                        },
+                        new
+                        {
                             Id = 16,
                             GroupId = 501,
                             IsActive = true,
                             IsImplemented = false,
                             Key = "production-plan",
                             Name = "Production Plan",
-                            Route = "/production/plan",
+                            Route = "/planning/production-plan",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 34,
+                            GroupId = 1001,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "mrp",
+                            Name = "Material Requirements",
+                            Route = "/planning/mrp",
                             SortOrder = 10
                         },
                         new
@@ -844,6 +1089,50 @@ namespace Erp.Api.Data.Migrations
                             Key = "work-orders",
                             Name = "Work Orders",
                             Route = "/production/work-orders",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 35,
+                            GroupId = 503,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "job-cards",
+                            Name = "Job Cards",
+                            Route = "/production/job-cards",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 36,
+                            GroupId = 504,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "bill-of-materials",
+                            Name = "Bill of Materials",
+                            Route = "/production/bom",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 11,
+                            GroupId = 201,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "stock-position",
+                            Name = "Stock Position",
+                            Route = "/inventory/stock-position",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 12,
+                            GroupId = 202,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "stock-addition",
+                            Name = "Stock Addition",
+                            Route = "/inventory/stock-addition",
                             SortOrder = 10
                         },
                         new
@@ -870,6 +1159,28 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 37,
+                            GroupId = 603,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "journal-vouchers",
+                            Name = "Journal Vouchers",
+                            Route = "/accounts/journal-vouchers",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 38,
+                            GroupId = 604,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "ledger",
+                            Name = "General Ledger",
+                            Route = "/accounts/ledger",
+                            SortOrder = 10
+                        },
+                        new
+                        {
                             Id = 20,
                             GroupId = 701,
                             IsActive = true,
@@ -881,6 +1192,17 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 39,
+                            GroupId = 703,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "in-process-inspection",
+                            Name = "In-Process Inspection",
+                            Route = "/inspection/in-process",
+                            SortOrder = 10
+                        },
+                        new
+                        {
                             Id = 21,
                             GroupId = 702,
                             IsActive = true,
@@ -888,6 +1210,50 @@ namespace Erp.Api.Data.Migrations
                             Key = "quality-checks",
                             Name = "Quality Checks",
                             Route = "/inspection/quality",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 40,
+                            GroupId = 704,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "final-inspection",
+                            Name = "Final Inspection",
+                            Route = "/inspection/final",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 41,
+                            GroupId = 1101,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "machines",
+                            Name = "Machine Register",
+                            Route = "/maintenance/machines",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 42,
+                            GroupId = 1102,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "preventive-maintenance",
+                            Name = "PM Schedule",
+                            Route = "/maintenance/preventive",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 43,
+                            GroupId = 1103,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "breakdowns",
+                            Name = "Breakdown Log",
+                            Route = "/maintenance/breakdowns",
                             SortOrder = 10
                         },
                         new
@@ -914,6 +1280,28 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 44,
+                            GroupId = 803,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "payroll",
+                            Name = "Payroll",
+                            Route = "/hr/payroll",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 45,
+                            GroupId = 804,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "leave-requests",
+                            Name = "Leave Requests",
+                            Route = "/hr/leave",
+                            SortOrder = 10
+                        },
+                        new
+                        {
                             Id = 24,
                             GroupId = 901,
                             IsActive = true,
@@ -932,6 +1320,28 @@ namespace Erp.Api.Data.Migrations
                             Key = "stock-report",
                             Name = "Stock Report",
                             Route = "/reports/stock",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 46,
+                            GroupId = 903,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "production-report",
+                            Name = "Production Report",
+                            Route = "/reports/production",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 47,
+                            GroupId = 904,
+                            IsActive = true,
+                            IsImplemented = false,
+                            Key = "purchase-report",
+                            Name = "Purchase Report",
+                            Route = "/reports/purchase",
                             SortOrder = 10
                         });
                 });
@@ -1220,6 +1630,30 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 126,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 26,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 127,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 27,
+                            RoleId = 1
+                        },
+                        new
+                        {
                             Id = 109,
                             CanDelete = false,
                             CanRead = true,
@@ -1228,30 +1662,6 @@ namespace Erp.Api.Data.Migrations
                             IsRestricted = false,
                             IsVisible = true,
                             PageId = 9,
-                            RoleId = 1
-                        },
-                        new
-                        {
-                            Id = 111,
-                            CanDelete = false,
-                            CanRead = true,
-                            CanUpdate = false,
-                            CanWrite = false,
-                            IsRestricted = false,
-                            IsVisible = true,
-                            PageId = 11,
-                            RoleId = 1
-                        },
-                        new
-                        {
-                            Id = 112,
-                            CanDelete = true,
-                            CanRead = true,
-                            CanUpdate = true,
-                            CanWrite = true,
-                            IsRestricted = false,
-                            IsVisible = true,
-                            PageId = 12,
                             RoleId = 1
                         },
                         new
@@ -1280,6 +1690,42 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 128,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 28,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 129,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 29,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 130,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 30,
+                            RoleId = 1
+                        },
+                        new
+                        {
                             Id = 114,
                             CanDelete = true,
                             CanRead = true,
@@ -1304,6 +1750,42 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 131,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 31,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 132,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 32,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 133,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 33,
+                            RoleId = 1
+                        },
+                        new
+                        {
                             Id = 116,
                             CanDelete = true,
                             CanRead = true,
@@ -1316,6 +1798,18 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 134,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 34,
+                            RoleId = 1
+                        },
+                        new
+                        {
                             Id = 117,
                             CanDelete = true,
                             CanRead = true,
@@ -1324,6 +1818,54 @@ namespace Erp.Api.Data.Migrations
                             IsRestricted = false,
                             IsVisible = true,
                             PageId = 17,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 135,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 35,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 136,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 36,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 111,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 11,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 112,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 12,
                             RoleId = 1
                         },
                         new
@@ -1352,6 +1894,30 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 137,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 37,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 138,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 38,
+                            RoleId = 1
+                        },
+                        new
+                        {
                             Id = 120,
                             CanDelete = true,
                             CanRead = true,
@@ -1364,6 +1930,18 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 139,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 39,
+                            RoleId = 1
+                        },
+                        new
+                        {
                             Id = 121,
                             CanDelete = true,
                             CanRead = true,
@@ -1372,6 +1950,54 @@ namespace Erp.Api.Data.Migrations
                             IsRestricted = false,
                             IsVisible = true,
                             PageId = 21,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 140,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 40,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 141,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 41,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 142,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 42,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 143,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 43,
                             RoleId = 1
                         },
                         new
@@ -1400,6 +2026,30 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 144,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 44,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 145,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 45,
+                            RoleId = 1
+                        },
+                        new
+                        {
                             Id = 124,
                             CanDelete = false,
                             CanRead = true,
@@ -1420,6 +2070,30 @@ namespace Erp.Api.Data.Migrations
                             IsRestricted = false,
                             IsVisible = true,
                             PageId = 25,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 146,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 46,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 147,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 47,
                             RoleId = 1
                         },
                         new
@@ -1520,6 +2194,30 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 226,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 26,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 227,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 27,
+                            RoleId = 2
+                        },
+                        new
+                        {
                             Id = 209,
                             CanDelete = false,
                             CanRead = false,
@@ -1528,30 +2226,6 @@ namespace Erp.Api.Data.Migrations
                             IsRestricted = false,
                             IsVisible = false,
                             PageId = 9,
-                            RoleId = 2
-                        },
-                        new
-                        {
-                            Id = 211,
-                            CanDelete = false,
-                            CanRead = true,
-                            CanUpdate = false,
-                            CanWrite = false,
-                            IsRestricted = false,
-                            IsVisible = true,
-                            PageId = 11,
-                            RoleId = 2
-                        },
-                        new
-                        {
-                            Id = 212,
-                            CanDelete = false,
-                            CanRead = false,
-                            CanUpdate = false,
-                            CanWrite = false,
-                            IsRestricted = false,
-                            IsVisible = false,
-                            PageId = 12,
                             RoleId = 2
                         },
                         new
@@ -1580,6 +2254,42 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 228,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 28,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 229,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 29,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 230,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 30,
+                            RoleId = 2
+                        },
+                        new
+                        {
                             Id = 214,
                             CanDelete = false,
                             CanRead = false,
@@ -1604,6 +2314,42 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 231,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 31,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 232,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 32,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 233,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 33,
+                            RoleId = 2
+                        },
+                        new
+                        {
                             Id = 216,
                             CanDelete = false,
                             CanRead = false,
@@ -1616,6 +2362,18 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 234,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 34,
+                            RoleId = 2
+                        },
+                        new
+                        {
                             Id = 217,
                             CanDelete = false,
                             CanRead = false,
@@ -1624,6 +2382,54 @@ namespace Erp.Api.Data.Migrations
                             IsRestricted = false,
                             IsVisible = false,
                             PageId = 17,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 235,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 35,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 236,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 36,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 211,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 11,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 212,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 12,
                             RoleId = 2
                         },
                         new
@@ -1652,6 +2458,30 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 237,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 37,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 238,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 38,
+                            RoleId = 2
+                        },
+                        new
+                        {
                             Id = 220,
                             CanDelete = false,
                             CanRead = false,
@@ -1664,6 +2494,18 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 239,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 39,
+                            RoleId = 2
+                        },
+                        new
+                        {
                             Id = 221,
                             CanDelete = false,
                             CanRead = false,
@@ -1672,6 +2514,54 @@ namespace Erp.Api.Data.Migrations
                             IsRestricted = false,
                             IsVisible = false,
                             PageId = 21,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 240,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 40,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 241,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 41,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 242,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 42,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 243,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 43,
                             RoleId = 2
                         },
                         new
@@ -1700,6 +2590,30 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 244,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 44,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 245,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 45,
+                            RoleId = 2
+                        },
+                        new
+                        {
                             Id = 224,
                             CanDelete = false,
                             CanRead = true,
@@ -1720,6 +2634,30 @@ namespace Erp.Api.Data.Migrations
                             IsRestricted = false,
                             IsVisible = true,
                             PageId = 25,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 246,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 46,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 247,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 47,
                             RoleId = 2
                         });
                 });

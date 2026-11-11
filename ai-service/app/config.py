@@ -1,16 +1,35 @@
 from functools import lru_cache
+from pathlib import Path
+from urllib.parse import quote, urlparse
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
+
+# ai-service/.env, found from this file's location so it works from any working directory.
+ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=ENV_FILE, extra="ignore")
+
+    @classmethod
+    def settings_customise_sources(cls, settings_cls, init_settings: PydanticBaseSettingsSource,
+                                   env_settings: PydanticBaseSettingsSource,
+                                   dotenv_settings: PydanticBaseSettingsSource,
+                                   file_secret_settings: PydanticBaseSettingsSource):
+        # ai-service/.env beats process env vars. Locally, editor terminals can carry stale injected values
+        # (Docker hostnames, placeholder keys) that would silently override the file. In containers and on
+        # Render there is no .env (.dockerignore excludes it), so real environment variables apply as usual.
+        return init_settings, dotenv_settings, env_settings, file_secret_settings
 
     app_env: str = "development"           # development | production
     cors_origins: str = "http://localhost:5173,http://localhost"  # comma-separated
 
     database_url: str = "postgresql://erp_ai_ro:ai_readonly_dev@localhost:5432/erp"
     redis_url: str = "redis://localhost:6379/0"
+    # Upstash: the REST URL/token pair from the console. When both are set they win over REDIS_URL;
+    # the REST token is also the Redis password, so we connect over TLS to <host>:6379.
+    upstash_redis_rest_url: str = ""
+    upstash_redis_rest_token: str = ""
 
     jwt_secret: str = "change-me-to-a-random-256-bit-secret-value-0123456789"
     jwt_issuer: str = "erp-api"
@@ -34,6 +53,15 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() == "production"
+
+    @property
+    def effective_redis_url(self) -> str:
+        if self.upstash_redis_rest_url and self.upstash_redis_rest_token:
+            host = urlparse(self.upstash_redis_rest_url).hostname
+            if not host:
+                raise ValueError("UPSTASH_REDIS_REST_URL must look like https://<name>.upstash.io")
+            return f"rediss://default:{quote(self.upstash_redis_rest_token, safe='')}@{host}:6379/0"
+        return self.redis_url
 
     @property
     def cors_origin_list(self) -> list[str]:

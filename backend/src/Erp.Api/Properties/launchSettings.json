@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "Erp.Api": {
+      "commandName": "Project",
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:8080",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ConnectionStrings__Redis": "",
+        "Database__MigrateOnStartup": "true",
+        "AI_DB_USER": "erp_ai_ro",
+        "AI_DB_PASSWORD": "ai_readonly_dev"
+      }
+    }
+  }
+}

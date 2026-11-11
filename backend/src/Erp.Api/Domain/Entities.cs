@@ -132,6 +132,38 @@ public static class PageKeys
     public const string Attendance = "attendance";
     public const string SalesReport = "sales-report";
     public const string StockReport = "stock-report";
+    // Master
+    public const string Uom = "uom";
+    public const string Stores = "stores";
+    // Sales & Labour Work
+    public const string LabourWorkOrders = "labour-work-orders";
+    public const string LabourWorkInvoices = "labour-work-invoices";
+    public const string DeliveryChallans = "delivery-challans";
+    // Purchase & Subcontract
+    public const string SubcontractOrders = "subcontract-orders";
+    public const string SubcontractChallans = "subcontract-challans";
+    public const string GoodsReceipts = "goods-receipts";
+    // Planning
+    public const string Mrp = "mrp";
+    // Production
+    public const string JobCards = "job-cards";
+    public const string BillOfMaterials = "bill-of-materials";
+    // Accounts
+    public const string JournalVouchers = "journal-vouchers";
+    public const string Ledger = "ledger";
+    // Inspection (QC)
+    public const string InProcessInspection = "in-process-inspection";
+    public const string FinalInspection = "final-inspection";
+    // Maintenance
+    public const string Machines = "machines";
+    public const string PreventiveMaintenance = "preventive-maintenance";
+    public const string Breakdowns = "breakdowns";
+    // HRMS
+    public const string Payroll = "payroll";
+    public const string LeaveRequests = "leave-requests";
+    // Reports
+    public const string ProductionReport = "production-report";
+    public const string PurchaseReport = "purchase-report";
 }
 
 public enum PageAction { Read, Write, Update, Delete }

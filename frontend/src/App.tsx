@@ -12,6 +12,21 @@ import { UserRightsPage } from './pages/master/UserRightsPage';
 import { UsersPage } from './pages/master/UsersPage';
 
 /**
+ * Flat URLs used by V.SMART ERP (and old bookmarks) redirect to their place in this app's menu,
+ * so users coming from that system can keep typing the paths they know.
+ */
+const LEGACY_ALIASES: [string, string][] = [
+  ['dashboard', '/'],
+  ['user', '/master/users'],
+  ['userrights', '/master/user-rights'],
+  ['customer', '/master/customers'],
+  ['vendor', '/master/vendors'],
+  ['uom', '/master/uom'],
+  ['stores', '/master/stores'],
+  ['production/plan', '/planning/production-plan'],
+];
+
+/**
  * Routes match the `route` of each page in the Pages master; RequirePage checks canRead (the API re-checks).
  * Pages without a screen yet fall through to ComingSoonRoute.
  */
@@ -29,6 +44,9 @@ export default function App() {
         <Route path="master/products" element={<RequirePage page="products"><ProductsPage /></RequirePage>} />
         <Route path="master/pages" element={<RequirePage page="master-pages"><PagesPage /></RequirePage>} />
         <Route path="sales/orders" element={<RequirePage page="orders"><OrdersPage /></RequirePage>} />
+        {LEGACY_ALIASES.map(([from, to]) => (
+          <Route key={from} path={from} element={<Navigate to={to} replace />} />
+        ))}
         <Route path="*" element={<ComingSoonRoute />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

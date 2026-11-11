@@ -15,8 +15,23 @@ label { display: grid; gap: .3rem; font-size: .9rem; color: var(--muted); }
 .error { color: var(--danger); }
 .hint { color: var(--muted); font-size: .8rem; }
 
-.login { min-height: 100vh; display: grid; place-items: center; }
+/* ---- Sign-in: module showcase + form (stacks on small screens) ---- */
+.login { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
 .login h1 { margin: 0; font-size: 1.4rem; }
+.login-hero { background: linear-gradient(150deg, #1e3a8a, var(--accent) 70%); color: #fff;
+              padding: clamp(2rem, 6vw, 4.5rem); display: flex; flex-direction: column; justify-content: center; gap: 1.5rem; }
+.login-eyebrow { margin: 0; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .85; font-size: .85rem; }
+.login-tagline { margin: 0; font-size: clamp(1.4rem, 2.6vw, 2.1rem); line-height: 1.25; max-width: 28ch; }
+.login-modules { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .5rem; }
+.login-modules li { display: flex; align-items: center; gap: .55rem; background: rgba(255, 255, 255, .1);
+                    border: 1px solid rgba(255, 255, 255, .18); border-radius: 8px; padding: .5rem .7rem; font-size: .9rem; }
+.login-badges { display: flex; flex-wrap: wrap; gap: .5rem; }
+.login-badges span { border: 1px solid rgba(255, 255, 255, .45); border-radius: 999px; padding: .2rem .7rem; font-size: .78rem; }
+.login > .login-card { place-self: center; margin: 2rem 1rem; }
+@media (max-width: 900px) {
+  .login { grid-template-columns: 1fr; }
+  .login-hero { padding: 2rem 1rem; }
+}
 
 
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
