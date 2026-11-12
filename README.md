@@ -116,6 +116,18 @@ make down    [ENV=production] # stops containers, keeps volumes
 
 On Windows without `make`, run the `docker compose ...` command shown in the comments.
 
+**Without containers** (API + AI service as local processes, same env files):
+
+```bash
+./run-local.sh                  # development: .env.development, dotnet watch + uvicorn --reload, Swagger on
+./run-local.sh production       # production:  .env.production, Release publish, no reload, guard rails on
+./run-local.sh <mode> --skip-migrate
+# PowerShell: bash ./run-local.sh production
+```
+
+API on `http://localhost:8080`, AI service on `http://localhost:8000`. Migrations run first (like `migrator`).
+The script sets `AI_SERVICE_ENV_FILE=none`, so `ai-service/.env` is ignored and the env file decides.
+
 Startup order: `migrator` applies EF Core migrations (and seeds demo data when `SEED_DEMO_DATA=true`),
 then exits. After it finishes, `api` and `ai-service` start.
 

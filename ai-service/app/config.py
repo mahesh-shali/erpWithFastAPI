@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from pathlib import Path
 from urllib.parse import quote, urlparse
@@ -5,7 +6,14 @@ from urllib.parse import quote, urlparse
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
 # ai-service/.env, found from this file's location so it works from any working directory.
-ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
+# AI_SERVICE_ENV_FILE overrides it: a path to another file, or "none" to read only real environment
+# variables (run-local.sh does this so .env.development / .env.production decide the settings).
+_env_file_override = os.environ.get("AI_SERVICE_ENV_FILE", "").strip()
+ENV_FILE: Path | None = (
+    None if _env_file_override.lower() == "none"
+    else Path(_env_file_override) if _env_file_override
+    else Path(__file__).resolve().parent.parent / ".env"
+)
 
 
 class Settings(BaseSettings):
