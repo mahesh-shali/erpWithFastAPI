@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
 var cfg = builder.Configuration;
@@ -62,6 +63,7 @@ builder.Services.AddScoped<IMasterService, MasterService>();
 builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider, PagePolicyProvider>();
 builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, PageRequirementHandler>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddSingleton<ILoginThrottle, LoginThrottle>();
 builder.Services.AddHostedService<SessionCleanupService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IProductService, ProductService>();
@@ -98,6 +100,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // ---------- Rate limiting (per user / per IP) ----------
+// Defaults are the production limits; the local load-test environment raises them (RateLimit__* env vars)
+// because every k6 virtual user comes from the same IP.
+var perUserBurst = cfg.GetValue("RateLimit:PerUserBurst", 100);
+var perUserPerSecond = cfg.GetValue("RateLimit:PerUserPerSecond", 50);
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -106,7 +112,7 @@ builder.Services.AddRateLimiter(o =>
             ctx.User.FindFirstValue("sub") ?? ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
             _ => new TokenBucketRateLimiterOptions
             {
-                TokenLimit = 100, TokensPerPeriod = 50, ReplenishmentPeriod = TimeSpan.FromSeconds(1),
+                TokenLimit = perUserBurst, TokensPerPeriod = perUserPerSecond, ReplenishmentPeriod = TimeSpan.FromSeconds(1),
                 QueueLimit = 0, AutoReplenishment = true
             }));
     o.AddPolicy("auth", ctx => RateLimitPartition.GetFixedWindowLimiter(
@@ -118,7 +124,8 @@ builder.Services.AddRateLimiter(o =>
 });
 
 // ---------- Web ----------
-builder.Services.AddControllers();
+// Malformed JSON -> generic "The input was not valid." instead of echoing System.Text.Json parser internals.
+builder.Services.AddControllers().AddJsonOptions(o => o.AllowInputFormatterExceptionMessages = false);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddResponseCompression(o => { o.EnableForHttps = true; o.Providers.Add<BrotliCompressionProvider>(); });
@@ -172,6 +179,11 @@ forwarded.KnownProxies.Clear();
 // Number of proxies in front of the API: 1 for nginx; 2 for Netlify -> Render (both append to X-Forwarded-For).
 forwarded.ForwardLimit = cfg.GetValue("Proxy:ForwardLimit", 1);
 app.UseForwardedHeaders(forwarded);
+// Prometheus metrics (request rate/latency per endpoint, GC, threads) for Grafana. Off by default: on hosts
+// where the API is public (e.g. Render) /metrics would be world-readable. nginx/ingress never route /metrics.
+var metricsEnabled = cfg.GetValue("Metrics:Enabled", false);
+if (metricsEnabled) app.UseHttpMetrics();
+app.UseSecurityHeaders(app.Environment.IsDevelopment());
 app.UseExceptionHandler();
 app.UseResponseCompression();
 if (app.Environment.IsDevelopment()) { app.UseSwagger(); app.UseSwaggerUI(); }
@@ -181,8 +193,10 @@ app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
-app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = r => r.Tags.Contains("ready") });
+// Probes are exempt from rate limiting: a 429 on a liveness probe under load would get a healthy pod restarted.
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false }).DisableRateLimiting();
+app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = r => r.Tags.Contains("ready") }).DisableRateLimiting();
+if (metricsEnabled) app.MapMetrics(); // GET /metrics
 
 app.Run();
 

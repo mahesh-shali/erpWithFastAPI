@@ -80,6 +80,66 @@ own Aiven service when you outgrow this.
 **Specific `appsettings` per environment.** `backend/src/Erp.Api/appsettings.Development.json` and
 `appsettings.Production.json` layer on top of `appsettings.json`, selected by `ASPNETCORE_ENVIRONMENT`.
 
+### Local environment: everything on this machine, with load testing
+
+A third environment runs the **whole platform in local Docker containers** (Postgres, Redis, API ×2,
+AI service, frontend, nginx) plus **Prometheus, Grafana and k6**. It needs no cloud services. It uses the
+production images and Release builds (`ASPNETCORE_ENVIRONMENT=Staging`: no Swagger, production logging),
+with demo data and raised rate limits so a load test measures the system, not the limiter.
+
+```bash
+./local.sh up                 # PowerShell: bash ./local.sh up   (creates .env.local on first run)
+./local.sh load smoke         # then: load | stress | spike | soak | breakpoint
+./local.sh scale 4            # 4 API replicas, re-run a profile and compare
+./local.sh down               # stop, keep data      (./local.sh reset deletes the volumes)
+```
+
+| | URL |
+|---|---|
+| App (via nginx) | http://localhost:8088 (`admin@demo.com` / `Admin@123`) |
+| Grafana | http://localhost:3000, dashboard **ERP — Load test & capacity** |
+| Prometheus | http://localhost:9090 |
+| Postgres | `localhost:5434`, db `erp`, user `erp_app` (`./local.sh psql`) |
+
+Files: `.env.local.example`, `docker-compose.local.yml`, `infra/nginx/nginx.local.conf`,
+`infra/observability/`, `load-tests/k6/erp-all-apis.js`. JSON summaries go to `load-tests/results/`.
+
+**What the k6 test does.** `setup()` creates a pool of 50 users (`USERS=`), each with its own session,
+plus 50 `LoadTest` products with very large stock. Then each virtual user works like a real ERP user
+with think time (`THINK=` seconds): about 75% reads (dashboard, product, customer and order lists,
+search, keyset paging, details), 17% writes (create order + pay, create/delete customer) and some admin
+screens. A separate scenario runs login → me → refresh → logout at a fixed rate. `AI=1` adds `/ai/chat`.
+Every request is tagged by endpoint, so Grafana shows p95/p99 and the error rate per API, next to
+server-side metrics: API latency per controller action, CPU, GC, Postgres connections and TPS, Redis
+hit ratio, and nginx connections.
+
+| Profile | Shape | Use it to |
+|---|---|---|
+| `smoke` | 5 VUs, 1 min | check every API works under concurrency |
+| `load` | ramp to 200 VUs, hold 5 min | normal-day latency |
+| `stress` | 500 → 1000 → 1500 VUs | find where latency bends |
+| `spike` | 50 → 1500 VUs in 20 s | autoscaling and pool behaviour under sudden load |
+| `soak` | 300 VUs, 30 min | leaks, pool exhaustion, slow drift |
+| `breakpoint` | open model, rising iterations/s until thresholds fail | **measure capacity** |
+
+Override with `VUS=`, `DURATION=`, `USERS=`, `THINK=`, e.g. `VUS=400 DURATION=10m ./local.sh load load`.
+
+**From a local number to one million users.** One machine can't generate or serve 1M concurrent users.
+The local run measures **requests/s per API replica** at an acceptable p95 (the breakpoint profile; then
+`./local.sh scale 4` to confirm it scales roughly linearly) and **which component saturates first**
+(the Grafana rows). Turn that into a production size:
+
+```
+required RPS  = concurrent users ÷ seconds between a user's requests
+                1,000,000 users ÷ 10 s think time ≈ 100,000 RPS (≈ 40,000 RPS at 25 s)
+API pods      = required RPS ÷ (RPS per replica measured locally × 0.6 headroom)
+DB            = writes go to the primary (size its TPS from the Postgres row), reads and the AI service
+                go to read replicas; PgBouncer in front; Redis Cluster for cache + session checks
+```
+
+Then confirm with a distributed k6 run (k6-operator on Kubernetes or Grafana Cloud k6) against a
+staging cluster built from `infra/k8s/platform.yaml`. That is the only test that proves the 1M figure.
+
 ## Quick start
 
 ### 1. Configure
@@ -503,7 +563,7 @@ Cluster, a CDN for the SPA, raised Groq rate limits (or a paid tier), and OpenTe
 | 2. Unit | xUnit · pytest (mocked LLM) · Vitest | `make test` |
 | 3. Integration | .NET + Testcontainers (real Postgres built **from the EF migrations**) · pytest vs real Postgres (RLS, read-only role, audit) | `make test-integration` |
 | 4. E2E | Playwright against the docker-compose stack | `make e2e` |
-| 5. Load | k6 smoke/load/stress/spike | `make load` |
+| 5. Load | k6 across all APIs, smoke → breakpoint, live in Grafana (fully local stack) | `./local.sh load <profile>` |
 
 Run the AI-service DB security tests against any migrated database (writes one row to `chat_audit_log`):
 

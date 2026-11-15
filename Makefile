@@ -1,4 +1,4 @@
-.PHONY: up down config logs migrate migration test test-dotnet test-python test-frontend test-integration e2e load
+.PHONY: up down config logs migrate migration test test-dotnet test-python test-frontend test-integration e2e load local-up local-down local-load
 
 # ---- Environments: make <target> ENV=development (default) | ENV=production ----
 ENV ?= development
@@ -53,3 +53,13 @@ e2e:               ## Phase 4: needs `make up`
 
 load:              ## Phase 5
 	k6 run -e BASE_URL=http://localhost -e PROFILE=smoke load-tests/k6/api.js
+
+# ---- LOCAL: everything on this machine + Prometheus/Grafana/k6 (see local.sh) ----
+local-up:          ## make local-up
+	./local.sh up
+
+local-down:
+	./local.sh down
+
+local-load:        ## make local-load PROFILE=stress
+	./local.sh load $(or $(PROFILE),smoke)

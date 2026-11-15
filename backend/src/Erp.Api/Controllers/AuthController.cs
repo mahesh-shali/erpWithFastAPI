@@ -19,7 +19,7 @@ namespace Erp.Api.Controllers;
 [ApiController]
 [Route("api/auth")]
 public class AuthController(IAuthService auth, ISessionService sessions, IOptions<LoginSessionOptions> options,
-    IConfiguration cfg) : ControllerBase
+    IConfiguration cfg, ILoginThrottle throttle) : ControllerBase
 {
     private readonly LoginSessionOptions _opt = options.Value;
 
@@ -35,8 +35,20 @@ public class AuthController(IAuthService auth, ISessionService sessions, IOption
     [HttpPost("login"), AllowAnonymous, EnableRateLimiting("auth")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest req, CancellationToken ct)
     {
+        if (await throttle.IsLockedOutAsync(req.Email, ct))
+        {
+            Response.Headers.RetryAfter = ((int)throttle.Window.TotalSeconds).ToString();
+            return StatusCode(StatusCodes.Status429TooManyRequests,
+                new ProblemDetails { Title = "Too many failed sign-in attempts. Try again later." });
+        }
         var res = await auth.LoginAsync(req, Client(), ct);
-        return res is null ? Unauthorized(new ProblemDetails { Title = "Invalid email or password." }) : Issue(res);
+        if (res is null)
+        {
+            await throttle.RecordFailureAsync(req.Email, ct);
+            return Unauthorized(new ProblemDetails { Title = "Invalid email or password." });
+        }
+        await throttle.ResetAsync(req.Email, ct);
+        return Issue(res);
     }
 
     /// <summary>New access token from the refresh cookie. The cookie is rotated on every call.</summary>

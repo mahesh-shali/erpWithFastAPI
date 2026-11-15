@@ -57,6 +57,14 @@ services:
       - path: /*
         name: Strict-Transport-Security
         value: max-age=31536000; includeSubDomains
+      # Keep in sync with frontend/nginx.spa.conf. The Vite build only loads same-origin /assets files
+      # (no inline scripts), and the API/AI are proxied on this origin, so 'self' covers everything.
+      - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+      - path: /*
+        name: Cross-Origin-Opener-Policy
+        value: same-origin
 
   - type: web
     name: erpwithfastapi-server

@@ -1,5 +1,5 @@
 {
   // Don't inject an env file into terminals: values injected there override each service's own
   // config (ai-service/.env, launchSettings.json) and caused stale Docker hostnames / placeholder keys.
-  "python.terminal.useEnvFile": false
+  "python.terminal.useEnvFile": true
 }

@@ -42,6 +42,40 @@ public class ApiTests(ApiFactory factory)
     }
 
     [Fact]
+    public async Task Repeated_failed_logins_lock_out_the_account()
+    {
+        var c = factory.CreateClient();
+        var email = $"lockout-{Guid.NewGuid():N}@demo.com"; // unique: don't lock the shared demo admin
+        for (var i = 0; i < 5; i++)
+            (await c.PostAsJsonAsync("/api/auth/login", new LoginRequest(email, "wrong-pass")))
+                .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        var locked = await c.PostAsJsonAsync("/api/auth/login", new LoginRequest(email, "wrong-pass"));
+        locked.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        locked.Headers.RetryAfter.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Responses_carry_security_headers()
+    {
+        var res = await factory.CreateClient().GetAsync("/api/products");
+        res.Headers.GetValues("X-Frame-Options").Should().ContainSingle("DENY");
+        res.Headers.GetValues("Content-Security-Policy").Single().Should().Contain("frame-ancestors 'none'");
+        res.Headers.GetValues("X-Content-Type-Options").Should().ContainSingle("nosniff");
+        res.Headers.Contains("Referrer-Policy").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Malformed_json_does_not_echo_parser_details()
+    {
+        var res = await factory.CreateClient().PostAsync("/api/auth/login",
+            new StringContent("{bad json", System.Text.Encoding.UTF8, "application/json"));
+        res.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await res.Content.ReadAsStringAsync();
+        body.Should().NotContain("BytePositionInLine").And.NotContain("invalid start of a property name");
+    }
+
+    [Fact]
     public async Task Demo_admin_sees_seeded_products()
     {
         var c = await LoginAsDemoAdmin();

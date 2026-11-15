@@ -1,0 +1,33 @@
+# Local Prometheus (docker-compose.local.yml). k6 pushes its metrics via remote write;
+# everything else is scraped. API replicas are discovered through Docker DNS (one A record per replica).
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: erp-api
+    metrics_path: /metrics
+    dns_sd_configs:
+      - names: [api]
+        type: A
+        port: 8080
+        refresh_interval: 10s
+
+  - job_name: conn-soak        # ./local.sh conns — one A record per generator replica
+    dns_sd_configs:
+      - names: [conn-soak]
+        type: A
+        port: 9100
+        refresh_interval: 5s
+
+  - job_name: postgres
+    static_configs: [{ targets: ["postgres-exporter:9187"] }]
+
+  - job_name: redis
+    static_configs: [{ targets: ["redis-exporter:9121"] }]
+
+  - job_name: nginx
+    static_configs: [{ targets: ["nginx-exporter:9113"] }]
+
+  - job_name: prometheus
+    static_configs: [{ targets: ["localhost:9090"] }]

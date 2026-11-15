@@ -52,7 +52,9 @@ public sealed class OrderService(ErpDbContext db) : IOrderService
             await using var tx = await db.Database.BeginTransactionAsync(ct);
 
             // Atomic, race-free stock decrement: UPDATE ... WHERE stock >= qty
-            foreach (var item in req.Items)
+            // Lock product rows in one global order (by id). Otherwise concurrent orders for [A, B] and [B, A]
+            // each hold one row lock and wait for the other's: a deadlock (found by the k6 load test).
+            foreach (var item in req.Items.OrderBy(i => i.ProductId))
             {
                 var updated = await db.Products
                     .Where(p => p.Id == item.ProductId && p.StockQuantity >= item.Quantity)
