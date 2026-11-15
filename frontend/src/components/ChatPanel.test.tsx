@@ -14,7 +14,7 @@ const answer = {
 };
 
 describe('ChatPanel', () => {
-  it('sends a question and renders answer, table and SQL', async () => {
+  it('sends a question and renders only the answer text', async () => {
     signIn();
     const f = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(answer));
     renderWithProviders(<ChatPanel />);
@@ -23,9 +23,8 @@ describe('ChatPanel', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Ask' }));
 
     expect(await screen.findByText(answer.answer)).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'city' })).toBeInTheDocument();
-    expect(screen.getAllByRole('row')).toHaveLength(3);
-    expect(screen.getByText(/LIMIT 500/)).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByText(/LIMIT 500/)).not.toBeInTheDocument();
 
     const [url, init] = f.mock.calls[0];
     expect(url).toBe('/ai/chat');
@@ -51,6 +50,17 @@ describe('ChatPanel', () => {
       { role: 'user', content: 'Top city?' },
       { role: 'assistant', content: answer.answer },
     ]);
+  });
+
+  it('renders **bold** markers as bold text', async () => {
+    signIn();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ ...answer, answer: 'There are **5** users.' }));
+    renderWithProviders(<ChatPanel />);
+    await userEvent.type(screen.getByLabelText('question'), 'how many users?');
+    await userEvent.click(screen.getByRole('button', { name: 'Ask' }));
+    const bold = await screen.findByText('5');
+    expect(bold.tagName).toBe('STRONG');
+    expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument();
   });
 
   it('shows a friendly message on 429', async () => {

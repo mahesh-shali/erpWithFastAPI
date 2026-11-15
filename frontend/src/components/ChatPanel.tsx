@@ -1,12 +1,18 @@
-import { useRef, useState, type FormEvent } from 'react';
-import { api, ApiError, type ChatResponse, type ChatTurn } from '../api/client';
-import { ResultTable } from './ResultTable';
+import { useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { api, ApiError, type ChatTurn } from '../api/client';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  result?: ChatResponse;
   error?: boolean;
+}
+
+/** Renders the model's **bold** markers as <strong>; everything else stays plain text (no HTML injection). */
+function formatAnswer(text: string): ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**') && part.length > 4
+      ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : part);
 }
 
 const SUGGESTIONS = [
@@ -36,7 +42,7 @@ export function ChatPanel() {
     setBusy(true);
     try {
       const res = await api.chat(q, history);
-      setMessages((m) => [...m, { role: 'assistant', content: res.answer, result: res }]);
+      setMessages((m) => [...m, { role: 'assistant', content: res.answer }]);
     } catch (err) {
       const msg = err instanceof ApiError && err.status === 429
         ? 'You are sending questions too quickly. Please wait a moment.'
@@ -66,18 +72,7 @@ export function ChatPanel() {
         )}
         {messages.map((m, i) => (
           <div key={i} className={`msg ${m.role} ${m.error ? 'error' : ''}`} data-testid={`msg-${m.role}`}>
-            <p>{m.content}</p>
-            {m.result && (
-              <>
-                <ResultTable columns={m.result.columns} rows={m.result.rows} />
-                {m.result.sql.length > 0 && (
-                  <details>
-                    <summary>SQL{m.result.cached ? ' (cached)' : ''}</summary>
-                    {m.result.sql.map((s, j) => <pre key={j}>{s}</pre>)}
-                  </details>
-                )}
-              </>
-            )}
+            <p>{m.role === 'assistant' && !m.error ? formatAnswer(m.content) : m.content}</p>
           </div>
         ))}
         {busy && <div className="msg assistant typing" aria-label="thinking">Thinking…</div>}
