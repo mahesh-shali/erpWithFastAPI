@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { PermissionsProvider, RequirePage } from './auth/PermissionsContext';
 import { PrivateRoute } from './auth/PrivateRoute';
 import { Layout } from './components/Layout';
+import { AnalyticsPage } from './pages/AnalyticsPage';
 import { ComingSoonRoute } from './pages/ComingSoonPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { AssistantPage, CustomersPage, OrdersPage, ProductsPage } from './pages/DataPages';
@@ -36,6 +37,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<PrivateRoute><PermissionsProvider><Layout /></PermissionsProvider></PrivateRoute>}>
         <Route index element={<RequirePage page="dashboard"><DashboardPage /></RequirePage>} />
+        <Route path="analytics" element={<RequirePage page="analytics"><AnalyticsPage /></RequirePage>} />
         <Route path="assistant" element={<RequirePage page="ai-chat"><AssistantPage /></RequirePage>} />
         <Route path="master/users" element={<RequirePage page="master-users"><UsersPage /></RequirePage>} />
         <Route path="master/user-rights" element={<RequirePage page="master-user-rights"><UserRightsPage /></RequirePage>} />

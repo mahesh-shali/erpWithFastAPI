@@ -21,6 +21,19 @@ export interface AuthResponse {
 export interface DashboardStats {
   customers: number; products: number; orders: number; revenue: number; lowStockProducts: number;
 }
+/** Analytics ranges: 30/90 days (daily points) or 365 = last 12 calendar months (monthly points). */
+export type AnalyticsRange = 30 | 90 | 365;
+export interface AnalyticsTotals { revenue: number; orders: number; averageOrderValue: number; newCustomers: number }
+export interface AnalyticsPoint { date: string; revenue: number; orders: number }
+export interface AnalyticsStatus { status: string; orders: number; amount: number }
+/** count = units sold (products, categories) or orders (customers, cities). */
+export interface AnalyticsRanked { name: string; revenue: number; count: number }
+export interface AnalyticsReport {
+  days: AnalyticsRange; bucket: 'day' | 'month'; from: string; to: string;
+  current: AnalyticsTotals; previous: AnalyticsTotals;
+  trend: AnalyticsPoint[]; statuses: AnalyticsStatus[];
+  topProducts: AnalyticsRanked[]; topCustomers: AnalyticsRanked[]; cities: AnalyticsRanked[]; categories: AnalyticsRanked[];
+}
 export interface ChatTurn { role: 'user' | 'assistant'; content: string }
 export interface ChatResponse {
   answer: string; sql: string[]; columns: string[]; rows: unknown[][]; cached: boolean; latency_ms: number;
@@ -146,6 +159,7 @@ export const api = {
   /** Ends the session on the server (revokes it and clears the refresh cookie). */
   logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
   stats: () => request<DashboardStats>('/api/dashboard/stats'),
+  analytics: (days: AnalyticsRange) => request<AnalyticsReport>(`/api/analytics?days=${days}`),
   chat: (question: string, history: ChatTurn[]) =>
     request<ChatResponse>('/ai/chat', { method: 'POST', body: json({ question, history }) }),
 

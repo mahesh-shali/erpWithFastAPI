@@ -108,6 +108,7 @@ public class Page
 public static class PageKeys
 {
     public const string Dashboard = "dashboard";
+    public const string Analytics = "analytics";
     public const string Customers = "customers";
     public const string Products = "products";
     public const string Orders = "orders";

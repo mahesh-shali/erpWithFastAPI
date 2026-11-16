@@ -94,3 +94,21 @@ public record UpdateOrderStatusRequest([Required] string Status);
 
 // ---------- Dashboard ----------
 public record DashboardStats(int Customers, int Products, int Orders, decimal Revenue, int LowStockProducts);
+
+// ---------- Analytics ----------
+/// <summary>Totals for one period. Revenue and average order value exclude cancelled orders.</summary>
+public record AnalyticsTotals(decimal Revenue, int Orders, decimal AverageOrderValue, int NewCustomers);
+/// <summary>One point of the revenue trend: a day (30/90-day ranges) or a month (12-month range).</summary>
+public record AnalyticsPoint(DateOnly Date, decimal Revenue, int Orders);
+public record AnalyticsStatus(string Status, int Orders, decimal Amount);
+/// <summary>A ranked row. Count = units sold (products, categories) or orders (customers, cities).</summary>
+public record AnalyticsRanked(string Name, decimal Revenue, int Count);
+public record AnalyticsReport(
+    int Days, string Bucket, DateTime From, DateTime To,
+    AnalyticsTotals Current, AnalyticsTotals Previous,
+    IReadOnlyList<AnalyticsPoint> Trend,
+    IReadOnlyList<AnalyticsStatus> Statuses,
+    IReadOnlyList<AnalyticsRanked> TopProducts,
+    IReadOnlyList<AnalyticsRanked> TopCustomers,
+    IReadOnlyList<AnalyticsRanked> Cities,
+    IReadOnlyList<AnalyticsRanked> Categories);

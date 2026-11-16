@@ -79,6 +79,7 @@ public static class DefaultPermissions
     [
         // top level (no module)
         P(1,  PageKeys.Dashboard,        "Dashboard",           "/",                          null, 10),
+        P(48, PageKeys.Analytics,        "Analytics",           "/analytics",                 null, 15),
         P(5,  PageKeys.AiChat,           "AI Assistant",        "/assistant",                 null, 20),
         // Master
         P(6,  PageKeys.MasterUsers,      "Users",               "/master/users",              101, 10),
@@ -144,6 +145,7 @@ public static class DefaultPermissions
         [Roles.AdminId] = new()
         {
             [PageKeys.Dashboard] = "VR",
+            [PageKeys.Analytics] = "VR",
             [PageKeys.AiChat] = "VR",
             [PageKeys.MasterUsers] = "VRWUD",
             [PageKeys.MasterUserRights] = "VRU",

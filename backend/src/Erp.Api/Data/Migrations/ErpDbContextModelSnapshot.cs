@@ -841,6 +841,16 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 48,
+                            IsActive = true,
+                            IsImplemented = true,
+                            Key = "analytics",
+                            Name = "Analytics",
+                            Route = "/analytics",
+                            SortOrder = 15
+                        },
+                        new
+                        {
                             Id = 5,
                             IsActive = true,
                             IsImplemented = true,
@@ -1546,6 +1556,18 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 148,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 48,
+                            RoleId = 1
+                        },
+                        new
+                        {
                             Id = 105,
                             CanDelete = false,
                             CanRead = true,
@@ -2106,6 +2128,18 @@ namespace Erp.Api.Data.Migrations
                             IsRestricted = false,
                             IsVisible = true,
                             PageId = 1,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 248,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 48,
                             RoleId = 2
                         },
                         new

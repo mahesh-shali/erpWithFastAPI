@@ -238,6 +238,8 @@ Current migrations:
 6. `AddThreeLevelMenu`: the `menu_modules` and `menu_groups` tables, plus `pages.group_id` and
    `pages.is_implemented` (replacing the old `pages.module` text column). It moves existing pages into
    the tree with their ids unchanged, so granted rights are kept, and adds 16 new pages with default rights.
+7. `AddVSmartModules`: more menu groups and pages (Coming soon) following the V.SMART ERP module list.
+8. `AddAnalyticsPage`: the top-level **Analytics** page (id 48) with its default rights (Admin: read; User: none).
 
 ### Changing the schema
 
@@ -417,7 +419,7 @@ The side menu has three levels, stored in `menu_modules` > `menu_groups` > `page
 defined in code (`Data/Configurations/DefaultPermissions.cs`) and seeded by migration:
 
 ```
-Dashboard, AI Assistant                        (top level)
+Dashboard, Analytics, AI Assistant             (top level)
 Master          Users > Users, User Rights, Role Rights · Customers > Customers · Vendors > Vendors
                 Products > Products · Settings > Pages
 Inventory       Stock Position > Stock Position · Stock Addition > Stock Addition
@@ -489,9 +491,10 @@ AI service use it, so they can't disagree.
 | `GET /api/master/pages` | master-pages read | Pages master |
 | `GET`/`PUT /api/master/users/{id}/rights` | master-user-rights read / update | Body: `{ items: [{ pageId, useDefault, rights }] }` |
 | `GET`/`PUT /api/master/roles/{roleId}/rights` | master-role-rights read / update | Org defaults for a role |
+| `GET /api/analytics?days=30\|90\|365` | analytics read | Sales analytics: KPIs vs the previous period, revenue trend (daily; monthly for 365), orders by status, top products / customers / cities / categories. Excludes cancelled orders (except the status breakdown); cached 60 s per organization and range. Used by the Analytics page and by the Dashboard's "Sales analytics" section, which is only shown to users with read on Analytics. |
 
 Default matrix (system): **Admin** has full rights on the business pages, Users (all), User Rights
-(read/update) and Pages (read), with no Role Rights. **User** has read on Dashboard, Products and
+(read/update), Pages (read) and Analytics (read), with no Role Rights. **User** has read on Dashboard, Products and
 AI Assistant, read/write/update on Customers and Orders, and nothing in Master. Change it in
 `DefaultPermissions.cs` plus a migration, or per organization in Master > Role Rights.
 
