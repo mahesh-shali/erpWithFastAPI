@@ -560,6 +560,9 @@ Cluster, a CDN for the SPA, raised Groq rate limits (or a paid tier), and OpenTe
 
 ## Testing
 
+**See [TESTING.md](TESTING.md)** for what is tested where, single-test commands, visual runners and the
+per-screen manual checklist. `node scripts/test-report.mjs --open` shows every test case in one HTML page.
+
 | Phase | What | Command |
 |---|---|---|
 | 1. Static | ruff, `tsc`, `dotnet build` | CI job `static` |

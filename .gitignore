@@ -17,3 +17,6 @@ frontend/test-results/
 
 # Local DB client config (host/user)
 pgConnect.json
+
+# Combined test report (node scripts/test-report.mjs)
+test-reports/

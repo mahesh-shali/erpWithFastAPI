@@ -4,7 +4,7 @@ import { Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { MyPagePermission } from '../api/client';
 import { Layout } from '../components/Layout';
-import { buildMenu } from '../components/menu';
+import { activePath, buildMenu, inMenu } from '../components/menu';
 import { ComingSoonRoute } from '../pages/ComingSoonPage';
 import { jsonResponse, renderWithProviders, signIn } from '../test/utils';
 import { PermissionsProvider, RequirePage } from './PermissionsContext';
@@ -58,6 +58,22 @@ function App() {
     </PermissionsProvider>
   );
 }
+
+describe('menu helpers', () => {
+  it('activePath returns the module and group of the current page, or nothing', () => {
+    const tree = buildMenu(ALL);
+    expect(activePath(tree, '/master/users')).toEqual(['master', 'master-users']);
+    expect(activePath(tree, '/')).toEqual([]);            // top-level page
+    expect(activePath(tree, '/nowhere')).toEqual([]);
+  });
+
+  it('inMenu needs visible + read and no restriction', () => {
+    expect(inMenu(page('a', 'A', '/a', null))).toBe(true);
+    expect(inMenu(page('a', 'A', '/a', null, { isVisible: false }))).toBe(false);
+    expect(inMenu(page('a', 'A', '/a', null, { canRead: false }))).toBe(false);
+    expect(inMenu(page('a', 'A', '/a', null, { isRestricted: true }))).toBe(false);
+  });
+});
 
 describe('buildMenu', () => {
   it('builds Module > Group > Page in order and drops empty branches', () => {

@@ -15,7 +15,9 @@ test('unauthenticated user is redirected to login', async ({ page }) => {
 
 test('dashboard shows seeded stats', async ({ page }) => {
   await login(page);
-  await expect(page.locator('.stat', { hasText: 'Customers' })).toContainText('200');
+  // Exact label: the Sales analytics section below also has a "New customers" tile.
+  const customers = page.locator('.stat').filter({ has: page.getByText('Customers', { exact: true }) });
+  await expect(customers).toContainText('200');
 });
 
 // Needs a real GROQ_API_KEY in the stack; skipped otherwise.

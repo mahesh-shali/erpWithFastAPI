@@ -1,4 +1,4 @@
-.PHONY: up down config logs migrate migration test test-dotnet test-python test-frontend test-integration e2e load local-up local-down local-load
+.PHONY: up down config logs migrate migration test test-dotnet test-python test-frontend test-integration e2e load local-up local-down local-load test-report test-ui
 
 # ---- Environments: make <target> ENV=development (default) | ENV=production ----
 ENV ?= development
@@ -50,6 +50,12 @@ test-integration:  ## Phase 3: needs Docker (Testcontainers) and the stack's loc
 
 e2e:               ## Phase 4: needs `make up`
 	cd frontend && npx playwright test
+
+test-report:       ## Every test case in one HTML page:  make test-report  |  make test-report E2E=1 (app must be running)
+	node scripts/test-report.mjs --open $(if $(E2E),--e2e,)
+
+test-ui:           ## Frontend tests live in the browser (Vitest UI)
+	cd frontend && npm run test:ui
 
 load:              ## Phase 5
 	k6 run -e BASE_URL=http://localhost -e PROFILE=smoke load-tests/k6/api.js

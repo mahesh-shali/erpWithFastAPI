@@ -41,6 +41,9 @@ cd ai-service && TEST_AI_DATABASE_URL=postgresql://erp_ai_ro:ai_readonly_dev@loc
 cd frontend && npm test                                    # vitest; `npx vitest run src/components/ChatPanel.test.tsx` for one file
 cd frontend && npx playwright test                         # e2e, needs the stack running
 
+# All test cases in one HTML report (results + per-test re-run commands + manual checklist); see TESTING.md
+node scripts/test-report.mjs --open            # --e2e with the app running, --only frontend,ai for a subset
+
 # Lint / typecheck / build (what CI "static" runs)
 ruff check ai-service            # line-length 110, py312
 cd frontend && npm run typecheck
@@ -108,6 +111,10 @@ Routes in `src/App.tsx` mirror each page's `route`; unbuilt pages fall through t
   transaction pooling (`Max Auto Prepare=0`, no server-side prepared statements). Keep it that way.
 - Real `.env*` files hold secrets and are gitignored; only `*.example` templates are committed. Update the
   templates (and README's configuration table) when adding a variable. Never read secrets into commits or output.
+- New screen or endpoint: add a screen test (use `renderScreen`/`mockApi`/`perm` from `frontend/src/test/utils.tsx`),
+  API integration tests, a route case in `App.test.tsx`, an e2e journey in `e2e/screens.spec.ts`, and a manual
+  check in `scripts/manual-checks.json` (see TESTING.md).
+- Running `dotnet test` rebuilds `Erp.Api` and stops a `dotnet watch` started by `dev.sh`; restart the API afterwards.
 - `ai-service/.env` is used only by `dev.sh`; `run-local.sh` sets `AI_SERVICE_ENV_FILE=none` so the root env file wins.
 
 ## Demo data

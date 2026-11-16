@@ -1,0 +1,314 @@
+[
+  {
+    "screen": "Login & session",
+    "login": "admin@demo.com / Admin@123",
+    "url": "http://localhost:5173/login",
+    "checks": [
+      {
+        "title": "Sign in with the demo SuperAdmin",
+        "steps": ["Open /login", "Enter admin@demo.com and Admin@123", "Click Sign in"],
+        "expect": "The Dashboard opens; the top bar shows Demo Admin with a purple SuperAdmin badge.",
+        "auto": "frontend auth.test.tsx › LoginPage; e2e app.spec.ts"
+      },
+      {
+        "title": "Wrong password is refused",
+        "steps": ["Sign out", "Enter admin@demo.com with password wrong-pass", "Click Sign in"],
+        "expect": "An error message appears and you stay on the login page.",
+        "auto": "ApiTests › Login with wrong password is 401"
+      },
+      {
+        "title": "A protected URL needs a login",
+        "steps": ["Sign out", "Type http://localhost:5173/master/customers in the address bar"],
+        "expect": "You are sent to /login.",
+        "auto": "e2e app.spec.ts › unauthenticated user is redirected to login"
+      },
+      {
+        "title": "Sign out ends the session",
+        "steps": ["Sign in", "Click Sign out", "Press the browser Back button"],
+        "expect": "You land on /login again; the previous screen does not come back.",
+        "auto": "App.test.tsx › Sign out ends the session on the server"
+      },
+      {
+        "title": "The session survives the 15-minute access token",
+        "steps": ["Sign in", "Leave the tab open for more than 15 minutes", "Click any menu item"],
+        "expect": "The screen loads without asking you to sign in (silent refresh).",
+        "auto": "client.test.ts › refreshes the session on 401"
+      }
+    ]
+  },
+  {
+    "screen": "Dashboard",
+    "login": "admin@demo.com",
+    "url": "http://localhost:5173/",
+    "checks": [
+      {
+        "title": "All-time totals",
+        "steps": ["Open the Dashboard"],
+        "expect": "Tiles show Total revenue, Total orders, Customers (200), Products (100) and Low stock.",
+        "auto": "BusinessApiTests › Dashboard stats count this organization only"
+      },
+      {
+        "title": "Sales analytics section",
+        "steps": ["Scroll below the tiles", "Switch 30 days → 90 days → 12 months"],
+        "expect": "Section 'Sales analytics' shows KPIs with % change, a revenue chart, orders by status, top products and top customers; each range reloads the figures.",
+        "auto": "DashboardPage.test.tsx; e2e screens.spec.ts › Dashboard"
+      },
+      {
+        "title": "Link to full analytics",
+        "steps": ["Click 'Open full analytics →'"],
+        "expect": "The Analytics screen opens at /analytics.",
+        "auto": "e2e screens.spec.ts › Dashboard"
+      },
+      {
+        "title": "Hidden for the User role",
+        "steps": ["Sign in as staff@demo.com / Staff@1234", "Open the Dashboard"],
+        "expect": "Only the five tiles show; there is no Sales analytics section.",
+        "auto": "DashboardPage.test.tsx › hides it; e2e screens.spec.ts › User role"
+      }
+    ]
+  },
+  {
+    "screen": "Analytics",
+    "login": "admin@demo.com",
+    "url": "http://localhost:5173/analytics",
+    "checks": [
+      {
+        "title": "KPIs compare with the previous period",
+        "steps": ["Open Analytics", "Read the four tiles"],
+        "expect": "Revenue, Orders, Average order value and New customers each show ▲/▼ with a % vs the previous period (or 'No data for the previous period').",
+        "auto": "AnalyticsPage.test.tsx › shows KPIs"
+      },
+      {
+        "title": "Revenue chart hover and keyboard",
+        "steps": ["Hover across the chart", "Click the chart, then press ← and →"],
+        "expect": "A crosshair and a tooltip show the date, revenue and order count for each point.",
+        "auto": "e2e screens.spec.ts › Analytics"
+      },
+      {
+        "title": "Range switch",
+        "steps": ["Click 12 months", "Open 'Show data table'"],
+        "expect": "The chart title becomes 'Revenue by month' and the table lists 12 months.",
+        "auto": "AnalyticsPage.test.tsx › reloads when the range changes; AnalyticsTests (API)"
+      },
+      {
+        "title": "Status breakdown and rankings",
+        "steps": ["Scroll down"],
+        "expect": "Orders by status shows Pending / Paid / Shipped / Cancelled with % shares; top products, customers, cities and categories are sorted by revenue.",
+        "auto": "AnalyticsTests › Report covers the range"
+      },
+      {
+        "title": "Phone layout",
+        "steps": ["Narrow the window to about 390 px (or use the browser's device mode)"],
+        "expect": "No sideways scrolling; the range buttons span the width; cards stack.",
+        "auto": null
+      },
+      {
+        "title": "Blocked for the User role",
+        "steps": ["Sign in as staff@demo.com", "Open http://localhost:5173/analytics"],
+        "expect": "'No access' card; Analytics is not in the menu.",
+        "auto": "AnalyticsTests › Default rights allow Admin but not User"
+      }
+    ]
+  },
+  {
+    "screen": "AI Assistant",
+    "login": "admin@demo.com (needs GROQ_API_KEY in ai-service/.env)",
+    "url": "http://localhost:5173/assistant",
+    "checks": [
+      {
+        "title": "Ask a business question",
+        "steps": ["Type 'What is my revenue by city?'", "Click Ask"],
+        "expect": "A plain-English answer appears (with the SQL hidden from the user).",
+        "auto": "ChatPanel.test.tsx; e2e app.spec.ts (E2E_WITH_LLM=1)"
+      },
+      {
+        "title": "Follow-up question uses the conversation",
+        "steps": ["Ask 'Which city is second?'"],
+        "expect": "The answer refers to the previous question.",
+        "auto": "ChatPanel.test.tsx › sends prior turns as history"
+      },
+      {
+        "title": "Cannot change data",
+        "steps": ["Ask 'Delete all customers'"],
+        "expect": "The assistant refuses or answers without changing anything; Customers still lists 200.",
+        "auto": "test_sql_guard.py; test_db_integration.py › role cannot write"
+      }
+    ]
+  },
+  {
+    "screen": "Customers",
+    "login": "admin@demo.com, then staff@demo.com",
+    "url": "http://localhost:5173/master/customers",
+    "checks": [
+      {
+        "title": "List",
+        "steps": ["Open Master › Customers › Customers"],
+        "expect": "25 rows with Name, Email, City, Country; missing values show —.",
+        "auto": "DataPages.test.tsx › Customers screen"
+      },
+      {
+        "title": "Delete with confirmation (SuperAdmin/Admin)",
+        "steps": ["Click Delete on a customer you created for testing", "Cancel, then Delete again and confirm"],
+        "expect": "Cancel changes nothing; confirming removes the row.",
+        "auto": "DataPages.test.tsx › deletes after confirmation; BusinessApiTests › Customers"
+      },
+      {
+        "title": "User role cannot delete",
+        "steps": ["Sign in as staff@demo.com", "Open Customers"],
+        "expect": "The list shows but there is no Delete column.",
+        "auto": "e2e screens.spec.ts › can read Customers but sees no Delete button"
+      }
+    ]
+  },
+  {
+    "screen": "Products",
+    "login": "admin@demo.com",
+    "url": "http://localhost:5173/master/products",
+    "checks": [
+      {
+        "title": "List with prices and stock",
+        "steps": ["Open Master › Products › Products"],
+        "expect": "SKU, Name, Category, Price in ₹ and Stock for 25 products.",
+        "auto": "DataPages.test.tsx › Products screen"
+      },
+      {
+        "title": "Delete",
+        "steps": ["Delete a test product and confirm"],
+        "expect": "The row disappears and the list reloads.",
+        "auto": "BusinessApiTests › Products create update list by category and delete"
+      }
+    ]
+  },
+  {
+    "screen": "Sales Orders",
+    "login": "admin@demo.com",
+    "url": "http://localhost:5173/sales/orders",
+    "checks": [
+      {
+        "title": "Latest orders",
+        "steps": ["Open Sales & Labour Work › Orders › Sales Orders"],
+        "expect": "25 newest orders with Date, Status, Items count and Total.",
+        "auto": "DataPages.test.tsx › Orders screen; BusinessApiTests › Orders list is newest first"
+      },
+      {
+        "title": "Business rules (API)",
+        "steps": ["Run: dotnet test backend/tests/Erp.Api.IntegrationTests --filter \"FullyQualifiedName~BusinessApiTests.Order\""],
+        "expect": "All pass: stock is reduced, overselling is refused, status goes Pending → Paid → Shipped only.",
+        "auto": "BusinessApiTests › Order lifecycle / validation"
+      }
+    ]
+  },
+  {
+    "screen": "Master › Users",
+    "login": "admin@demo.com",
+    "url": "http://localhost:5173/master/users",
+    "checks": [
+      {
+        "title": "Add a user",
+        "steps": ["Fill Full name, Email, Password (8+ chars)", "Keep role User", "Click Create user"],
+        "expect": "The new user appears in the table; the form clears.",
+        "auto": "MasterPages.test.tsx › creates a user; e2e screens.spec.ts › Users"
+      },
+      {
+        "title": "Change role",
+        "steps": ["Change the new user's role to Admin"],
+        "expect": "The role is saved; that user is signed out everywhere.",
+        "auto": "SessionAndRoleTests › Admin manages user roles"
+      },
+      {
+        "title": "Cannot manage yourself or higher roles",
+        "steps": ["Look at your own row (Demo Admin)"],
+        "expect": "No role picker and no Delete button on your own row.",
+        "auto": "MasterPages.test.tsx › only manageable users get a role picker"
+      },
+      {
+        "title": "Delete the test user",
+        "steps": ["Click Delete on the user you created and confirm"],
+        "expect": "The row disappears.",
+        "auto": "BusinessApiTests › Delete user removes them and their sessions"
+      }
+    ]
+  },
+  {
+    "screen": "Master › User Rights",
+    "login": "admin@demo.com",
+    "url": "http://localhost:5173/master/user-rights",
+    "checks": [
+      {
+        "title": "Pick a user",
+        "steps": ["Choose Staff (User) in the User list"],
+        "expect": "The rights matrix loads; rows without overrides say 'Default (role default)'.",
+        "auto": "MasterPages.test.tsx › User Rights screen"
+      },
+      {
+        "title": "Override and restrict",
+        "steps": ["Tick Delete on Customers, click Save", "Sign in as staff in another browser and open Customers", "Back as admin, tick Restricted on Customers and Save"],
+        "expect": "Staff sees Delete after the first save; after Restricted, Customers disappears from their menu and returns No access.",
+        "auto": "MasterTests › User override grants and restrict blocks immediately"
+      },
+      {
+        "title": "Reset to the role default",
+        "steps": ["Click 'Use role default' on the changed row and Save"],
+        "expect": "The row goes back to the role default.",
+        "auto": "RightsMatrix.test.tsx › reset sends useDefault"
+      }
+    ]
+  },
+  {
+    "screen": "Master › Role Rights",
+    "login": "admin@demo.com",
+    "url": "http://localhost:5173/master/role-rights",
+    "checks": [
+      {
+        "title": "Role defaults",
+        "steps": ["Open Role Rights (User role is selected)", "Switch to Admin"],
+        "expect": "Each role shows its matrix; SuperAdmin can edit Admin and User defaults.",
+        "auto": "MasterPages.test.tsx › Role Rights screen"
+      },
+      {
+        "title": "Grant Analytics to every User",
+        "steps": ["Select User", "Tick Visible and Read on Analytics, Save", "Sign in as staff"],
+        "expect": "Staff now sees Analytics in the menu and the Sales analytics section on the Dashboard. Untick to undo.",
+        "auto": "MasterTests › Role defaults are per organization"
+      }
+    ]
+  },
+  {
+    "screen": "Master › Pages",
+    "login": "admin@demo.com",
+    "url": "http://localhost:5173/master/pages",
+    "checks": [
+      {
+        "title": "Page catalog",
+        "steps": ["Open Master › Settings › Pages"],
+        "expect": "Every screen with module, group, key and route; Analytics shows Ready; Vendors shows Coming soon.",
+        "auto": "MasterPages.test.tsx › Pages screen; BusinessApiTests › Pages master"
+      }
+    ]
+  },
+  {
+    "screen": "Menu, Coming soon & mobile",
+    "login": "admin@demo.com",
+    "url": "http://localhost:5173/",
+    "checks": [
+      {
+        "title": "Three-level menu",
+        "steps": ["Expand Inventory › Stock Position", "Click Stock Position"],
+        "expect": "A 'Coming soon' card with the breadcrumb Inventory › Stock Position › Stock Position.",
+        "auto": "permissions.test.tsx › 3-level side menu"
+      },
+      {
+        "title": "Mobile drawer",
+        "steps": ["Narrow the window below 900 px", "Click ☰, pick a page"],
+        "expect": "The menu slides in, and closes after you pick a page (or press Escape / tap outside).",
+        "auto": "e2e app.spec.ts › mobile"
+      },
+      {
+        "title": "Old V.SMART URLs",
+        "steps": ["Open http://localhost:5173/customer"],
+        "expect": "Redirects to /master/customers.",
+        "auto": "App.test.tsx › legacy V.SMART path"
+      }
+    ]
+  }
+]
