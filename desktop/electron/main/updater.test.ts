@@ -106,3 +106,25 @@ describe('friendlyError', () => {
     expect(friendlyError(new Error('x'.repeat(300)))).toHaveLength(198);
   });
 });
+
+describe('fileLogger', () => {
+  it('appends timestamped lines and rolls over when the file is too big', async () => {
+    const { mkdtempSync, readFileSync, rmSync, existsSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const path = await import('node:path');
+    const { fileLogger } = await import('./updater');
+    const dir = mkdtempSync(path.join(tmpdir(), 'erp-log-'));
+    const file = path.join(dir, 'logs', 'updater.log');
+    const log = fileLogger(file, 200);
+    log.info('Install: isSilent: true, isForceRunAfter: true');
+    log.error(new Error('boom'));
+    const text = readFileSync(file, 'utf8');
+    expect(text).toMatch(/^\d{4}-\d\d-\d\dT.+ \[info\] Install: isSilent: true/m);
+    expect(text).toMatch(/\[error\] Error: boom/);
+    log.info('x'.repeat(300));
+    log.info('after rollover');
+    expect(existsSync(path.join(dir, 'logs', 'updater.old.log'))).toBe(true);
+    expect(readFileSync(file, 'utf8')).toMatch(/after rollover/);
+    rmSync(dir, { recursive: true, force: true });
+  });
+});

@@ -1,4 +1,6 @@
+import { appendFileSync, mkdirSync, renameSync, statSync } from 'node:fs';
 import type { EventEmitter } from 'node:events';
+import path from 'node:path';
 import type { UpdateStatus } from '../shared/contract';
 
 /** The part of electron-updater's AppUpdater this service uses (an interface, so tests can pass a fake). */
@@ -27,6 +29,7 @@ export class UpdateService {
     private readonly updater: Updater | null,
     private readonly broadcast: (status: UpdateStatus) => void,
     unsupportedReason = 'Updates are available in the installed app.',
+    private readonly log?: UpdateLogger,
   ) {
     this.status = updater ? { state: 'idle' } : { state: 'unsupported', reason: unsupportedReason };
     if (!updater) return;
@@ -88,6 +91,7 @@ export class UpdateService {
 
   install(): void {
     if (!this.updater || this.status.state !== 'downloaded') return;
+    this.log?.info(`Restart now: installing ${this.status.version} silently, then relaunching`);
     // Silent: without it the assisted (non one-click) NSIS installer shows its whole setup wizard again.
     // The second flag starts the new version afterwards, which reopens where the user left off.
     this.updater.quitAndInstall(true, true);
@@ -119,4 +123,36 @@ export function friendlyError(err: unknown): string {
   if (/latest\.yml|404|Unable to find latest version|No published versions/i.test(msg)) return 'No published version was found yet.';
   const line = msg.split('\n')[0].trim();
   return line.length > 200 ? `${line.slice(0, 197)}…` : line || 'Update failed.';
+}
+
+export interface UpdateLogger {
+  info(message?: unknown): void;
+  warn(message?: unknown): void;
+  error(message?: unknown): void;
+  debug?(message: string): void;
+}
+
+/**
+ * Log for electron-updater (it records each check, download and the exact installer command it runs), so an
+ * update problem can be diagnosed afterwards. Rolls over to updater.old.log at `maxBytes`. Never throws.
+ */
+export function fileLogger(file: string, maxBytes = 1024 * 1024): UpdateLogger {
+  const write = (level: string, message: unknown) => {
+    try {
+      mkdirSync(path.dirname(file), { recursive: true });
+      try {
+        if (statSync(file).size > maxBytes) renameSync(file, file.replace(/\.log$/, '.old.log'));
+      } catch { /* no file yet */ }
+      const text = message instanceof Error ? (message.stack ?? message.message) : String(message);
+      appendFileSync(file, `${new Date().toISOString()} [${level}] ${text}\n`);
+    } catch {
+      /* logging must never break updating */
+    }
+  };
+  return {
+    info: (m) => write('info', m),
+    warn: (m) => write('warn', m),
+    error: (m) => write('error', m),
+    debug: (m) => write('debug', m),
+  };
 }

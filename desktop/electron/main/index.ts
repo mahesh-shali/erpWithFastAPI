@@ -7,7 +7,7 @@ import { registerIpc } from './ipc';
 import { hardenSession, hardenWindow, isAppUrl } from './security';
 import { SettingsStore } from './settings';
 import { TokenVault } from './token-vault';
-import { UpdateService } from './updater';
+import { fileLogger, UpdateService } from './updater';
 import { usableBounds, WindowStateStore } from './window-state';
 
 // Bundled by scripts/build-electron.mjs into dist-electron/main.cjs; the UI is in dist/ (Vite).
@@ -55,7 +55,13 @@ async function start() {
   });
   // Updates from GitHub Releases, only in installed builds (a dev run has no release to update from).
   const updater = app.isPackaged ? (await import('electron-updater')).autoUpdater : null;
-  const updates = new UpdateService(updater, (status) => mainWindow?.webContents.send(IPC.updatesStatus, status));
+  const updateLog = fileLogger(path.join(app.getPath('userData'), 'logs', 'updater.log'));
+  if (updater) {
+    updater.logger = updateLog;
+    updateLog.info(`App ${app.getVersion()} started (${ENVIRONMENT} mode)`);
+  }
+  const updates = new UpdateService(
+    updater, (status) => mainWindow?.webContents.send(IPC.updatesStatus, status), undefined, updateLog);
   registerIpc(api, settings, updates, isApp);
   Menu.setApplicationMenu(buildMenu());
 
