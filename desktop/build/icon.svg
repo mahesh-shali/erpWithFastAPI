@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- App icon source. Regenerate build/icon.png with: npm run icon -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e3a8a"/>
+      <stop offset="1" stop-color="#2f5bea"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".14"/>
+      <stop offset=".5" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="216" fill="url(#bg)"/>
+  <rect x="32" y="32" width="960" height="960" rx="216" fill="url(#shine)"/>
+  <!-- three rising bars on a baseline -->
+  <g fill="#ffffff">
+    <rect x="236" y="556" width="148" height="232" rx="36" fill-opacity=".72"/>
+    <rect x="438" y="420" width="148" height="368" rx="36" fill-opacity=".86"/>
+    <rect x="640" y="236" width="148" height="552" rx="36"/>
+  </g>
+</svg>
