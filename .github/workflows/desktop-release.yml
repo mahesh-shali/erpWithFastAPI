@@ -1,0 +1,39 @@
+name: Desktop release
+
+# Publishes the Windows desktop app to GitHub Releases. Installed apps check the latest release and offer
+# the update from the download symbol in the top bar (electron-updater reads latest.yml from the release).
+#
+# To release: bump "version" in desktop/package.json, commit, then push a tag with the same version:
+#   git tag v1.2.0 && git push origin v1.2.0
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # create the release and upload the installer
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults: { run: { working-directory: desktop } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: desktop/package-lock.json }
+
+      - name: Tag must match desktop/package.json version
+        shell: bash
+        run: |
+          version=$(node -p "require('./package.json').version")
+          [ "v$version" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME does not match package.json version $version"; exit 1; }
+
+      - run: npm ci
+      - run: npm test
+      - name: Build and publish the installer, latest.yml and blockmap to the release
+        run: npm run release:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
