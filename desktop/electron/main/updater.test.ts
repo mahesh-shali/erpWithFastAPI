@@ -44,7 +44,7 @@ describe('UpdateService', () => {
     expect(sent.map((s) => s.state)).toEqual(['checking', 'available', 'downloading', 'downloading', 'downloaded']);
 
     svc.install();
-    expect(updater.quitAndInstall).toHaveBeenCalledWith(false, true);
+    expect(updater.quitAndInstall).toHaveBeenCalledWith(true, true); // silent: no setup wizard, then relaunch
   });
 
   it('ignores download and install when there is nothing to download or install', async () => {

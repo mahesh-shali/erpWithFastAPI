@@ -5,6 +5,7 @@ import { usePermissions } from '../auth/PermissionsContext';
 import { Icon } from './Icon';
 import { activePath, buildMenu, type MenuModuleNode } from './menu';
 import { UpdateButton } from './UpdateButton';
+import { useLastPage } from './lastPage';
 
 const TOP_ICONS: Record<string, string> = { dashboard: 'home', analytics: 'chart', 'ai-chat': 'sparkle' };
 
@@ -18,6 +19,7 @@ export function Layout() {
   const { pages, loading, error } = usePermissions();
   const location = useLocation();
   const tree = useMemo(() => buildMenu(pages), [pages]);
+  useLastPage(user?.id); // reopen where this user left off
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [open, setOpen] = useState<Set<string>>(new Set());

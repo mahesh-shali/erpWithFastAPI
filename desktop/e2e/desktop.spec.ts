@@ -42,7 +42,8 @@ async function signIn(win: Page) {
 test('signs in, shows the permission-driven menu and data, and signs out', async () => {
   const { app, win } = await launch();
   await expect(win.getByRole('form', { name: 'login form' })).toBeVisible();
-  await expect(win.getByText(server.url)).toBeVisible(); // locked by ERP_SERVER_URL
+  await expect(win.getByText('Development')).toBeVisible(); // mode only: the server URL is not shown
+  await expect(win.getByText(server.url)).toHaveCount(0);
 
   await win.getByLabel('Email').fill('admin@demo.com');
   await win.getByLabel('Password').fill('wrong');
@@ -111,16 +112,23 @@ test('a session revoked on the server sends the user back to sign-in', async () 
   await app.close();
 });
 
-test('restart resumes the session when the OS key store is available', async () => {
+test('restart resumes the session, page and window size where the user left off', async () => {
   let { app, win } = await launch();
   await signIn(win);
+  await win.getByRole('button', { name: /Master/ }).click();
+  await win.getByRole('button', { name: /Parties/ }).click().catch(() => undefined);
+  await win.getByRole('link', { name: 'Customers' }).click();
+  await expect(win.getByRole('cell', { name: 'Acme Ltd' })).toBeVisible();
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setBounds({ x: 40, y: 40, width: 1111, height: 777 }));
   const persistent = await app.evaluate(({ safeStorage }) =>
     safeStorage.isEncryptionAvailable() && safeStorage.getSelectedStorageBackend?.() !== 'basic_text');
   await app.close();
 
   ({ app, win } = await launch());
+  const size = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getNormalBounds());
+  expect([size.width, size.height]).toEqual([1111, 777]);
   if (persistent) {
-    await expect(win.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
+    await expect(win.getByRole('heading', { level: 1, name: 'Customers' })).toBeVisible(); // not the Dashboard
     expect(server.log.filter((l) => l === 'POST /api/auth/refresh').length).toBeGreaterThan(0);
   } else {
     // No keyring (e.g. headless Linux CI): nothing was written to disk, so the user signs in again.

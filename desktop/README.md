@@ -15,6 +15,8 @@ the web app in [`../frontend`](../frontend) and talks to the same API ([`../back
 Everything the web app has, driven by the user's page rights (`GET /api/me/permissions`):
 
 - **Sign in / sign out**, silent token refresh, session restore after restarting the app
+- **Reopens where you left off**: the last page (per user) and the window size, position and maximised state,
+  also after an update restart
 - **Dashboard** (key figures + sales analytics) and **Analytics** (30 / 90 days, 12 months; trend, statuses,
   top products, customers, cities, categories)
 - **AI Assistant**: plain-English questions answered from your data (`/ai/chat`)
@@ -25,7 +27,7 @@ Everything the web app has, driven by the user's page rights (`GET /api/me/permi
   Pages without a screen yet show "Coming soon", exactly as on the web.
 - **Desktop only: Devices** (top bar). Lists every signed-in session of the user, with
   "Sign out" per device and "Sign out all other devices" (`/api/auth/sessions`, `/api/auth/logout-others`).
-- **Server setting** on the sign-in screen (or locked with `ERP_SERVER_URL` for managed installs)
+- **Mode badge** on the sign-in screen (Production / Development); the server URL is not shown
 
 ## How authentication works
 
@@ -91,7 +93,7 @@ npm run dist         # installer for this OS in release/ (dist:win | dist:mac | 
 
 Set the mode with `ERP_ENV=local|production`. Without it, development runs use `local` and installed builds use
 `production`. Each mode has its own profile, so a session never leaks from one server to the other, and both modes
-can be open at once. The sign-in screen shows a **Local** / **Production** badge and the window title ends in
+can be open at once. The sign-in screen shows a **Development** / **Production** badge (not the URL) and the window title ends in
 "(Local)" in local mode. The server URLs are in `electron/main/environment.ts`.
 
 ### Updates
@@ -99,7 +101,8 @@ can be open at once. The sign-in screen shows a **Local** / **Production** badge
 Installed apps update from **GitHub Releases** of `mahesh-shali/erpWithFastAPI` (electron-updater). The download
 symbol in the top bar shows a green dot when a newer version is out; its panel checks, downloads (with progress)
 and offers **Restart now**. The app checks 10 s after start and every 6 hours; it only downloads when the user
-asks, and a downloaded update installs on restart or the next time the app closes. Dev runs show
+asks, and a downloaded update installs silently (no setup wizard) on restart or the next time the app closes, then
+the app reopens on the page the user was on. Dev runs show
 "Updates are available in the installed app".
 
 To publish a version: bump `version` in `package.json`, commit, and push a matching tag
@@ -113,12 +116,11 @@ releases marked "latest". Release notes written on the GitHub release appear in 
 | Variable | Default | Purpose |
 |---|---|---|
 | `ERP_ENV` | `local` in dev, `production` when installed | Picks the mode (see above). |
-| `ERP_SERVER_URL` | – | Fixes the server URL (hides "Change" on the sign-in screen). For managed installs. |
+| `ERP_SERVER_URL` | – | Overrides the mode's server URL (e.g. a staging server). For managed installs. |
 | `ERP_ALLOW_INSECURE_HTTP` | – | `1` allows `http://` to a non-localhost server (trusted LAN test servers only). |
 | `ERP_USER_DATA_DIR` | OS default | Separate profile (settings + session), e.g. for tests or a second environment. |
 
-Without `ERP_SERVER_URL`, the URL chosen on the sign-in screen is saved in `userData/settings.json`.
-Changing it signs the user out, because a session belongs to one server.
+Without `ERP_SERVER_URL`, each mode uses its URL from `electron/main/environment.ts`.
 
 ## Folder structure
 

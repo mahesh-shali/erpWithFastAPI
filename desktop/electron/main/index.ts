@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell } from 'electron';
+import { app, BrowserWindow, Menu, screen, shell } from 'electron';
 import path from 'node:path';
 import { IPC } from '../shared/contract';
 import { ApiClient } from './api-client';
@@ -8,6 +8,7 @@ import { hardenSession, hardenWindow, isAppUrl } from './security';
 import { SettingsStore } from './settings';
 import { TokenVault } from './token-vault';
 import { UpdateService } from './updater';
+import { usableBounds, WindowStateStore } from './window-state';
 
 // Bundled by scripts/build-electron.mjs into dist-electron/main.cjs; the UI is in dist/ (Vite).
 const RENDERER_DIR = path.join(__dirname, '..', 'dist');
@@ -66,9 +67,11 @@ async function start() {
 }
 
 function createWindow() {
+  // Reopen with the size, position and maximised state the user left the window in.
+  const windowState = WindowStateStore.in(app.getPath('userData'));
+  const saved = windowState.load();
   mainWindow = new BrowserWindow({
-    width: 1360,
-    height: 860,
+    ...usableBounds(saved?.bounds, screen.getAllDisplays().map((d) => d.workArea)),
     minWidth: 960,
     minHeight: 600,
     show: false,
@@ -91,7 +94,14 @@ function createWindow() {
   hardenWindow(mainWindow, isApp);
   // Keep the window title (it names the mode) instead of the page's static <title>.
   mainWindow.on('page-title-updated', (e) => e.preventDefault());
-  mainWindow.once('ready-to-show', () => mainWindow?.show());
+  mainWindow.once('ready-to-show', () => {
+    if (saved?.maximized) mainWindow?.maximize();
+    mainWindow?.show();
+  });
+  mainWindow.on('close', () => {
+    if (!mainWindow) return;
+    windowState.save({ bounds: mainWindow.getNormalBounds(), maximized: mainWindow.isMaximized() });
+  });
   mainWindow.on('closed', () => { mainWindow = null; });
 
   if (DEV_SERVER_URL) void mainWindow.loadURL(DEV_SERVER_URL);

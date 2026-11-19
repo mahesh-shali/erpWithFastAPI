@@ -88,8 +88,9 @@ export class UpdateService {
 
   install(): void {
     if (!this.updater || this.status.state !== 'downloaded') return;
-    // Not silent: the installer shows its progress. Then the new version starts.
-    this.updater.quitAndInstall(false, true);
+    // Silent: without it the assisted (non one-click) NSIS installer shows its whole setup wizard again.
+    // The second flag starts the new version afterwards, which reopens where the user left off.
+    this.updater.quitAndInstall(true, true);
   }
 
   private set(next: UpdateStatus): void {

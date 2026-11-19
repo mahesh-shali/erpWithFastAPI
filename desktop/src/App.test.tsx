@@ -97,3 +97,54 @@ describe('App routing', () => {
     expect(await screen.findByRole('button', { name: /sign in|log in/i })).toBeInTheDocument();
   });
 });
+
+describe('Reopens where the user left off', () => {
+  const KEY = 'erp:last-page';
+
+  it('goes back to the last page of this user after a launch', async () => {
+    localStorage.setItem(KEY, JSON.stringify({ u1: '/master/customers' }));
+    renderApp('/');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Customers' })).toBeInTheDocument();
+  });
+
+  it("does not open another user's last page", async () => {
+    localStorage.setItem(KEY, JSON.stringify({ someoneElse: '/master/customers' }));
+    renderApp('/');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Dashboard' })).toBeInTheDocument();
+  });
+
+  it('remembers the page the user opens', async () => {
+    renderApp('/analytics');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Analytics' })).toBeInTheDocument();
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(KEY) ?? '{}')).toEqual({ u1: '/analytics' }));
+  });
+
+  it('restores only once per launch, so Dashboard stays reachable', async () => {
+    localStorage.setItem(KEY, JSON.stringify({ u1: '/master/customers' }));
+    renderApp('/');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Customers' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('link', { name: 'Dashboard' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Dashboard' })).toBeInTheDocument();
+  });
+
+  it('ignores a stored value that is not an app path', async () => {
+    localStorage.setItem(KEY, JSON.stringify({ u1: '//evil.example/x' }));
+    renderApp('/');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Dashboard' })).toBeInTheDocument();
+  });
+});
+
+describe('Sign-in screen', () => {
+  it('shows the mode but not the server URL', async () => {
+    renderWithProviders(<App />, '/login');
+    expect(await screen.findByText('Development')).toBeInTheDocument();
+    expect(screen.queryByText(/localhost|https?:\/\//)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+  });
+
+  it('labels production mode', async () => {
+    fakeState.settings = { ...fakeState.settings, environment: 'production', serverUrl: 'https://erp.example.com' };
+    renderWithProviders(<App />, '/login');
+    expect(await screen.findByText('Production')).toBeInTheDocument();
+  });
+});

@@ -72,65 +72,24 @@ export function LoginPage() {
         </label>
         {error && <p role="alert" className="error">{error}</p>}
         <button type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
-        <ServerSettings />
+        <ModeBadge />
       </form>
     </main>
   );
 }
 
-/** Which ERP server this desktop app talks to. Changing it signs out (a session belongs to one server). */
-function ServerSettings() {
-  const [serverUrl, setServerUrl] = useState('');
+/** Which mode the app runs in (production or local development). The server URL itself is not shown. */
+function ModeBadge() {
   const [environment, setEnvironment] = useState<'local' | 'production' | null>(null);
-  const [locked, setLocked] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    window.erp.settings.get().then((s) => {
-      setServerUrl(s.serverUrl);
-      setEnvironment(s.environment);
-      setLocked(s.serverUrlLocked);
-    }).catch(() => undefined);
+    window.erp.settings.get().then((s) => setEnvironment(s.environment)).catch(() => undefined);
   }, []);
 
-  async function save() {
-    setError(null);
-    try {
-      const s = await window.erp.settings.setServerUrl(draft);
-      setServerUrl(s.serverUrl);
-      setEditing(false);
-    } catch (e) {
-      // Electron prefixes errors thrown in the main process; keep only our message.
-      setError(e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : 'Invalid URL');
-    }
-  }
-
-  if (!editing) {
-    return (
-      <p className="hint server-line">
-        {environment && (
-          <span className={`env-badge env-${environment}`}>{environment === 'local' ? 'Local' : 'Production'}</span>
-        )}{' '}
-        Server: <code>{serverUrl || '…'}</code>{' '}
-        {!locked && (
-          <button type="button" className="link" onClick={() => { setDraft(serverUrl); setEditing(true); }}>Change</button>
-        )}
-      </p>
-    );
-  }
+  if (!environment) return null;
   return (
-    <div className="server-edit">
-      <label>
-        Server URL
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="https://erp.example.com" />
-      </label>
-      {error && <p role="alert" className="error">{error}</p>}
-      <div className="row">
-        <button type="button" onClick={() => void save()}>Save server</button>
-        <button type="button" className="link" onClick={() => setEditing(false)}>Cancel</button>
-      </div>
-    </div>
+    <p className="mode-line">
+      <span className={`env-badge env-${environment}`}>{environment === 'local' ? 'Development' : 'Production'}</span>
+    </p>
   );
 }
