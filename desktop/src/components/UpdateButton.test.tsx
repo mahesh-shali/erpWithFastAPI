@@ -28,6 +28,9 @@ describe('UpdateButton', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Update ready: version 1.2.0' }));
     await userEvent.click(screen.getByRole('button', { name: 'Restart now' }));
     expect(fakeState.updateCalls).toContain('install');
+    // The loading screen covers the app until it quits; the new version shows the same screen.
+    expect(screen.getByRole('status')).toHaveTextContent('Updating to version 1.2.0…');
+    expect(screen.getByRole('status')).toHaveTextContent('ERP Platform will reopen where you left off.');
   });
 
   it('checks on request and closes with Escape', async () => {

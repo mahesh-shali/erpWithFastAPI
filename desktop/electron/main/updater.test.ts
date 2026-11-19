@@ -43,15 +43,33 @@ describe('UpdateService', () => {
     expect(svc.get()).toEqual({ state: 'downloaded', version: '1.2.0' });
     expect(sent.map((s) => s.state)).toEqual(['checking', 'available', 'downloading', 'downloading', 'downloaded']);
 
-    svc.install();
+    await svc.install();
     expect(updater.quitAndInstall).toHaveBeenCalledWith(true, true); // silent: no setup wizard, then relaunch
   });
 
   it('ignores download and install when there is nothing to download or install', async () => {
     await svc.download();
-    svc.install();
+    await svc.install();
     expect(updater.downloadUpdate).not.toHaveBeenCalled();
     expect(updater.quitAndInstall).not.toHaveBeenCalled();
+  });
+
+  it('shows the update splash before quitting to install, and installs only once', async () => {
+    const order: string[] = [];
+    const splashSvc = new UpdateService(updater, () => undefined, {
+      beforeInstall: async (v) => { order.push(`splash ${v}`); return true; },
+    });
+    updater.quitAndInstall.mockImplementation(() => { order.push('quitAndInstall'); });
+    updater.emit('update-downloaded', { version: '1.2.0' });
+    await Promise.all([splashSvc.install(), splashSvc.install()]); // double click
+    expect(order).toEqual(['splash 1.2.0', 'quitAndInstall']);
+  });
+
+  it('still installs when the splash fails', async () => {
+    const failing = new UpdateService(updater, () => undefined, { beforeInstall: async () => { throw new Error('no powershell'); } });
+    updater.emit('update-downloaded', { version: '1.2.0' });
+    await failing.install();
+    expect(updater.quitAndInstall).toHaveBeenCalledWith(true, true);
   });
 
   it('does not start a new check over a finished download', async () => {

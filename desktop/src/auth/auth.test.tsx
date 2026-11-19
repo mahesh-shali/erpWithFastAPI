@@ -72,7 +72,7 @@ describe('session restore at startup', () => {
     render(
       <MemoryRouter initialEntries={['/']}><AuthProvider><AppRoutes /></AuthProvider></MemoryRouter>,
     );
-    expect(screen.getByRole('status')).toHaveTextContent(/restoring/i);
+    expect(screen.getByRole('status')).toHaveTextContent('Opening where you left off…');
     expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
   });
 

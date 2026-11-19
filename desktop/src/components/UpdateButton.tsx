@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { UpdateStatus } from '../../electron/shared/contract';
 import { Icon } from './Icon';
+import { Splash } from './Splash';
 
 /**
  * Top-bar update symbol. The main process checks GitHub Releases in the background; a dot appears when a
@@ -9,6 +11,7 @@ import { Icon } from './Icon';
 export function UpdateButton() {
   const [status, setStatus] = useState<UpdateStatus>({ state: 'idle' });
   const [open, setOpen] = useState(false);
+  const [installing, setInstalling] = useState<string | null>(null); // version being installed
   const wrap = useRef<HTMLDivElement>(null);
   const current = window.erp.app.versions.app;
 
@@ -39,6 +42,23 @@ export function UpdateButton() {
 
   const run = (fn: () => Promise<UpdateStatus>) => void fn().then(setStatus).catch(() => undefined);
 
+  // Restart now: cover the app with the loading screen until it closes; the update splash and then the new
+  // version show the same screen until the user is back where they left off.
+  function restartNow() {
+    if (status.state !== 'downloaded') return;
+    setOpen(false);
+    setInstalling(status.version);
+    void window.erp.updates.install().catch(() => setInstalling(null));
+  }
+
+  if (installing) {
+    // Portal: the top bar is its own stacking context; the loading screen must cover the whole window.
+    return createPortal(
+      <Splash message={`Updating to version ${installing}…`} detail="ERP Platform will reopen where you left off." />,
+      document.body,
+    );
+  }
+
   return (
     <div className="update-wrap" ref={wrap}>
       <button className="icon-btn update-btn" aria-label={label} title={label} aria-expanded={open}
@@ -54,7 +74,7 @@ export function UpdateButton() {
           <Body status={status}
                 onCheck={() => run(() => window.erp.updates.check())}
                 onDownload={() => run(() => window.erp.updates.download())}
-                onInstall={() => void window.erp.updates.install()}
+                onInstall={restartNow}
                 onLater={() => setOpen(false)} />
         </div>
       )}

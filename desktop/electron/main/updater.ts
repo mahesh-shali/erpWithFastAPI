@@ -21,17 +21,30 @@ export const CHECK_INTERVAL_MS = 6 * 3600_000;  // then every 6 hours while the 
  * Updates from GitHub Releases. Checks in the background and shows what it found; the download only starts
  * when the user asks for it. A downloaded update installs on "Restart now" or when the app next quits.
  */
+export interface UpdateServiceOptions {
+  unsupportedReason?: string;
+  log?: UpdateLogger;
+  /** Runs right before the app quits to install (e.g. puts the update splash on screen). Never blocks forever. */
+  beforeInstall?: (version: string) => Promise<unknown>;
+}
+
 export class UpdateService {
   private status: UpdateStatus;
   private timers: ReturnType<typeof setTimeout>[] = [];
+  private installing = false;
+  private readonly log?: UpdateLogger;
+  private readonly beforeInstall?: (version: string) => Promise<unknown>;
 
   constructor(
     private readonly updater: Updater | null,
     private readonly broadcast: (status: UpdateStatus) => void,
-    unsupportedReason = 'Updates are available in the installed app.',
-    private readonly log?: UpdateLogger,
+    options: UpdateServiceOptions = {},
   ) {
-    this.status = updater ? { state: 'idle' } : { state: 'unsupported', reason: unsupportedReason };
+    this.log = options.log;
+    this.beforeInstall = options.beforeInstall;
+    this.status = updater
+      ? { state: 'idle' }
+      : { state: 'unsupported', reason: options.unsupportedReason ?? 'Updates are available in the installed app.' };
     if (!updater) return;
 
     updater.autoDownload = false;          // the user decides when to download
@@ -89,9 +102,17 @@ export class UpdateService {
     return this.status;
   }
 
-  install(): void {
-    if (!this.updater || this.status.state !== 'downloaded') return;
-    this.log?.info(`Restart now: installing ${this.status.version} silently, then relaunching`);
+  async install(): Promise<void> {
+    if (!this.updater || this.status.state !== 'downloaded' || this.installing) return;
+    this.installing = true; // a second click must not start a second installer
+    const { version } = this.status;
+    this.log?.info(`Restart now: installing ${version} silently, then relaunching`);
+    try {
+      const shown = await this.beforeInstall?.(version);
+      this.log?.info(`Update splash shown: ${shown ?? 'n/a'}`);
+    } catch (err) {
+      this.log?.warn(`Update splash failed: ${friendlyError(err)}`); // the update still goes ahead
+    }
     // Silent: without it the assisted (non one-click) NSIS installer shows its whole setup wizard again.
     // The second flag starts the new version afterwards, which reopens where the user left off.
     this.updater.quitAndInstall(true, true);

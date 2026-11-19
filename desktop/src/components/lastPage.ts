@@ -38,18 +38,23 @@ export function resetLastPageForTests(): void {
   restoredThisLaunch = false;
 }
 
-/** Use inside the signed-in layout. */
-export function useLastPage(userId: string | undefined): void {
+/**
+ * Use inside the signed-in layout. Returns true while the app is about to go back to the user's last page,
+ * so the layout can keep the loading screen up instead of flashing the start page.
+ */
+export function useLastPage(userId: string | undefined): boolean {
   const location = useLocation();
   const navigate = useNavigate();
   const restoring = useRef(false);
+  const target = userId ? lastPage(userId) : null;
+  const pending = !!userId && !restoredThisLaunch && location.pathname === '/' && !location.search
+    && !!target && target !== '/';
 
   // Once per launch: if we opened on the start page, go back to where this user was.
   useEffect(() => {
     if (!userId || restoredThisLaunch) return;
     restoredThisLaunch = true;
-    const target = lastPage(userId);
-    if (location.pathname === '/' && !location.search && target && target !== '/') {
+    if (pending && target) {
       restoring.current = true;
       navigate(target, { replace: true });
     }
@@ -64,4 +69,6 @@ export function useLastPage(userId: string | undefined): void {
     restoring.current = false;
     rememberPage(userId, location.pathname + location.search);
   }, [userId, location.pathname, location.search]);
+
+  return pending;
 }

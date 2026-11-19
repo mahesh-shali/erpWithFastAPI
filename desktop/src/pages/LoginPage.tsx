@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { Icon } from '../components/Icon';
+import { Splash } from '../components/Splash';
 
 /** Modules shown on the sign-in screen; mirrors the top level of the side menu. */
 const MODULES: { name: string; icon: string }[] = [
@@ -25,7 +26,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (!ready) return <p className="hint splash" role="status">Restoring your session…</p>;
+  if (!ready) return <Splash message="Opening where you left off…" />;
   if (isAuthenticated) return <Navigate to="/" replace />;
 
   async function onSubmit(e: FormEvent) {
