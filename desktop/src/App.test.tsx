@@ -101,10 +101,11 @@ describe('App routing', () => {
 describe('Reopens where the user left off', () => {
   const KEY = 'erp:last-page';
 
-  it('goes back to the last page of this user after a launch', async () => {
+  it('goes back to the last page of this user after a launch, without flashing the Dashboard', async () => {
     localStorage.setItem(KEY, JSON.stringify({ u1: '/master/customers' }));
-    renderApp('/');
+    const spy = renderApp('/');
     expect(await screen.findByRole('heading', { level: 1, name: 'Customers' })).toBeInTheDocument();
+    expect(calls(spy)).not.toContain('GET /api/dashboard/stats'); // the start page never rendered
   });
 
   it("does not open another user's last page", async () => {

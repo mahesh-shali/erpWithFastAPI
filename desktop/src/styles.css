@@ -227,7 +227,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .analytics-title a:hover { text-decoration: underline; }
 
 /* ---------- Desktop app ---------- */
-.splash { padding: 3rem; text-align: center; }
 .mode-line { margin: .25rem 0 0; text-align: center; }
 .env-badge { display: inline-block; border-radius: 999px; padding: .05rem .55rem; font-size: .75rem; font-weight: 600; }
 .env-local { background: #fff4e5; color: #9a5b00; }

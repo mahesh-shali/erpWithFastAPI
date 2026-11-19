@@ -7,6 +7,7 @@ import { registerIpc } from './ipc';
 import { hardenSession, hardenWindow, isAppUrl } from './security';
 import { SettingsStore } from './settings';
 import { TokenVault } from './token-vault';
+import { showUpdateSplash } from './update-splash';
 import { fileLogger, UpdateService } from './updater';
 import { usableBounds, WindowStateStore } from './window-state';
 
@@ -60,8 +61,19 @@ async function start() {
     updater.logger = updateLog;
     updateLog.info(`App ${app.getVersion()} started (${ENVIRONMENT} mode)`);
   }
-  const updates = new UpdateService(
-    updater, (status) => mainWindow?.webContents.send(IPC.updatesStatus, status), undefined, updateLog);
+  const updates = new UpdateService(updater, (status) => mainWindow?.webContents.send(IPC.updatesStatus, status), {
+    log: updateLog,
+    // Keep a loading screen over the app window while the installer runs (the app itself has quit by then).
+    beforeInstall: async (version) => {
+      if (!mainWindow || process.platform !== 'win32') return false;
+      const dip = mainWindow.getBounds();
+      return showUpdateSplash({
+        version,
+        bounds: screen.dipToScreenRect(mainWindow, dip),
+        scale: screen.getDisplayMatching(dip).scaleFactor,
+      });
+    },
+  });
   registerIpc(api, settings, updates, isApp);
   Menu.setApplicationMenu(buildMenu());
 

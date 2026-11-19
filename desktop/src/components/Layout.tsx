@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { usePermissions } from '../auth/PermissionsContext';
 import { Icon } from './Icon';
 import { activePath, buildMenu, type MenuModuleNode } from './menu';
+import { Splash } from './Splash';
 import { UpdateButton } from './UpdateButton';
 import { useLastPage } from './lastPage';
 
@@ -19,7 +20,7 @@ export function Layout() {
   const { pages, loading, error } = usePermissions();
   const location = useLocation();
   const tree = useMemo(() => buildMenu(pages), [pages]);
-  useLastPage(user?.id); // reopen where this user left off
+  const reopening = useLastPage(user?.id); // reopen where this user left off
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -49,6 +50,9 @@ export function Layout() {
       if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
+
+  // Going back to the user's last page: keep the loading screen up instead of flashing the start page.
+  if (reopening) return <Splash message="Opening where you left off…" />;
 
   return (
     <div className="layout">
