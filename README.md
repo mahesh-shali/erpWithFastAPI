@@ -240,6 +240,9 @@ Current migrations:
    the tree with their ids unchanged, so granted rights are kept, and adds 16 new pages with default rights.
 7. `AddVSmartModules`: more menu groups and pages (Coming soon) following the V.SMART ERP module list.
 8. `AddAnalyticsPage`: the top-level **Analytics** page (id 48) with its default rights (Admin: read; User: none).
+9. `AddInventory`: `uoms`, `stores`, `stock_entries` + `stock_entry_lines`, `stock_balances`, `stock_ledger_entries`,
+   `document_series`, and `products.uom_id`. Marks Units of Measure, Stores, Stock Position, Stock Entries and Stock
+   Ledger as implemented. No data is copied: each organization's Main Store and opening balances are created on first use.
 
 ### Changing the schema
 
@@ -500,6 +503,54 @@ AI Assistant, read/write/update on Customers and Orders, and nothing in Master. 
 
 Demo logins (fresh database): `admin@demo.com` / `Admin@123` (SuperAdmin), `manager@demo.com` /
 `Manager@123` (Admin), `staff@demo.com` / `Staff@1234` (User).
+
+## Inventory module
+
+Modelled on the usual ERP design (ERPNext's Warehouse, Stock Entry, Stock Ledger Entry and Bin; moving-average
+valuation), written for this code base.
+
+| Screen | Route | Page key | What it does |
+|---|---|---|---|
+| Units of Measure | `/master/uom` | `uom` | NOS, KG, BOX… set on products |
+| Stores | `/master/stores` | `stores` | Warehouses. One is the default (**Main Store**, created automatically) |
+| Stock Entries | `/inventory/stock-addition` | `stock-addition` | Receipt / Issue / Transfer documents: Draft → Submitted → Cancelled |
+| Stock Position | `/inventory/stock-position` | `stock-position` | Quantity, valuation rate and value per item and store; low-stock filter |
+| Stock Ledger | `/reports/stock` | `stock-report` | Every movement with the balance and value after it |
+
+**How stock moves.** Nothing changes stock except the posting service
+([StockPosting.cs](backend/src/Erp.Api/Services/StockPosting.cs)). It locks the affected `stock_balances` rows in a
+fixed order (no deadlocks), refuses to take any store below zero, writes one immutable `stock_ledger_entries` row
+per movement, and keeps `products.stock_quantity` equal to the sum over all stores. It is used by:
+
+- **Stock entries**, on submit. Cancelling reverses the entry's ledger rows at the rates they were posted at, and is
+  refused if that stock has since been used.
+- **Sales orders**, which issue from the default store. An order fails if the default store is short, even when
+  other stores hold stock.
+- **Products**: opening stock on create, and a changed stock figure on edit (posted as a Product Adjustment).
+- **First use per organization**, which creates the Main Store and posts every product's existing stock as Opening,
+  valued at the unit price.
+
+**Valuation (moving average).** Receipt: new rate = (value before + qty × rate) / (qty before + qty). Issue and transfer
+go out at the current rate. A store that reaches zero quantity has zero value.
+
+**Rights.** Read = list and view · Write = create a draft · Update = edit a draft and **Submit** · Delete = delete a
+draft and **Cancel**. Defaults: Admin has everything; User can read Stock Position, Stock Ledger, Units and Stores.
+Lookups that several screens need (`/api/stock/stores`, `/uoms`, `/items`) accept read on any of those pages
+(`[RequireAnyPage]`).
+
+| Method & path | Right |
+|---|---|
+| `GET/POST /api/uoms`, `PUT/DELETE /api/uoms/{id}` | uom read / write / update / delete |
+| `GET/POST /api/stores`, `PUT/DELETE /api/stores/{id}` | stores read / write / update / delete |
+| `GET /api/stock-entries?status&type&page`, `GET /{id}` | stock-addition read |
+| `POST /api/stock-entries` · `PUT /{id}` · `POST /{id}/submit` | write · update · update |
+| `DELETE /api/stock-entries/{id}` · `POST /{id}/cancel` | delete · delete |
+| `GET /api/stock/position?storeId&search&lowOnly&page` | stock-position read |
+| `GET /api/stock/ledger?productId&storeId&from&to&page` | stock-report read |
+
+Next modules (planned, one at a time): Purchase (Vendors, Purchase Orders, Goods Receipt, Bills), Sales (Invoices,
+Delivery Challans), Accounts, and HR, with Indian GST on purchase and sales documents. Purchase and sales documents
+will post stock through the same service.
 
 ## How the AI chatbot works
 

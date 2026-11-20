@@ -67,6 +67,8 @@ builder.Services.AddSingleton<ILoginThrottle, LoginThrottle>();
 builder.Services.AddHostedService<SessionCleanupService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IStockPosting, StockPosting>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
 
 // ---------- Auth ----------
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

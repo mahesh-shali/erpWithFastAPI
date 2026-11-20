@@ -199,6 +199,99 @@
     ]
   },
   {
+    "screen": "Inventory › Units of measure & Stores",
+    "login": "admin@demo.com",
+    "url": "http://localhost:5173/master/stores",
+    "checks": [
+      {
+        "title": "Main Store exists",
+        "steps": ["Open Master › Inventory Setup › Stores"],
+        "expect": "Main Store (code MAIN) is listed with a Default tag and no Delete button.",
+        "auto": "InventoryTests › Every organization gets a Main Store"
+      },
+      {
+        "title": "Add a store",
+        "steps": ["Click Add store", "Code WH1, Name Warehouse 1, Location Pune", "Save"],
+        "expect": "The store appears; codes are shown in capitals; a duplicate code is refused.",
+        "auto": "InventoryTests › Stores codes are unique"
+      },
+      {
+        "title": "Units of measure",
+        "steps": ["Open Master › Inventory Setup › Units of Measure", "Add NOS / Numbers", "Edit a product (Master › Products) and set Unit = NOS"],
+        "expect": "The product list shows NOS in the Unit column; deleting NOS is refused while a product uses it.",
+        "auto": "InventoryTests › Units of measure crud"
+      }
+    ]
+  },
+  {
+    "screen": "Inventory › Stock entries",
+    "login": "admin@demo.com",
+    "url": "http://localhost:5173/inventory/stock-addition",
+    "checks": [
+      {
+        "title": "Receipt: draft then submit",
+        "steps": ["Click New stock entry", "Type Receipt, To store Warehouse 1", "Item SKU-0001, Quantity 10, Rate 250", "Save draft", "Click Submit"],
+        "expect": "Draft gets a number like SE-00001; after Submit the status is Submitted and Stock Position shows 10 in Warehouse 1 worth ₹2,500.",
+        "auto": "e2e inventory.spec.ts; InventoryTests › Receipts average the rate"
+      },
+      {
+        "title": "Moving average",
+        "steps": ["Make a second receipt of SKU-0001 into Warehouse 1: 10 @ 350", "Open Stock Position"],
+        "expect": "Warehouse 1 shows 20 with valuation rate ₹300 and value ₹6,000.",
+        "auto": "ValuationTests"
+      },
+      {
+        "title": "Transfer and issue",
+        "steps": ["New entry, type Transfer, from Warehouse 1 to Main Store, 5 × SKU-0001, Submit", "New entry, type Issue, from Warehouse 1, 100 × SKU-0001, Submit"],
+        "expect": "The transfer moves 5 at ₹300; the issue is refused with 'Insufficient stock … 15 available, 100 needed' and nothing moves.",
+        "auto": "InventoryTests › Transfer moves stock; Issuing more than the store holds"
+      },
+      {
+        "title": "Cancel reverses",
+        "steps": ["Open a submitted entry", "Click Cancel entry and confirm"],
+        "expect": "Status becomes Cancelled; the ledger shows Reversal rows; stock returns to what it was (refused if that stock was already used).",
+        "auto": "InventoryTests › Cancel reverses exactly"
+      },
+      {
+        "title": "Rights",
+        "steps": ["Sign in as staff@demo.com", "Open /inventory/stock-addition"],
+        "expect": "No access. In Master › Role Rights, giving User Read+Write on Stock Entries lets staff create drafts but not Submit (needs Update) or Cancel (needs Delete).",
+        "auto": "InventoryTests › User role reads stock but cannot create entries"
+      }
+    ]
+  },
+  {
+    "screen": "Inventory › Stock position & ledger",
+    "login": "admin@demo.com, then staff@demo.com",
+    "url": "http://localhost:5173/inventory/stock-position",
+    "checks": [
+      {
+        "title": "Stock position",
+        "steps": ["Open Inventory › Stock Position", "Filter by store, search 'Product 1', tick Low stock only"],
+        "expect": "Totals (lines, quantity, value) follow the filters; rows below 10 show a Low tag.",
+        "auto": "InventoryPages.test.tsx › Stock position screen"
+      },
+      {
+        "title": "Stock ledger",
+        "steps": ["Click Ledger on a row"],
+        "expect": "Reports › Stock Ledger opens filtered to that item and store, newest first, with balance and value after each movement; Stock Entry numbers link to the entry.",
+        "auto": "InventoryPages.test.tsx › Stock ledger screen"
+      },
+      {
+        "title": "Sales orders take stock from the default store",
+        "steps": ["Note SKU-0002's quantity in Main Store", "Create a sales order for 2 of it (API or AI-less flow)", "Refresh Stock Position"],
+        "expect": "Main Store is 2 lower and the ledger has a 'Sales Order' row at the moving-average rate.",
+        "auto": "InventoryTests › Sales orders issue from the default store"
+      },
+      {
+        "title": "User role can view",
+        "steps": ["Sign in as staff@demo.com", "Open Stock Position and Reports › Stock Ledger"],
+        "expect": "Both open read-only.",
+        "auto": "e2e inventory.spec.ts › User role"
+      }
+    ]
+  },
+  {
     "screen": "Master › Users",
     "login": "admin@demo.com",
     "url": "http://localhost:5173/master/users",
@@ -293,8 +386,8 @@
     "checks": [
       {
         "title": "Three-level menu",
-        "steps": ["Expand Inventory › Stock Position", "Click Stock Position"],
-        "expect": "A 'Coming soon' card with the breadcrumb Inventory › Stock Position › Stock Position.",
+        "steps": ["Expand Accounts › Receipts", "Click Receipts"],
+        "expect": "A 'Coming soon' card with the breadcrumb Accounts › Receipts › Receipts.",
         "auto": "permissions.test.tsx › 3-level side menu"
       },
       {

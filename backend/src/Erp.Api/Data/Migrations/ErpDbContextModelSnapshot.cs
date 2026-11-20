@@ -116,6 +116,27 @@ namespace Erp.Api.Data.Migrations
                     b.ToTable("customers", (string)null);
                 });
 
+            modelBuilder.Entity("Erp.Api.Domain.DocumentSeries", b =>
+                {
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Prefix")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("prefix");
+
+                    b.Property<int>("NextNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("next_number");
+
+                    b.HasKey("OrganizationId", "Prefix")
+                        .HasName("pk_document_series");
+
+                    b.ToTable("document_series", (string)null);
+                });
+
             modelBuilder.Entity("Erp.Api.Domain.EffectivePagePermission", b =>
                 {
                     b.Property<bool>("CanDelete")
@@ -259,7 +280,7 @@ namespace Erp.Api.Data.Migrations
                             Id = 202,
                             Key = "inventory-stock-addition",
                             ModuleId = 2,
-                            Name = "Stock Addition",
+                            Name = "Stock Movement",
                             SortOrder = 20
                         },
                         new
@@ -930,7 +951,7 @@ namespace Erp.Api.Data.Migrations
                             Id = 26,
                             GroupId = 106,
                             IsActive = true,
-                            IsImplemented = false,
+                            IsImplemented = true,
                             Key = "uom",
                             Name = "Units of Measure",
                             Route = "/master/uom",
@@ -941,7 +962,7 @@ namespace Erp.Api.Data.Migrations
                             Id = 27,
                             GroupId = 106,
                             IsActive = true,
-                            IsImplemented = false,
+                            IsImplemented = true,
                             Key = "stores",
                             Name = "Stores",
                             Route = "/master/stores",
@@ -1128,7 +1149,7 @@ namespace Erp.Api.Data.Migrations
                             Id = 11,
                             GroupId = 201,
                             IsActive = true,
-                            IsImplemented = false,
+                            IsImplemented = true,
                             Key = "stock-position",
                             Name = "Stock Position",
                             Route = "/inventory/stock-position",
@@ -1139,9 +1160,9 @@ namespace Erp.Api.Data.Migrations
                             Id = 12,
                             GroupId = 202,
                             IsActive = true,
-                            IsImplemented = false,
+                            IsImplemented = true,
                             Key = "stock-addition",
-                            Name = "Stock Addition",
+                            Name = "Stock Entries",
                             Route = "/inventory/stock-addition",
                             SortOrder = 10
                         },
@@ -1326,9 +1347,9 @@ namespace Erp.Api.Data.Migrations
                             Id = 25,
                             GroupId = 902,
                             IsActive = true,
-                            IsImplemented = false,
+                            IsImplemented = true,
                             Key = "stock-report",
-                            Name = "Stock Report",
+                            Name = "Stock Ledger",
                             Route = "/reports/stock",
                             SortOrder = 10
                         },
@@ -1399,8 +1420,15 @@ namespace Erp.Api.Data.Migrations
                         .HasColumnType("numeric(12,2)")
                         .HasColumnName("unit_price");
 
+                    b.Property<Guid?>("UomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uom_id");
+
                     b.HasKey("Id")
                         .HasName("pk_products");
+
+                    b.HasIndex("UomId")
+                        .HasDatabaseName("ix_products_uom_id");
 
                     b.HasIndex("OrganizationId", "Category")
                         .HasDatabaseName("ix_products_org_cat");
@@ -2696,6 +2724,424 @@ namespace Erp.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Erp.Api.Domain.StockBalance", b =>
+                {
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<decimal>("StockValue")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("stock_value");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<decimal>("ValuationRate")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("numeric(14,4)")
+                        .HasColumnName("valuation_rate");
+
+                    b.HasKey("OrganizationId", "ProductId", "StoreId")
+                        .HasName("pk_stock_balances");
+
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("ix_stock_balances_product_id");
+
+                    b.HasIndex("StoreId")
+                        .HasDatabaseName("ix_stock_balances_store_id");
+
+                    b.HasIndex("OrganizationId", "StoreId")
+                        .HasDatabaseName("ix_stock_balances_org_store");
+
+                    b.ToTable("stock_balances", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_stock_balances_quantity", "quantity >= 0");
+
+                            t.HasCheckConstraint("ck_stock_balances_value", "stock_value >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.StockEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("number");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateOnly>("PostingDate")
+                        .HasColumnType("date")
+                        .HasColumnName("posting_date");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("remarks");
+
+                    b.Property<Guid?>("SourceStoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_store_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Draft")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<Guid?>("TargetStoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_store_id");
+
+                    b.Property<decimal>("TotalValue")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("total_value");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_stock_entries");
+
+                    b.HasIndex("SourceStoreId")
+                        .HasDatabaseName("ix_stock_entries_source_store_id");
+
+                    b.HasIndex("TargetStoreId")
+                        .HasDatabaseName("ix_stock_entries_target_store_id");
+
+                    b.HasIndex("OrganizationId", "CreatedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_stock_entries_org_created");
+
+                    b.HasIndex("OrganizationId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("ux_stock_entries_org_number");
+
+                    b.ToTable("stock_entries", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_stock_entries_status", "status IN ('Draft','Submitted','Cancelled')");
+
+                            t.HasCheckConstraint("ck_stock_entries_type", "type IN ('Receipt','Issue','Transfer')");
+                        });
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.StockEntryLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_no");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<decimal>("Rate")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("numeric(14,4)")
+                        .HasColumnName("rate");
+
+                    b.Property<Guid>("StockEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("stock_entry_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_stock_entry_lines");
+
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("ix_stock_entry_lines_product_id");
+
+                    b.HasIndex("StockEntryId")
+                        .HasDatabaseName("ix_stock_entry_lines_entry");
+
+                    b.HasIndex("OrganizationId", "ProductId")
+                        .HasDatabaseName("ix_stock_entry_lines_org_prod");
+
+                    b.ToTable("stock_entry_lines", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_stock_entry_lines_quantity", "quantity > 0");
+
+                            t.HasCheckConstraint("ck_stock_entry_lines_rate", "rate >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.StockLedgerEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("IsReversal")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_reversal");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTime>("PostedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("posted_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateOnly>("PostingDate")
+                        .HasColumnType("date")
+                        .HasColumnName("posting_date");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<int>("QtyAfter")
+                        .HasColumnType("integer")
+                        .HasColumnName("qty_after");
+
+                    b.Property<int>("QtyChange")
+                        .HasColumnType("integer")
+                        .HasColumnName("qty_change");
+
+                    b.Property<decimal>("Rate")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("numeric(14,4)")
+                        .HasColumnName("rate");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
+                    b.Property<decimal>("ValuationRate")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("numeric(14,4)")
+                        .HasColumnName("valuation_rate");
+
+                    b.Property<decimal>("ValueAfter")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("value_after");
+
+                    b.Property<decimal>("ValueChange")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("value_change");
+
+                    b.Property<Guid?>("VoucherId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voucher_id");
+
+                    b.Property<string>("VoucherNo")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("voucher_no");
+
+                    b.Property<string>("VoucherType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("voucher_type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_stock_ledger");
+
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("ix_stock_ledger_product_id");
+
+                    b.HasIndex("StoreId")
+                        .HasDatabaseName("ix_stock_ledger_store_id");
+
+                    b.HasIndex("OrganizationId", "PostingDate")
+                        .HasDatabaseName("ix_stock_ledger_org_date");
+
+                    b.HasIndex("OrganizationId", "VoucherId")
+                        .HasDatabaseName("ix_stock_ledger_org_voucher");
+
+                    b.HasIndex("OrganizationId", "ProductId", "StoreId", "Id")
+                        .HasDatabaseName("ix_stock_ledger_org_prod_store");
+
+                    b.ToTable("stock_ledger", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_stock_ledger_qty_after", "qty_after >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.Store", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_default");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_stores");
+
+                    b.HasIndex("OrganizationId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_stores_org_default")
+                        .HasFilter("is_default");
+
+                    b.HasIndex("OrganizationId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("ux_stores_org_code");
+
+                    b.ToTable("stores", (string)null);
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.Uom", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_uoms");
+
+                    b.HasIndex("OrganizationId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("ux_uoms_org_code");
+
+                    b.ToTable("uoms", (string)null);
+                });
+
             modelBuilder.Entity("Erp.Api.Domain.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2909,6 +3355,16 @@ namespace Erp.Api.Data.Migrations
                         .HasConstraintName("fk_customers_organizations_organization_id");
                 });
 
+            modelBuilder.Entity("Erp.Api.Domain.DocumentSeries", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_document_series_organizations_organization_id");
+                });
+
             modelBuilder.Entity("Erp.Api.Domain.MenuGroup", b =>
                 {
                     b.HasOne("Erp.Api.Domain.MenuModule", "Module")
@@ -2983,6 +3439,14 @@ namespace Erp.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_products_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.Uom", "Uom")
+                        .WithMany()
+                        .HasForeignKey("UomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_products_uoms_uom_id");
+
+                    b.Navigation("Uom");
                 });
 
             modelBuilder.Entity("Erp.Api.Domain.RolePagePermission", b =>
@@ -3006,6 +3470,134 @@ namespace Erp.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_role_page_permissions_roles_role_id");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.StockBalance", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_balances_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_balances_products_product_id");
+
+                    b.HasOne("Erp.Api.Domain.Store", "Store")
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_balances_stores_store_id");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Store");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.StockEntry", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_entries_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.Store", "SourceStore")
+                        .WithMany()
+                        .HasForeignKey("SourceStoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stock_entries_stores_source_store_id");
+
+                    b.HasOne("Erp.Api.Domain.Store", "TargetStore")
+                        .WithMany()
+                        .HasForeignKey("TargetStoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stock_entries_stores_target_store_id");
+
+                    b.Navigation("SourceStore");
+
+                    b.Navigation("TargetStore");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.StockEntryLine", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_entry_lines_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_entry_lines_products_product_id");
+
+                    b.HasOne("Erp.Api.Domain.StockEntry", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("StockEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_entry_lines_stock_entries_stock_entry_id");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.StockLedgerEntry", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_ledger_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_ledger_products_product_id");
+
+                    b.HasOne("Erp.Api.Domain.Store", "Store")
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_ledger_stores_store_id");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Store");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.Store", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stores_organizations_organization_id");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.Uom", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_uoms_organizations_organization_id");
                 });
 
             modelBuilder.Entity("Erp.Api.Domain.User", b =>
@@ -3073,6 +3665,11 @@ namespace Erp.Api.Data.Migrations
             modelBuilder.Entity("Erp.Api.Domain.Order", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.StockEntry", b =>
+                {
+                    b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618
         }

@@ -23,12 +23,12 @@ and `--no-run` rebuilds the page from the last results.
 
 | Layer | Suite | Tests | Covers |
 |---|---|---|---|
-| Frontend | `frontend/src/**/*.test.tsx` (Vitest + Testing Library) | 89 | Every screen: Login, Dashboard, Analytics, AI Assistant, Customers, Products, Sales Orders, Users, User Rights, Role Rights, Pages, Coming soon. Routing, legacy URLs, menu, page guards, token refresh. |
-| Backend | `backend/tests/Erp.Api.UnitTests` (xUnit) | 29 | Tokens, password hashing, refresh tokens, login lockout, order rules, analytics buckets |
-| Backend | `backend/tests/Erp.Api.IntegrationTests` (xUnit + Testcontainers) | 46 | Every API endpoint against real Postgres built from the migrations: auth and sessions, customers, products, orders, dashboard, analytics, users, roles, rights, tenant isolation |
+| Frontend | `frontend/src/**/*.test.tsx` (Vitest + Testing Library) | 108 | Every screen: Login, Dashboard, Analytics, Inventory (Units, Stores, Stock Entries, Stock Position, Stock Ledger), AI Assistant, Customers, Products, Sales Orders, Users, User Rights, Role Rights, Pages, Coming soon. Routing, legacy URLs, menu, page guards, token refresh. |
+| Backend | `backend/tests/Erp.Api.UnitTests` (xUnit) | 34 | Tokens, password hashing, refresh tokens, login lockout, order rules, analytics buckets, moving-average valuation |
+| Backend | `backend/tests/Erp.Api.IntegrationTests` (xUnit + Testcontainers) | 69 | Every API endpoint against real Postgres built from the migrations: auth and sessions, customers, products, orders, dashboard, analytics, inventory (valuation, ledger, cancel, concurrency), users, roles, rights, tenant isolation |
 | AI service | `ai-service/tests` (pytest, LLM mocked) | 80 | Agent loop, SQL guard, chat API (auth, cache, rate limit, rights), production config checks |
 | AI service | `ai-service/tests/test_db_integration.py` | 11 | Row-level security and the read-only AI role on a real database |
-| End-to-end | `frontend/e2e/*.spec.ts` (Playwright) | 18 | One journey per screen in a real browser, for SuperAdmin and for the User role |
+| End-to-end | `frontend/e2e/*.spec.ts` (Playwright) | 20 | One journey per screen in a real browser, for SuperAdmin and for the User role, including a full stock-entry cycle |
 
 ## Commands
 

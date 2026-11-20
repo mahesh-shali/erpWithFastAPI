@@ -37,6 +37,15 @@ public class ErpDbContext(DbContextOptions<ErpDbContext> options, ITenantContext
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<ChatAuditLog> ChatAuditLogs => Set<ChatAuditLog>();
 
+    // Inventory
+    public DbSet<Uom> Uoms => Set<Uom>();
+    public DbSet<Store> Stores => Set<Store>();
+    public DbSet<StockEntry> StockEntries => Set<StockEntry>();
+    public DbSet<StockEntryLine> StockEntryLines => Set<StockEntryLine>();
+    public DbSet<StockBalance> StockBalances => Set<StockBalance>();
+    public DbSet<StockLedgerEntry> StockLedger => Set<StockLedgerEntry>();
+    public DbSet<DocumentSeries> DocumentSeries => Set<DocumentSeries>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         // All table/column/index/constraint mapping lives in Data/Configurations/*.

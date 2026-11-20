@@ -39,7 +39,7 @@ public static class DefaultPermissions
         G(106, 1, "master-inventory-setup", "Inventory Setup", 45),
         G(105, 1, "master-settings", "Settings", 50),
         G(201, 2, "inventory-stock-position", "Stock Position", 10),
-        G(202, 2, "inventory-stock-addition", "Stock Addition", 20),
+        G(202, 2, "inventory-stock-addition", "Stock Movement", 20),
         G(301, 3, "sales-orders", "Orders", 10),
         G(302, 3, "sales-invoices", "Invoices", 20),
         G(303, 3, "sales-labour-work", "Labour Work", 30),
@@ -88,8 +88,8 @@ public static class DefaultPermissions
         P(2,  PageKeys.Customers,        "Customers",           "/master/customers",          102, 10),
         P(10, PageKeys.Vendors,          "Vendors",             "/master/vendors",            103, 10, implemented: false),
         P(3,  PageKeys.Products,         "Products",            "/master/products",           104, 10),
-        P(26, PageKeys.Uom,              "Units of Measure",    "/master/uom",                106, 10, implemented: false),
-        P(27, PageKeys.Stores,           "Stores",              "/master/stores",             106, 20, implemented: false),
+        P(26, PageKeys.Uom,              "Units of Measure",    "/master/uom",                106, 10),
+        P(27, PageKeys.Stores,           "Stores",              "/master/stores",             106, 20),
         P(9,  PageKeys.MasterPages,      "Pages",               "/master/pages",              105, 10),
         // Sales & Labour Work
         P(4,  PageKeys.Orders,             "Sales Orders",         "/sales/orders",               301, 10),
@@ -111,8 +111,8 @@ public static class DefaultPermissions
         P(35, PageKeys.JobCards,         "Job Cards",           "/production/job-cards",      503, 10, implemented: false),
         P(36, PageKeys.BillOfMaterials,  "Bill of Materials",   "/production/bom",            504, 10, implemented: false),
         // Inventory
-        P(11, PageKeys.StockPosition,    "Stock Position",      "/inventory/stock-position",  201, 10, implemented: false),
-        P(12, PageKeys.StockAddition,    "Stock Addition",      "/inventory/stock-addition",  202, 10, implemented: false),
+        P(11, PageKeys.StockPosition,    "Stock Position",      "/inventory/stock-position",  201, 10),
+        P(12, PageKeys.StockAddition,    "Stock Entries",       "/inventory/stock-addition",  202, 10),
         // Accounts
         P(18, PageKeys.Receipts,         "Receipts",            "/cash-flow/receipts",        601, 10, implemented: false),
         P(19, PageKeys.Payments,         "Payments",            "/cash-flow/payments",        602, 10, implemented: false),
@@ -134,7 +134,7 @@ public static class DefaultPermissions
         P(45, PageKeys.LeaveRequests,    "Leave Requests",      "/hr/leave",                  804, 10, implemented: false),
         // Reports
         P(24, PageKeys.SalesReport,      "Sales Report",        "/reports/sales",             901, 10, implemented: false),
-        P(25, PageKeys.StockReport,      "Stock Report",        "/reports/stock",             902, 10, implemented: false),
+        P(25, PageKeys.StockReport,      "Stock Ledger",        "/reports/stock",             902, 10),
         P(46, PageKeys.ProductionReport, "Production Report",   "/reports/production",        903, 10, implemented: false),
         P(47, PageKeys.PurchaseReport,   "Purchase Report",     "/reports/purchase",          904, 10, implemented: false),
     ];

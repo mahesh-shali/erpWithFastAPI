@@ -112,6 +112,7 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
 
         e.HasIndex(x => new { x.OrganizationId, x.Sku }).IsUnique().HasDatabaseName("ux_products_org_sku");
         e.HasIndex(x => new { x.OrganizationId, x.Category }).HasDatabaseName("ix_products_org_cat");
+        e.HasOne(x => x.Uom).WithMany().HasForeignKey(x => x.UomId).OnDelete(DeleteBehavior.Restrict);
 
         e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Cascade);
     }

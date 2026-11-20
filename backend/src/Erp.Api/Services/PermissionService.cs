@@ -58,6 +58,17 @@ public sealed class RequirePageAttribute : AuthorizeAttribute
         => Policy = $"{Prefix}{pageKey}:{action}";
 }
 
+/// <summary>
+/// Read on ANY of the pages, for shared lookups (e.g. the store list is needed by Stores, Stock Entries,
+/// Stock Position and the Stock Ledger screens alike).
+/// </summary>
+public sealed class RequireAnyPageAttribute : AuthorizeAttribute
+{
+    public RequireAnyPageAttribute(params string[] pageKeys)
+        => Policy = $"{RequirePageAttribute.Prefix}{string.Join('|', pageKeys)}:{PageAction.Read}";
+}
+
+/// <summary>PageKey may list alternatives separated by '|': the right on any one of them is enough.</summary>
 public sealed record PageRequirement(string PageKey, PageAction Action) : IAuthorizationRequirement;
 
 /// <summary>Builds "page:{key}:{action}" policies on demand, so no policy has to be registered per page.</summary>
@@ -86,7 +97,11 @@ public sealed class PageRequirementHandler(IPermissionService permissions, IHttp
             !Guid.TryParse(ctx.User.FindFirstValue(CustomClaims.OrgId), out var orgId))
             return;
         var ct = http.HttpContext?.RequestAborted ?? CancellationToken.None;
-        if (await permissions.HasAsync(userId, orgId, req.PageKey, req.Action, ct))
-            ctx.Succeed(req);
+        foreach (var key in req.PageKey.Split('|'))
+            if (await permissions.HasAsync(userId, orgId, key, req.Action, ct))
+            {
+                ctx.Succeed(req);
+                return;
+            }
     }
 }

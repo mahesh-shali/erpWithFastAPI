@@ -285,7 +285,10 @@ public class Product : ITenantOwned
     public string Name { get; set; } = default!;
     public string? Category { get; set; }
     public decimal UnitPrice { get; set; }
+    /// <summary>Total over all stores; kept equal to the sum of stock_balances by the posting service.</summary>
     public int StockQuantity { get; set; }
+    public Guid? UomId { get; set; }
+    public Uom? Uom { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 

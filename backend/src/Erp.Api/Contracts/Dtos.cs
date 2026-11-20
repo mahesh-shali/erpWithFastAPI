@@ -76,13 +76,16 @@ public record UpsertCustomerRequest(
     [Required, MaxLength(200)] string Name, [EmailAddress] string? Email, string? City, string? Country);
 
 // ---------- Products ----------
-public record ProductDto(Guid Id, string Sku, string Name, string? Category, decimal UnitPrice, int StockQuantity);
+public record ProductDto(Guid Id, string Sku, string Name, string? Category, decimal UnitPrice, int StockQuantity,
+    Guid? UomId = null, string? Uom = null);
+/// <summary>StockQuantity: on create, opening stock in the default store; on update, a change is posted there as an adjustment.</summary>
 public record UpsertProductRequest(
     [Required, MaxLength(50)] string Sku,
     [Required, MaxLength(200)] string Name,
     string? Category,
     [Range(0, 10_000_000)] decimal UnitPrice,
-    [Range(0, int.MaxValue)] int StockQuantity);
+    [Range(0, int.MaxValue)] int StockQuantity,
+    Guid? UomId = null);
 
 // ---------- Orders ----------
 public record OrderItemRequest([Required] Guid ProductId, [Range(1, 10_000)] int Quantity);
@@ -112,3 +115,33 @@ public record AnalyticsReport(
     IReadOnlyList<AnalyticsRanked> TopCustomers,
     IReadOnlyList<AnalyticsRanked> Cities,
     IReadOnlyList<AnalyticsRanked> Categories);
+
+// ---------- Inventory ----------
+public record UomDto(Guid Id, string Code, string Name, bool IsActive);
+public record ItemLookupDto(Guid Id, string Sku, string Name, string? Uom, int StockQuantity, decimal UnitPrice);
+public record UpsertUomRequest([Required, MaxLength(10)] string Code, [Required, MaxLength(50)] string Name, bool IsActive = true);
+
+public record StoreDto(Guid Id, string Code, string Name, string? Location, bool IsDefault, bool IsActive);
+public record UpsertStoreRequest([Required, MaxLength(20)] string Code, [Required, MaxLength(100)] string Name,
+    [MaxLength(200)] string? Location, bool IsActive = true, bool IsDefault = false);
+
+public record StockEntryLineRequest([Required] Guid ProductId, [Range(1, 1_000_000)] int Quantity,
+    [Range(0, 10_000_000)] decimal? Rate);
+/// <summary>Receipt: TargetStoreId and a Rate per line. Issue: SourceStoreId. Transfer: both (different).</summary>
+public record UpsertStockEntryRequest([Required] string Type, DateOnly? PostingDate, Guid? SourceStoreId, Guid? TargetStoreId,
+    [MaxLength(500)] string? Remarks, [Required, MinLength(1)] List<StockEntryLineRequest> Lines);
+public record StockEntryLineDto(Guid ProductId, string Sku, string ProductName, string? Uom, int Quantity, decimal Rate, decimal Amount);
+public record StockEntryDto(Guid Id, string Number, string Type, string Status, DateOnly PostingDate,
+    Guid? SourceStoreId, string? SourceStore, Guid? TargetStoreId, string? TargetStore, string? Remarks,
+    decimal TotalValue, DateTime CreatedAt, DateTime? SubmittedAt, DateTime? CancelledAt, IReadOnlyList<StockEntryLineDto> Lines);
+public record StockEntrySummaryDto(Guid Id, string Number, string Type, string Status, DateOnly PostingDate,
+    string? SourceStore, string? TargetStore, int LineCount, decimal TotalValue, DateTime CreatedAt);
+
+public record StockPositionRow(Guid ProductId, string Sku, string Name, string? Category, string? Uom,
+    Guid StoreId, string Store, int Quantity, decimal ValuationRate, decimal StockValue);
+public record StockPositionResult(IReadOnlyList<StockPositionRow> Items, int Page, int PageSize, long Total,
+    long TotalQuantity, decimal TotalValue);
+
+public record StockLedgerRow(long Id, DateOnly PostingDate, DateTime PostedAt, Guid ProductId, string Sku, string ProductName,
+    Guid StoreId, string Store, string VoucherType, Guid? VoucherId, string VoucherNo, bool IsReversal,
+    int QtyChange, int QtyAfter, decimal Rate, decimal ValuationRate, decimal ValueChange, decimal ValueAfter);

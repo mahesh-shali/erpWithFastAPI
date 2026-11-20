@@ -115,6 +115,11 @@ Routes in `src/App.tsx` mirror each page's `route`; unbuilt pages fall through t
   API integration tests, a route case in `App.test.tsx`, an e2e journey in `e2e/screens.spec.ts`, and a manual
   check in `scripts/manual-checks.json` (see TESTING.md).
 - Running `dotnet test` rebuilds `Erp.Api` and stops a `dotnet watch` started by `dev.sh`; restart the API afterwards.
+- **Stock changes only through `IStockPosting.PostAsync`** (inside a transaction, after `EnsureDefaultStoreAsync`). Never
+  update `products.stock_quantity` or `stock_balances` directly: the invariant is stock_quantity = sum of balances, and
+  every movement needs a ledger row. New stock documents (GRN, delivery challan…) follow the Stock Entry pattern:
+  Draft → Submitted (post) → Cancelled (reverse the voucher's ledger rows), numbers from `NextNumberAsync(prefix)`.
+- Vite's watcher can miss files written by scripts on Windows; if the dev app shows old code, `touch` the files.
 - `ai-service/.env` is used only by `dev.sh`; `run-local.sh` sets `AI_SERVICE_ENV_FILE=none` so the root env file wins.
 
 ## Demo data

@@ -17,6 +17,10 @@ const EMPTY: Route[] = [
   ['GET', '/api/roles', []],
   ['GET', '/api/master/pages', []],
   ['POST', '/api/auth/logout', undefined],
+  ['GET', '/api/uoms*', []],
+  ['GET', '/api/stores*', []],
+  ['GET', '/api/stock/*', []],
+  ['GET', '/api/stock-entries*', { items: [], page: 1, pageSize: 25, total: 0 }],
 ];
 
 const ALL_PAGES = [
@@ -30,6 +34,11 @@ const ALL_PAGES = [
   perm('master-user-rights', 'VR', { name: 'User Rights', route: '/master/user-rights' }),
   perm('master-role-rights', 'VR', { name: 'Role Rights', route: '/master/role-rights' }),
   perm('master-pages', 'VR', { name: 'Pages', route: '/master/pages' }),
+  perm('uom', 'VR', { name: 'Units of Measure', route: '/master/uom' }),
+  perm('stores', 'VR', { name: 'Stores', route: '/master/stores' }),
+  perm('stock-addition', 'VR', { name: 'Stock Entries', route: '/inventory/stock-addition' }),
+  perm('stock-position', 'VR', { name: 'Stock Position', route: '/inventory/stock-position' }),
+  perm('stock-report', 'VR', { name: 'Stock Ledger', route: '/reports/stock' }),
   perm('vendors', 'VR', { name: 'Vendors', route: '/master/vendors', isImplemented: false }),
 ];
 
@@ -52,6 +61,12 @@ describe('App routing', () => {
     ['/master/user-rights', 'User rights'],
     ['/master/role-rights', 'Role rights'],
     ['/master/pages', 'Pages'],
+    ['/master/uom', 'Units of measure'],
+    ['/master/stores', 'Stores'],
+    ['/inventory/stock-addition', 'Stock entries'],
+    ['/inventory/stock-addition/new', 'New stock entry'],
+    ['/inventory/stock-position', 'Stock position'],
+    ['/reports/stock', 'Stock ledger'],
   ])('%s opens the %s screen', async (route, heading) => {
     renderApp(route);
     expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeInTheDocument();
