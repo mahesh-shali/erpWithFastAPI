@@ -87,13 +87,16 @@ test('the renderer has no Node, no tokens and no network access', async () => {
       require: typeof w.require,
       process: typeof w.process,
       bridgeKeys: Object.keys(window.erp).sort(),
+      chatKeys: Object.keys(window.erp.chat).sort(),
       storage: JSON.stringify({ ...localStorage }) + JSON.stringify({ ...sessionStorage }) + document.cookie,
       fetchBlocked,
     };
   });
   expect(probe.require).toBe('undefined');
   expect(probe.process).toBe('undefined');
-  expect(probe.bridgeKeys).toEqual(['api', 'app', 'auth', 'settings', 'updates']);
+  expect(probe.bridgeKeys).toEqual(['api', 'app', 'auth', 'chat', 'settings', 'updates']);
+  // Messages live events: the stream lives in the main process; the page can only start/stop it and listen.
+  expect(probe.chatKeys).toEqual(['onEvent', 'start', 'stop']);
   expect(probe.storage).not.toMatch(/[0-9a-f]{32}/); // no access or refresh token anywhere in the page
   expect(probe.fetchBlocked).toBe(true); // CSP connect-src 'none'
 
