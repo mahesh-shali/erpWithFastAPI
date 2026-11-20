@@ -67,6 +67,13 @@ builder.Services.AddSingleton<ILoginThrottle, LoginThrottle>();
 builder.Services.AddHostedService<SessionCleanupService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IStockPosting, StockPosting>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
+// End-to-end encrypted chat: ciphertext store + live event fan-out (Redis pub/sub across API replicas)
+builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddSingleton<ChatEventBus>();
+builder.Services.AddSingleton<IChatEventBus>(sp => sp.GetRequiredService<ChatEventBus>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<ChatEventBus>());
 
 // ---------- Auth ----------
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

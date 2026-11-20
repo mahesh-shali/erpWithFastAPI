@@ -158,7 +158,7 @@ public static class DatabaseInitializer
         demo.Organizations.AddRange(
             new Organization { Id = DemoOrgId, Name = "Demo Corp" },
             new Organization { Id = OtherOrgId, Name = "Other Tenant Ltd" });
-        // Hierarchy demo: SuperAdmin (org owner) > Admin > User
+        // Hierarchy demo: SuperAdmin (org owner) > Admin > Manager > User
         demo.Users.AddRange(
             new User
             {
@@ -169,6 +169,11 @@ public static class DatabaseInitializer
             {
                 Id = Guid.NewGuid(), OrganizationId = DemoOrgId, Email = "manager@demo.com",
                 PasswordHash = hasher.Hash("Manager@123"), FullName = "Demo Manager", RoleId = Roles.AdminId,
+            },
+            new User
+            {
+                Id = Guid.NewGuid(), OrganizationId = DemoOrgId, Email = "lead@demo.com",
+                PasswordHash = hasher.Hash("Lead@12345"), FullName = "Demo Team Lead", RoleId = Roles.ManagerId,
             },
             new User
             {

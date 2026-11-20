@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
-export function PrivateRoute({ children, role }: { children: ReactNode; role?: 'SuperAdmin' | 'Admin' | 'User' }) {
+export function PrivateRoute({ children, role }: { children: ReactNode; role?: 'SuperAdmin' | 'Admin' | 'Manager' | 'User' }) {
   const { user } = useAuth();
   const location = useLocation();
   if (!user) return <Navigate to="/login" replace state={{ from: location }} />;

@@ -113,7 +113,7 @@ public class SessionAndRoleTests(ApiFactory factory)
     {
         var c = await LoginAs("admin@demo.com", "Admin@123");
         var roles = await c.GetFromJsonAsync<List<RoleDto>>("/api/roles");
-        roles!.Select(r => r.Name).Should().BeEquivalentTo("SuperAdmin", "Admin", "User");
+        roles!.Select(r => r.Name).Should().BeEquivalentTo("SuperAdmin", "Admin", "Manager", "User");
     }
 
     [Fact]

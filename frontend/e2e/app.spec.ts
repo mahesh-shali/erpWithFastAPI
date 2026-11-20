@@ -55,6 +55,14 @@ test.describe('mobile', () => {
     await nav.getByRole('button', { name: 'Inventory' }).click();
     await nav.getByRole('button', { name: 'Stock Position' }).click();
     await nav.getByRole('link', { name: /Stock Position/ }).click();
+    await expect(page.getByRole('heading', { name: 'Stock position' })).toBeVisible();
+    await expect(nav).not.toBeInViewport(); // drawer closes after navigating
+
+    // A page without a screen yet shows Coming soon
+    await page.getByRole('button', { name: 'Open menu' }).click();
+    await nav.getByRole('button', { name: 'Accounts' }).click();
+    await nav.getByRole('button', { name: 'Receipts' }).click();
+    await nav.getByRole('link', { name: /Receipts/ }).click();
     await expect(page.getByRole('heading', { name: 'Coming soon' })).toBeVisible();
     await expect(nav).not.toBeInViewport(); // drawer closes after navigating
   });

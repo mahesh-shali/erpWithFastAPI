@@ -5,7 +5,7 @@ import { usePermissions } from '../auth/PermissionsContext';
 import { Icon } from './Icon';
 import { activePath, buildMenu, type MenuModuleNode } from './menu';
 
-const TOP_ICONS: Record<string, string> = { dashboard: 'home', analytics: 'chart', 'ai-chat': 'sparkle' };
+const TOP_ICONS: Record<string, string> = { dashboard: 'home', analytics: 'chart', 'ai-chat': 'sparkle', messages: 'chat' };
 
 /**
  * App shell. Desktop: fixed sidebar with a 3-level accordion (Module > Group > Page).

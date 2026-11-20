@@ -72,6 +72,266 @@ namespace Erp.Api.Data.Migrations
                     b.ToTable("chat_audit_log", (string)null);
                 });
 
+            modelBuilder.Entity("Erp.Api.Domain.ChatConversation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("DirectKey")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("direct_key");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<DateTime>("LastMessageAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_message_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_conversations");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_chat_conversations_created_by_user_id");
+
+                    b.HasIndex("OrganizationId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_chat_conversations_announcement")
+                        .HasFilter("kind = 'announcement'");
+
+                    b.HasIndex("OrganizationId", "DirectKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_chat_conversations_direct")
+                        .HasFilter("direct_key IS NOT NULL");
+
+                    b.ToTable("chat_conversations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_chat_conversations_kind", "kind IN ('direct', 'group', 'announcement')");
+                        });
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Ciphertext")
+                        .IsRequired()
+                        .HasMaxLength(65536)
+                        .HasColumnType("character varying(65536)")
+                        .HasColumnName("ciphertext");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Iv")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("iv");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid?>("SenderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sender_id");
+
+                    b.Property<Guid>("SenderKeyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sender_key_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_messages");
+
+                    b.HasIndex("SenderId")
+                        .HasDatabaseName("ix_chat_messages_sender_id");
+
+                    b.HasIndex("SenderKeyId")
+                        .HasDatabaseName("ix_chat_messages_sender_key_id");
+
+                    b.HasIndex("ConversationId", "Id")
+                        .HasDatabaseName("ix_chat_messages_conversation");
+
+                    b.ToTable("chat_messages", (string)null);
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatMessageKey", b =>
+                {
+                    b.Property<long>("MessageId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("message_id");
+
+                    b.Property<Guid>("RecipientKeyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipient_key_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("WrappedKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("wrapped_key");
+
+                    b.HasKey("MessageId", "RecipientKeyId")
+                        .HasName("pk_chat_message_keys");
+
+                    b.HasIndex("RecipientKeyId")
+                        .HasDatabaseName("ix_chat_message_keys_recipient");
+
+                    b.ToTable("chat_message_keys", (string)null);
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatParticipant", b =>
+                {
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("joined_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<long>("LastReadMessageId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_read_message_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.HasKey("ConversationId", "UserId")
+                        .HasName("pk_chat_participants");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_chat_participants_user");
+
+                    b.ToTable("chat_participants", (string)null);
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatUserKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("EncryptedPrivateKey")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("encrypted_private_key");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("fingerprint");
+
+                    b.Property<int>("KdfIterations")
+                        .HasColumnType("integer")
+                        .HasColumnName("kdf_iterations");
+
+                    b.Property<string>("KdfSalt")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("kdf_salt");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("PublicKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("public_key");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_user_keys");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_chat_user_keys_org");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_chat_user_keys_active")
+                        .HasFilter("revoked_at IS NULL");
+
+                    b.ToTable("chat_user_keys", (string)null);
+                });
+
             modelBuilder.Entity("Erp.Api.Domain.Customer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -114,6 +374,27 @@ namespace Erp.Api.Data.Migrations
                         .HasDatabaseName("ix_customers_org");
 
                     b.ToTable("customers", (string)null);
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.DocumentSeries", b =>
+                {
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Prefix")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("prefix");
+
+                    b.Property<int>("NextNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("next_number");
+
+                    b.HasKey("OrganizationId", "Prefix")
+                        .HasName("pk_document_series");
+
+                    b.ToTable("document_series", (string)null);
                 });
 
             modelBuilder.Entity("Erp.Api.Domain.EffectivePagePermission", b =>
@@ -259,7 +540,7 @@ namespace Erp.Api.Data.Migrations
                             Id = 202,
                             Key = "inventory-stock-addition",
                             ModuleId = 2,
-                            Name = "Stock Addition",
+                            Name = "Stock Movement",
                             SortOrder = 20
                         },
                         new
@@ -861,6 +1142,16 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 49,
+                            IsActive = true,
+                            IsImplemented = true,
+                            Key = "messages",
+                            Name = "Messages",
+                            Route = "/messages",
+                            SortOrder = 25
+                        },
+                        new
+                        {
                             Id = 6,
                             GroupId = 101,
                             IsActive = true,
@@ -930,7 +1221,7 @@ namespace Erp.Api.Data.Migrations
                             Id = 26,
                             GroupId = 106,
                             IsActive = true,
-                            IsImplemented = false,
+                            IsImplemented = true,
                             Key = "uom",
                             Name = "Units of Measure",
                             Route = "/master/uom",
@@ -941,7 +1232,7 @@ namespace Erp.Api.Data.Migrations
                             Id = 27,
                             GroupId = 106,
                             IsActive = true,
-                            IsImplemented = false,
+                            IsImplemented = true,
                             Key = "stores",
                             Name = "Stores",
                             Route = "/master/stores",
@@ -1128,7 +1419,7 @@ namespace Erp.Api.Data.Migrations
                             Id = 11,
                             GroupId = 201,
                             IsActive = true,
-                            IsImplemented = false,
+                            IsImplemented = true,
                             Key = "stock-position",
                             Name = "Stock Position",
                             Route = "/inventory/stock-position",
@@ -1139,9 +1430,9 @@ namespace Erp.Api.Data.Migrations
                             Id = 12,
                             GroupId = 202,
                             IsActive = true,
-                            IsImplemented = false,
+                            IsImplemented = true,
                             Key = "stock-addition",
-                            Name = "Stock Addition",
+                            Name = "Stock Entries",
                             Route = "/inventory/stock-addition",
                             SortOrder = 10
                         },
@@ -1326,9 +1617,9 @@ namespace Erp.Api.Data.Migrations
                             Id = 25,
                             GroupId = 902,
                             IsActive = true,
-                            IsImplemented = false,
+                            IsImplemented = true,
                             Key = "stock-report",
-                            Name = "Stock Report",
+                            Name = "Stock Ledger",
                             Route = "/reports/stock",
                             SortOrder = 10
                         },
@@ -1399,8 +1690,15 @@ namespace Erp.Api.Data.Migrations
                         .HasColumnType("numeric(12,2)")
                         .HasColumnName("unit_price");
 
+                    b.Property<Guid?>("UomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uom_id");
+
                     b.HasKey("Id")
                         .HasName("pk_products");
+
+                    b.HasIndex("UomId")
+                        .HasDatabaseName("ix_products_uom_id");
 
                     b.HasIndex("OrganizationId", "Category")
                         .HasDatabaseName("ix_products_org_cat");
@@ -1460,6 +1758,13 @@ namespace Erp.Api.Data.Migrations
                             Description = "Manages users and their rights (never beyond the admin's own rights)",
                             Level = 50,
                             Name = "Admin"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "Runs day-to-day operations: create and edit business documents, view users; no deletes or rights admin",
+                            Level = 30,
+                            Name = "Manager"
                         },
                         new
                         {
@@ -1576,6 +1881,18 @@ namespace Erp.Api.Data.Migrations
                             IsRestricted = false,
                             IsVisible = true,
                             PageId = 5,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 149,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 49,
                             RoleId = 1
                         },
                         new
@@ -2120,6 +2437,594 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 401,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 1,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 448,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 48,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 405,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 5,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 449,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 49,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 406,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 6,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 407,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 7,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 408,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 8,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 402,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 2,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 410,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 10,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 403,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 3,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 426,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 26,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 427,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 27,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 409,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 9,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 404,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 4,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 413,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 13,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 428,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 28,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 429,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 29,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 430,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 30,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 414,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 14,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 415,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 15,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 431,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 31,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 432,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 32,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 433,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 33,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 416,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 16,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 434,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 34,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 417,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 17,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 435,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 35,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 436,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 36,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 411,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 11,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 412,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 12,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 418,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 18,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 419,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 19,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 437,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 37,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 438,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 38,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 420,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 20,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 439,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 39,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 421,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 21,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 440,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 40,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 441,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 41,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 442,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 42,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 443,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 43,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 422,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 22,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 423,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 23,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 444,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 44,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 445,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 45,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 424,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 24,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 425,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 25,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 446,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 46,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 447,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 47,
+                            RoleId = 4
+                        },
+                        new
+                        {
                             Id = 201,
                             CanDelete = false,
                             CanRead = true,
@@ -2152,6 +3057,18 @@ namespace Erp.Api.Data.Migrations
                             IsRestricted = false,
                             IsVisible = true,
                             PageId = 5,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 249,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 49,
                             RoleId = 2
                         },
                         new
@@ -2696,6 +3613,424 @@ namespace Erp.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Erp.Api.Domain.StockBalance", b =>
+                {
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<decimal>("StockValue")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("stock_value");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<decimal>("ValuationRate")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("numeric(14,4)")
+                        .HasColumnName("valuation_rate");
+
+                    b.HasKey("OrganizationId", "ProductId", "StoreId")
+                        .HasName("pk_stock_balances");
+
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("ix_stock_balances_product_id");
+
+                    b.HasIndex("StoreId")
+                        .HasDatabaseName("ix_stock_balances_store_id");
+
+                    b.HasIndex("OrganizationId", "StoreId")
+                        .HasDatabaseName("ix_stock_balances_org_store");
+
+                    b.ToTable("stock_balances", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_stock_balances_quantity", "quantity >= 0");
+
+                            t.HasCheckConstraint("ck_stock_balances_value", "stock_value >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.StockEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("number");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateOnly>("PostingDate")
+                        .HasColumnType("date")
+                        .HasColumnName("posting_date");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("remarks");
+
+                    b.Property<Guid?>("SourceStoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_store_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Draft")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<Guid?>("TargetStoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_store_id");
+
+                    b.Property<decimal>("TotalValue")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("total_value");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_stock_entries");
+
+                    b.HasIndex("SourceStoreId")
+                        .HasDatabaseName("ix_stock_entries_source_store_id");
+
+                    b.HasIndex("TargetStoreId")
+                        .HasDatabaseName("ix_stock_entries_target_store_id");
+
+                    b.HasIndex("OrganizationId", "CreatedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_stock_entries_org_created");
+
+                    b.HasIndex("OrganizationId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("ux_stock_entries_org_number");
+
+                    b.ToTable("stock_entries", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_stock_entries_status", "status IN ('Draft','Submitted','Cancelled')");
+
+                            t.HasCheckConstraint("ck_stock_entries_type", "type IN ('Receipt','Issue','Transfer')");
+                        });
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.StockEntryLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_no");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<decimal>("Rate")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("numeric(14,4)")
+                        .HasColumnName("rate");
+
+                    b.Property<Guid>("StockEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("stock_entry_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_stock_entry_lines");
+
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("ix_stock_entry_lines_product_id");
+
+                    b.HasIndex("StockEntryId")
+                        .HasDatabaseName("ix_stock_entry_lines_entry");
+
+                    b.HasIndex("OrganizationId", "ProductId")
+                        .HasDatabaseName("ix_stock_entry_lines_org_prod");
+
+                    b.ToTable("stock_entry_lines", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_stock_entry_lines_quantity", "quantity > 0");
+
+                            t.HasCheckConstraint("ck_stock_entry_lines_rate", "rate >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.StockLedgerEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("IsReversal")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_reversal");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTime>("PostedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("posted_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateOnly>("PostingDate")
+                        .HasColumnType("date")
+                        .HasColumnName("posting_date");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<int>("QtyAfter")
+                        .HasColumnType("integer")
+                        .HasColumnName("qty_after");
+
+                    b.Property<int>("QtyChange")
+                        .HasColumnType("integer")
+                        .HasColumnName("qty_change");
+
+                    b.Property<decimal>("Rate")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("numeric(14,4)")
+                        .HasColumnName("rate");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
+                    b.Property<decimal>("ValuationRate")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("numeric(14,4)")
+                        .HasColumnName("valuation_rate");
+
+                    b.Property<decimal>("ValueAfter")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("value_after");
+
+                    b.Property<decimal>("ValueChange")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("value_change");
+
+                    b.Property<Guid?>("VoucherId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voucher_id");
+
+                    b.Property<string>("VoucherNo")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("voucher_no");
+
+                    b.Property<string>("VoucherType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("voucher_type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_stock_ledger");
+
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("ix_stock_ledger_product_id");
+
+                    b.HasIndex("StoreId")
+                        .HasDatabaseName("ix_stock_ledger_store_id");
+
+                    b.HasIndex("OrganizationId", "PostingDate")
+                        .HasDatabaseName("ix_stock_ledger_org_date");
+
+                    b.HasIndex("OrganizationId", "VoucherId")
+                        .HasDatabaseName("ix_stock_ledger_org_voucher");
+
+                    b.HasIndex("OrganizationId", "ProductId", "StoreId", "Id")
+                        .HasDatabaseName("ix_stock_ledger_org_prod_store");
+
+                    b.ToTable("stock_ledger", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_stock_ledger_qty_after", "qty_after >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.Store", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_default");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_stores");
+
+                    b.HasIndex("OrganizationId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_stores_org_default")
+                        .HasFilter("is_default");
+
+                    b.HasIndex("OrganizationId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("ux_stores_org_code");
+
+                    b.ToTable("stores", (string)null);
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.Uom", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_uoms");
+
+                    b.HasIndex("OrganizationId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("ux_uoms_org_code");
+
+                    b.ToTable("uoms", (string)null);
+                });
+
             modelBuilder.Entity("Erp.Api.Domain.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2899,6 +4234,101 @@ namespace Erp.Api.Data.Migrations
                     b.ToTable("user_sessions", (string)null);
                 });
 
+            modelBuilder.Entity("Erp.Api.Domain.ChatConversation", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_chat_conversations_users_created_by_user_id");
+
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_conversations_organizations_organization_id");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatMessage", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.ChatConversation", null)
+                        .WithMany()
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_messages_chat_conversations_conversation_id");
+
+                    b.HasOne("Erp.Api.Domain.User", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_chat_messages_users_sender_id");
+
+                    b.HasOne("Erp.Api.Domain.ChatUserKey", "SenderKey")
+                        .WithMany()
+                        .HasForeignKey("SenderKeyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_messages_chat_user_keys_sender_key_id");
+
+                    b.Navigation("Sender");
+
+                    b.Navigation("SenderKey");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatMessageKey", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.ChatMessage", null)
+                        .WithMany("Keys")
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_message_keys_chat_messages_message_id");
+
+                    b.HasOne("Erp.Api.Domain.ChatUserKey", null)
+                        .WithMany()
+                        .HasForeignKey("RecipientKeyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_message_keys_chat_user_keys_recipient_key_id");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatParticipant", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.ChatConversation", null)
+                        .WithMany("Participants")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_participants_chat_conversations_conversation_id");
+
+                    b.HasOne("Erp.Api.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_participants_users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatUserKey", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_user_keys_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_chat_user_keys_users_user_id");
+                });
+
             modelBuilder.Entity("Erp.Api.Domain.Customer", b =>
                 {
                     b.HasOne("Erp.Api.Domain.Organization", null)
@@ -2907,6 +4337,16 @@ namespace Erp.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_customers_organizations_organization_id");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.DocumentSeries", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_document_series_organizations_organization_id");
                 });
 
             modelBuilder.Entity("Erp.Api.Domain.MenuGroup", b =>
@@ -2983,6 +4423,14 @@ namespace Erp.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_products_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.Uom", "Uom")
+                        .WithMany()
+                        .HasForeignKey("UomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_products_uoms_uom_id");
+
+                    b.Navigation("Uom");
                 });
 
             modelBuilder.Entity("Erp.Api.Domain.RolePagePermission", b =>
@@ -3006,6 +4454,134 @@ namespace Erp.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_role_page_permissions_roles_role_id");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.StockBalance", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_balances_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_balances_products_product_id");
+
+                    b.HasOne("Erp.Api.Domain.Store", "Store")
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_balances_stores_store_id");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Store");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.StockEntry", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_entries_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.Store", "SourceStore")
+                        .WithMany()
+                        .HasForeignKey("SourceStoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stock_entries_stores_source_store_id");
+
+                    b.HasOne("Erp.Api.Domain.Store", "TargetStore")
+                        .WithMany()
+                        .HasForeignKey("TargetStoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stock_entries_stores_target_store_id");
+
+                    b.Navigation("SourceStore");
+
+                    b.Navigation("TargetStore");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.StockEntryLine", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_entry_lines_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_entry_lines_products_product_id");
+
+                    b.HasOne("Erp.Api.Domain.StockEntry", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("StockEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_entry_lines_stock_entries_stock_entry_id");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.StockLedgerEntry", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_ledger_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_ledger_products_product_id");
+
+                    b.HasOne("Erp.Api.Domain.Store", "Store")
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_ledger_stores_store_id");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Store");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.Store", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stores_organizations_organization_id");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.Uom", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_uoms_organizations_organization_id");
                 });
 
             modelBuilder.Entity("Erp.Api.Domain.User", b =>
@@ -3070,9 +4646,24 @@ namespace Erp.Api.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Erp.Api.Domain.ChatConversation", b =>
+                {
+                    b.Navigation("Participants");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatMessage", b =>
+                {
+                    b.Navigation("Keys");
+                });
+
             modelBuilder.Entity("Erp.Api.Domain.Order", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.StockEntry", b =>
+                {
+                    b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618
         }

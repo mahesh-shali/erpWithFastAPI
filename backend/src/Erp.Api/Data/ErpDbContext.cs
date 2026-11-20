@@ -37,6 +37,22 @@ public class ErpDbContext(DbContextOptions<ErpDbContext> options, ITenantContext
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<ChatAuditLog> ChatAuditLogs => Set<ChatAuditLog>();
 
+    // End-to-end encrypted chat (ciphertext only, see Domain/Chat.cs)
+    public DbSet<ChatUserKey> ChatUserKeys => Set<ChatUserKey>();
+    public DbSet<ChatConversation> ChatConversations => Set<ChatConversation>();
+    public DbSet<ChatParticipant> ChatParticipants => Set<ChatParticipant>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<ChatMessageKey> ChatMessageKeys => Set<ChatMessageKey>();
+
+    // Inventory
+    public DbSet<Uom> Uoms => Set<Uom>();
+    public DbSet<Store> Stores => Set<Store>();
+    public DbSet<StockEntry> StockEntries => Set<StockEntry>();
+    public DbSet<StockEntryLine> StockEntryLines => Set<StockEntryLine>();
+    public DbSet<StockBalance> StockBalances => Set<StockBalance>();
+    public DbSet<StockLedgerEntry> StockLedger => Set<StockLedgerEntry>();
+    public DbSet<DocumentSeries> DocumentSeries => Set<DocumentSeries>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         // All table/column/index/constraint mapping lives in Data/Configurations/*.

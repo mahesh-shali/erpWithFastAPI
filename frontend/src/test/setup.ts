@@ -4,6 +4,6 @@ import { afterEach, vi } from 'vitest';
 
 afterEach(() => {
   cleanup();
-  localStorage.clear();
+  globalThis.localStorage?.clear(); // absent in "@vitest-environment node" tests
   vi.restoreAllMocks();
 });

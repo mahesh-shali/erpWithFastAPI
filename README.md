@@ -240,6 +240,9 @@ Current migrations:
    the tree with their ids unchanged, so granted rights are kept, and adds 16 new pages with default rights.
 7. `AddVSmartModules`: more menu groups and pages (Coming soon) following the V.SMART ERP module list.
 8. `AddAnalyticsPage`: the top-level **Analytics** page (id 48) with its default rights (Admin: read; User: none).
+9. `AddInventory`: `uoms`, `stores`, `stock_entries` + `stock_entry_lines`, `stock_balances`, `stock_ledger_entries`,
+   `document_series`, and `products.uom_id`. Marks Units of Measure, Stores, Stock Position, Stock Entries and Stock
+   Ledger as implemented. No data is copied: each organization's Main Store and opening balances are created on first use.
 
 ### Changing the schema
 
@@ -328,7 +331,7 @@ ever committed. The migrator then sets up `AI_DB_USER`:
 
 | Table | Contents |
 |---|---|
-| `roles` | `id`, `name` (unique), `description`. Seeded by migration: `1 = Admin`, `2 = User`. |
+| `roles` | `id`, `name` (unique), `description`. Seeded by migration: `1 = Admin`, `2 = User`, `3 = SuperAdmin`, `4 = Manager`. |
 | `users.role_id` | FK → `roles.id` (one role per user) |
 
 - Seed rows are defined in code (`RoleConfiguration.HasData`). To add a role, add a row there (plus a
@@ -402,9 +405,13 @@ shared by concurrent requests, then retries. If the refresh fails, it returns to
 
 | Role | Level | Can manage | Can assign roles |
 |---|---|---|---|
-| **SuperAdmin** | 100 | Admins and Users, role defaults of Admin and User | Admin, User |
-| **Admin** | 50 | Users | User |
+| **SuperAdmin** | 100 | Admins, Managers and Users, role defaults of Admin, Manager and User | Admin, Manager, User |
+| **Admin** | 50 | Managers and Users | Manager, User |
+| **Manager** | 30 | Users (only if given write rights on the Users page; by default it is view-only) | User |
 | **User** | 10 | nobody | – |
+
+Manager default rights: what an Admin has, **without Delete** and without User Rights, Role Rights and the
+Pages master; the Users list is read-only. Change them in Role Rights like any other role.
 
 - The person who **registers an organization becomes its SuperAdmin**. The migration promoted each
   existing organization's earliest Admin.
@@ -499,7 +506,100 @@ AI Assistant, read/write/update on Customers and Orders, and nothing in Master. 
 `DefaultPermissions.cs` plus a migration, or per organization in Master > Role Rights.
 
 Demo logins (fresh database): `admin@demo.com` / `Admin@123` (SuperAdmin), `manager@demo.com` /
-`Manager@123` (Admin), `staff@demo.com` / `Staff@1234` (User).
+`Manager@123` (Admin), `lead@demo.com` / `Lead@12345` (Manager), `staff@demo.com` / `Staff@1234` (User).
+
+## Inventory module
+
+Modelled on the usual ERP design (ERPNext's Warehouse, Stock Entry, Stock Ledger Entry and Bin; moving-average
+valuation), written for this code base.
+
+| Screen | Route | Page key | What it does |
+|---|---|---|---|
+| Units of Measure | `/master/uom` | `uom` | NOS, KG, BOX… set on products |
+| Stores | `/master/stores` | `stores` | Warehouses. One is the default (**Main Store**, created automatically) |
+| Stock Entries | `/inventory/stock-addition` | `stock-addition` | Receipt / Issue / Transfer documents: Draft → Submitted → Cancelled |
+| Stock Position | `/inventory/stock-position` | `stock-position` | Quantity, valuation rate and value per item and store; low-stock filter |
+| Stock Ledger | `/reports/stock` | `stock-report` | Every movement with the balance and value after it |
+
+**How stock moves.** Nothing changes stock except the posting service
+([StockPosting.cs](backend/src/Erp.Api/Services/StockPosting.cs)). It locks the affected `stock_balances` rows in a
+fixed order (no deadlocks), refuses to take any store below zero, writes one immutable `stock_ledger_entries` row
+per movement, and keeps `products.stock_quantity` equal to the sum over all stores. It is used by:
+
+- **Stock entries**, on submit. Cancelling reverses the entry's ledger rows at the rates they were posted at, and is
+  refused if that stock has since been used.
+- **Sales orders**, which issue from the default store. An order fails if the default store is short, even when
+  other stores hold stock.
+- **Products**: opening stock on create, and a changed stock figure on edit (posted as a Product Adjustment).
+- **First use per organization**, which creates the Main Store and posts every product's existing stock as Opening,
+  valued at the unit price.
+
+**Valuation (moving average).** Receipt: new rate = (value before + qty × rate) / (qty before + qty). Issue and transfer
+go out at the current rate. A store that reaches zero quantity has zero value.
+
+**Rights.** Read = list and view · Write = create a draft · Update = edit a draft and **Submit** · Delete = delete a
+draft and **Cancel**. Defaults: Admin has everything; User can read Stock Position, Stock Ledger, Units and Stores.
+Lookups that several screens need (`/api/stock/stores`, `/uoms`, `/items`) accept read on any of those pages
+(`[RequireAnyPage]`).
+
+| Method & path | Right |
+|---|---|
+| `GET/POST /api/uoms`, `PUT/DELETE /api/uoms/{id}` | uom read / write / update / delete |
+| `GET/POST /api/stores`, `PUT/DELETE /api/stores/{id}` | stores read / write / update / delete |
+| `GET /api/stock-entries?status&type&page`, `GET /{id}` | stock-addition read |
+| `POST /api/stock-entries` · `PUT /{id}` · `POST /{id}/submit` | write · update · update |
+| `DELETE /api/stock-entries/{id}` · `POST /{id}/cancel` | delete · delete |
+| `GET /api/stock/position?storeId&search&lowOnly&page` | stock-position read |
+| `GET /api/stock/ledger?productId&storeId&from&to&page` | stock-report read |
+
+Next modules (planned, one at a time): Purchase (Vendors, Purchase Orders, Goods Receipt, Bills), Sales (Invoices,
+Delivery Challans), Accounts, and HR, with Indian GST on purchase and sales documents. Purchase and sales documents
+will post stock through the same service.
+
+## Messages: end-to-end encrypted chat
+
+Page `messages` (`/messages`, top-level menu, default rights Admin/User `VRW`; SuperAdmin has every right).
+Works the same in the web app and the desktop app: they share one identity per user.
+
+**Who can talk to whom** (enforced in `Services/ChatService.cs`, not only in the UI):
+
+| | Direct & group chats | Announcements |
+|---|---|---|
+| Members (every role below SuperAdmin: Admin, Manager, User) | with any member of **their own organization** | read only |
+| SuperAdmin (organization owner) | none: can't list, open, join or post in them, and can't be added | posts; every org user receives |
+
+Hidden conversations answer 404 (existence isn't revealed). Each organization has its own Announcements channel.
+
+**Encryption** (`frontend/src/chat/crypto.ts`, WebCrypto, copied unchanged to `desktop/src/chat/`):
+- Each user has an ECDH P-256 key pair. The private key is uploaded only encrypted with AES-256-GCM under a key
+  derived from the user's passphrase (PBKDF2-SHA256, 600k iterations); after unlocking it is kept on the device
+  as a non-extractable `CryptoKey` (IndexedDB) and deleted on sign-out.
+- Every message has a fresh AES-256-GCM key, wrapped for each recipient key via ECDH → HKDF → AES-GCM. The server
+  rejects a message (409) unless it is wrapped for **exactly** the members' current keys, so nobody is silently
+  left out and no extra key can be slipped in. Associated data binds ciphertext to conversation and sender key.
+- The server stores ciphertext, wrapped keys and public keys only. It still knows who talks to whom and when.
+  Users can compare key fingerprints (**Verify keys**) to rule out a substituted public key.
+- Forgotten passphrase = **Reset key**: a new key; messages sent to the old key become unreadable (by design).
+  People who haven't set up secure messaging yet can't read messages sent before they did.
+
+**Live updates**: `GET /api/chat/stream` (Server-Sent Events) sends notices only (`{type, conversationId, messageId}`),
+never content; clients then fetch and decrypt. Events fan out across API replicas over Redis pub/sub
+(`erp:chat:events`); without Redis, in-process. The stream closes when the access token expires (so a revoked
+session stops receiving) and clients reconnect. The UI also re-syncs every 45 s in case a proxy buffers SSE.
+In the desktop app the stream runs in the Electron main process and only validated notices reach the renderer.
+
+| Method | Path | Right |
+|---|---|---|
+| GET | `/api/chat/keys/me` (204 = not set up) | Read |
+| POST | `/api/chat/keys`, `/api/chat/keys/reset` · PUT `/api/chat/keys/me/backup` | Read |
+| GET | `/api/chat/contacts`, `/api/chat/conversations`, `/api/chat/conversations/{id}/messages?before=&after=` | Read |
+| POST | `/api/chat/conversations/{id}/read` | Read |
+| POST | `/api/chat/conversations` · GET `/api/chat/conversations/{id}/recipients` · POST `/api/chat/conversations/{id}/messages` | Write |
+| GET | `/api/chat/stream` | Read |
+
+Tables `chat_user_keys`, `chat_conversations`, `chat_participants`, `chat_messages`, `chat_message_keys`
+(migration `AddSecureChat`) have RLS enabled with no policies, so no role other than the API owner (in particular
+not the AI service's `erp_ai_ro`) can read them.
 
 ## How the AI chatbot works
 

@@ -19,7 +19,21 @@ export const IPC = {
   updatesDownload: 'erp:updates:download',
   updatesInstall: 'erp:updates:install',
   updatesStatus: 'erp:updates:status',
+  chatStart: 'erp:chat:start',
+  chatStop: 'erp:chat:stop',
+  chatEvent: 'erp:chat:event',
 } as const;
+
+/**
+ * Live notice for Messages (end-to-end encrypted chat). The main process holds the event stream
+ * (GET /api/chat/stream) and forwards only these validated notices: never content, never tokens.
+ * ready = stream connected; reconnected = connected again after a drop (re-sync what may have been missed).
+ */
+export interface ChatStreamEvent {
+  type: 'message' | 'conversation' | 'ready' | 'reconnected';
+  conversationId?: string | null;
+  messageId?: number | null;
+}
 
 /**
  * App updates from GitHub Releases (electron-updater). The user starts the download; once downloaded, the
@@ -48,7 +62,7 @@ export interface SessionUser {
   id: string;
   email: string;
   fullName: string;
-  role: 'SuperAdmin' | 'Admin' | 'User';
+  role: 'SuperAdmin' | 'Admin' | 'Manager' | 'User';
   organizationId: string;
 }
 
@@ -95,6 +109,12 @@ export interface ErpBridge {
     /** Quits, installs the downloaded update and starts the new version. */
     install(): Promise<void>;
     onStatus(listener: (status: UpdateStatus) => void): () => void;
+  };
+  chat: {
+    /** Opens the live event stream (idempotent). */
+    start(): Promise<void>;
+    stop(): Promise<void>;
+    onEvent(listener: (event: ChatStreamEvent) => void): () => void;
   };
   app: { platform: string; versions: { app: string; electron: string; chrome: string } };
 }

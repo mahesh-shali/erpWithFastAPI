@@ -8,7 +8,7 @@ import { Splash } from './Splash';
 import { UpdateButton } from './UpdateButton';
 import { useLastPage } from './lastPage';
 
-const TOP_ICONS: Record<string, string> = { dashboard: 'home', analytics: 'chart', 'ai-chat': 'sparkle' };
+const TOP_ICONS: Record<string, string> = { dashboard: 'home', analytics: 'chart', 'ai-chat': 'sparkle', messages: 'chat' };
 
 /**
  * App shell. Desktop: fixed sidebar with a 3-level accordion (Module > Group > Page).

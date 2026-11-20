@@ -11,7 +11,7 @@ export interface UserDto {
   id: string;
   email: string;
   fullName: string;
-  role: 'SuperAdmin' | 'Admin' | 'User';
+  role: 'SuperAdmin' | 'Admin' | 'Manager' | 'User';
   organizationId: string;
 }
 /** The refresh token never appears here: the server keeps it in an HttpOnly cookie. */
@@ -145,7 +145,51 @@ export interface SetRightsItem { pageId: number; useDefault: boolean; rights: Pa
 // ---------- Business data ----------
 export interface PagedResult<T> { items: T[]; page: number; pageSize: number; total: number }
 export interface Customer { id: string; name: string; email: string | null; city: string | null; country: string | null }
-export interface Product { id: string; sku: string; name: string; category: string | null; unitPrice: number; stockQuantity: number }
+export interface Product {
+  id: string; sku: string; name: string; category: string | null; unitPrice: number; stockQuantity: number;
+  uomId?: string | null; uom?: string | null;
+}
+export interface UpsertProduct { sku: string; name: string; category: string | null; unitPrice: number; stockQuantity: number; uomId: string | null }
+
+// ---------- Inventory ----------
+export interface Uom { id: string; code: string; name: string; isActive: boolean }
+export interface Store { id: string; code: string; name: string; location: string | null; isDefault: boolean; isActive: boolean }
+export interface ItemLookup { id: string; sku: string; name: string; uom: string | null; stockQuantity: number; unitPrice: number }
+export type StockEntryType = 'Receipt' | 'Issue' | 'Transfer';
+export type DocStatus = 'Draft' | 'Submitted' | 'Cancelled';
+export interface StockEntryLine { productId: string; sku: string; productName: string; uom: string | null; quantity: number; rate: number; amount: number }
+export interface StockEntry {
+  id: string; number: string; type: StockEntryType; status: DocStatus; postingDate: string;
+  sourceStoreId: string | null; sourceStore: string | null; targetStoreId: string | null; targetStore: string | null;
+  remarks: string | null; totalValue: number; createdAt: string; submittedAt: string | null; cancelledAt: string | null;
+  lines: StockEntryLine[];
+}
+export interface StockEntrySummary {
+  id: string; number: string; type: StockEntryType; status: DocStatus; postingDate: string;
+  sourceStore: string | null; targetStore: string | null; lineCount: number; totalValue: number; createdAt: string;
+}
+export interface UpsertStockEntry {
+  type: StockEntryType; postingDate: string | null; sourceStoreId: string | null; targetStoreId: string | null;
+  remarks: string | null; lines: { productId: string; quantity: number; rate: number | null }[];
+}
+export interface StockPositionRow {
+  productId: string; sku: string; name: string; category: string | null; uom: string | null;
+  storeId: string; store: string; quantity: number; valuationRate: number; stockValue: number;
+}
+export interface StockPosition extends PagedResult<StockPositionRow> { totalQuantity: number; totalValue: number }
+export interface StockLedgerRow {
+  id: number; postingDate: string; postedAt: string; productId: string; sku: string; productName: string;
+  storeId: string; store: string; voucherType: string; voucherId: string | null; voucherNo: string; isReversal: boolean;
+  qtyChange: number; qtyAfter: number; rate: number; valuationRate: number; valueChange: number; valueAfter: number;
+}
+
+/** Builds a query string from the non-empty values. */
+export const qs = (params: Record<string, string | number | boolean | null | undefined>) => {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v !== null && v !== undefined && v !== '' && v !== false) p.set(k, String(v));
+  const s = p.toString();
+  return s ? `?${s}` : '';
+};
 export interface Order { id: string; customerId: string; status: string; totalAmount: number; orderedAt: string; items: unknown[] }
 
 const json = (body: unknown) => JSON.stringify(body);
@@ -169,6 +213,37 @@ export const api = {
   deleteCustomer: (id: string) => request<void>(`/api/customers/${id}`, { method: 'DELETE' }),
   products: (page = 1) => request<PagedResult<Product>>(`/api/products?page=${page}&pageSize=25`),
   deleteProduct: (id: string) => request<void>(`/api/products/${id}`, { method: 'DELETE' }),
+  createProduct: (p: UpsertProduct) => request<Product>('/api/products', { method: 'POST', body: json(p) }),
+  updateProduct: (id: string, p: UpsertProduct) => request<Product>(`/api/products/${id}`, { method: 'PUT', body: json(p) }),
+
+  // Inventory masters (full lists for their own screens; lookups for everyone who can open an inventory screen)
+  uoms: (all = true) => request<Uom[]>(`/api/uoms${qs({ all })}`),
+  saveUom: (u: Omit<Uom, 'id'>, id?: string) =>
+    request<Uom>(id ? `/api/uoms/${id}` : '/api/uoms', { method: id ? 'PUT' : 'POST', body: json(u) }),
+  deleteUom: (id: string) => request<void>(`/api/uoms/${id}`, { method: 'DELETE' }),
+  stores: (all = true) => request<Store[]>(`/api/stores${qs({ all })}`),
+  saveStore: (s: Omit<Store, 'id'>, id?: string) =>
+    request<Store>(id ? `/api/stores/${id}` : '/api/stores', { method: id ? 'PUT' : 'POST', body: json(s) }),
+  deleteStore: (id: string) => request<void>(`/api/stores/${id}`, { method: 'DELETE' }),
+  lookupStores: () => request<Store[]>('/api/stock/stores'),
+  lookupUoms: () => request<Uom[]>('/api/stock/uoms'),
+  lookupItems: (search = '') => request<ItemLookup[]>(`/api/stock/items${qs({ search })}`),
+
+  // Stock entries: Draft -> Submitted -> Cancelled
+  stockEntries: (f: { status?: string; type?: string; page?: number } = {}) =>
+    request<PagedResult<StockEntrySummary>>(`/api/stock-entries${qs({ ...f, pageSize: 25 })}`),
+  stockEntry: (id: string) => request<StockEntry>(`/api/stock-entries/${id}`),
+  createStockEntry: (e: UpsertStockEntry) => request<StockEntry>('/api/stock-entries', { method: 'POST', body: json(e) }),
+  updateStockEntry: (id: string, e: UpsertStockEntry) =>
+    request<StockEntry>(`/api/stock-entries/${id}`, { method: 'PUT', body: json(e) }),
+  deleteStockEntry: (id: string) => request<void>(`/api/stock-entries/${id}`, { method: 'DELETE' }),
+  submitStockEntry: (id: string) => request<StockEntry>(`/api/stock-entries/${id}/submit`, { method: 'POST' }),
+  cancelStockEntry: (id: string) => request<StockEntry>(`/api/stock-entries/${id}/cancel`, { method: 'POST' }),
+
+  stockPosition: (f: { storeId?: string; search?: string; lowOnly?: boolean; page?: number } = {}) =>
+    request<StockPosition>(`/api/stock/position${qs({ ...f, pageSize: 50 })}`),
+  stockLedger: (f: { productId?: string; storeId?: string; from?: string; to?: string; page?: number } = {}) =>
+    request<PagedResult<StockLedgerRow>>(`/api/stock/ledger${qs({ ...f, pageSize: 50 })}`),
   orders: () => request<Order[]>('/api/orders?limit=25'),
 
   pages: () => request<PageDto[]>('/api/master/pages'),

@@ -80,7 +80,7 @@ is an HttpOnly cookie (`erp_refresh`, path `/api/auth`) with rotation + reuse de
 org role default → system role default; SuperAdmin has everything; `isRestricted` hard-blocks.
 The single source of truth is the SQL function `effective_page_permissions(user)`, used by both API and AI.
 API endpoints are protected with `[RequirePage(PageKeys.X, PageAction.Y)]` (`Services/PermissionService.cs`).
-Role hierarchy by `level` (SuperAdmin 100 > Admin 50 > User 10): users only manage roles strictly below them
+Role hierarchy by `level` (SuperAdmin 100 > Admin 50 > Manager 30 > User 10): users only manage roles strictly below them
 and cannot grant rights they lack.
 
 **AI chat flow** (`ai-service/app/`): `auth.py` (JWT + session) → Redis rate limit and answer cache
@@ -115,10 +115,15 @@ Routes in `src/App.tsx` mirror each page's `route`; unbuilt pages fall through t
   API integration tests, a route case in `App.test.tsx`, an e2e journey in `e2e/screens.spec.ts`, and a manual
   check in `scripts/manual-checks.json` (see TESTING.md).
 - Running `dotnet test` rebuilds `Erp.Api` and stops a `dotnet watch` started by `dev.sh`; restart the API afterwards.
+- **Stock changes only through `IStockPosting.PostAsync`** (inside a transaction, after `EnsureDefaultStoreAsync`). Never
+  update `products.stock_quantity` or `stock_balances` directly: the invariant is stock_quantity = sum of balances, and
+  every movement needs a ledger row. New stock documents (GRN, delivery challan…) follow the Stock Entry pattern:
+  Draft → Submitted (post) → Cancelled (reverse the voucher's ledger rows), numbers from `NextNumberAsync(prefix)`.
+- Vite's watcher can miss files written by scripts on Windows; if the dev app shows old code, `touch` the files.
 - `ai-service/.env` is used only by `dev.sh`; `run-local.sh` sets `AI_SERVICE_ENV_FILE=none` so the root env file wins.
 
 ## Demo data
 
 `--seed` (dev only) creates *Demo Corp* and *Other Tenant Ltd* (used by tests to prove isolation).
 Logins: `admin@demo.com` / `Admin@123` (SuperAdmin), `manager@demo.com` / `Manager@123` (Admin),
-`staff@demo.com` / `Staff@1234` (User).
+`lead@demo.com` / `Lead@12345` (Manager), `staff@demo.com` / `Staff@1234` (User).

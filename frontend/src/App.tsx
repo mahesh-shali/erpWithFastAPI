@@ -4,9 +4,13 @@ import { PrivateRoute } from './auth/PrivateRoute';
 import { Layout } from './components/Layout';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { ComingSoonRoute } from './pages/ComingSoonPage';
+import { StoresPage, UomsPage } from './pages/inventory/MasterPages';
+import { StockEntriesPage, StockEntryPage } from './pages/inventory/StockEntryPages';
+import { StockLedgerPage, StockPositionPage } from './pages/inventory/StockReportPages';
 import { DashboardPage } from './pages/DashboardPage';
 import { AssistantPage, CustomersPage, OrdersPage, ProductsPage } from './pages/DataPages';
 import { LoginPage } from './pages/LoginPage';
+import { MessagesPage } from './pages/MessagesPage';
 import { PagesPage } from './pages/master/PagesPage';
 import { RoleRightsPage } from './pages/master/RoleRightsPage';
 import { UserRightsPage } from './pages/master/UserRightsPage';
@@ -39,6 +43,7 @@ export default function App() {
         <Route index element={<RequirePage page="dashboard"><DashboardPage /></RequirePage>} />
         <Route path="analytics" element={<RequirePage page="analytics"><AnalyticsPage /></RequirePage>} />
         <Route path="assistant" element={<RequirePage page="ai-chat"><AssistantPage /></RequirePage>} />
+        <Route path="messages" element={<RequirePage page="messages"><MessagesPage /></RequirePage>} />
         <Route path="master/users" element={<RequirePage page="master-users"><UsersPage /></RequirePage>} />
         <Route path="master/user-rights" element={<RequirePage page="master-user-rights"><UserRightsPage /></RequirePage>} />
         <Route path="master/role-rights" element={<RequirePage page="master-role-rights"><RoleRightsPage /></RequirePage>} />
@@ -46,6 +51,13 @@ export default function App() {
         <Route path="master/products" element={<RequirePage page="products"><ProductsPage /></RequirePage>} />
         <Route path="master/pages" element={<RequirePage page="master-pages"><PagesPage /></RequirePage>} />
         <Route path="sales/orders" element={<RequirePage page="orders"><OrdersPage /></RequirePage>} />
+        {/* Inventory */}
+        <Route path="master/uom" element={<RequirePage page="uom"><UomsPage /></RequirePage>} />
+        <Route path="master/stores" element={<RequirePage page="stores"><StoresPage /></RequirePage>} />
+        <Route path="inventory/stock-addition" element={<RequirePage page="stock-addition"><StockEntriesPage /></RequirePage>} />
+        <Route path="inventory/stock-addition/:id" element={<RequirePage page="stock-addition"><StockEntryPage /></RequirePage>} />
+        <Route path="inventory/stock-position" element={<RequirePage page="stock-position"><StockPositionPage /></RequirePage>} />
+        <Route path="reports/stock" element={<RequirePage page="stock-report"><StockLedgerPage /></RequirePage>} />
         {LEGACY_ALIASES.map(([from, to]) => (
           <Route key={from} path={from} element={<Navigate to={to} replace />} />
         ))}

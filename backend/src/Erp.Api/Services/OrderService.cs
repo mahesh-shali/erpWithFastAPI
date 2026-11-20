@@ -11,7 +11,7 @@ public interface IOrderService
     Task<OrderDto> UpdateStatusAsync(Guid id, string status, CancellationToken ct);
 }
 
-public sealed class OrderService(ErpDbContext db) : IOrderService
+public sealed class OrderService(ErpDbContext db, IStockPosting posting) : IOrderService
 {
     // Allowed state transitions
     private static readonly Dictionary<string, string[]> Transitions = new()
@@ -45,27 +45,25 @@ public sealed class OrderService(ErpDbContext db) : IOrderService
         // The connection uses a retrying execution strategy (EnableRetryOnFailure), which refuses
         // user-initiated transactions unless the whole unit of work runs inside the strategy,
         // so a transient failure retries everything (transaction included) from the start.
+        // Orders ship from the default store: stock goes out through the stock ledger at the moving-average
+        // rate, which also lowers products.stock_quantity.
+        var store = await posting.EnsureDefaultStoreAsync(ct);
         var strategy = db.Database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
             db.ChangeTracker.Clear(); // a retry must not re-add entities from the failed attempt
             await using var tx = await db.Database.BeginTransactionAsync(ct);
+            var orderId = Guid.NewGuid();
 
-            // Atomic, race-free stock decrement: UPDATE ... WHERE stock >= qty
-            // Lock product rows in one global order (by id). Otherwise concurrent orders for [A, B] and [B, A]
-            // each hold one row lock and wait for the other's: a deadlock (found by the k6 load test).
-            foreach (var item in req.Items.OrderBy(i => i.ProductId))
-            {
-                var updated = await db.Products
-                    .Where(p => p.Id == item.ProductId && p.StockQuantity >= item.Quantity)
-                    .ExecuteUpdateAsync(s => s.SetProperty(p => p.StockQuantity, p => p.StockQuantity - item.Quantity), ct);
-                if (updated == 0)
-                    throw new DomainException($"Insufficient stock for product {products[item.ProductId].Sku}.");
-            }
+            // PostAsync locks the balance rows in one global order (product, store), so concurrent orders for
+            // [A, B] and [B, A] can't deadlock, and refuses to take any store below zero (no oversell).
+            await posting.PostAsync(req.Items.Select(i => new StockMovement(i.ProductId, store, -i.Quantity)).ToList(),
+                new Voucher(VoucherType.SalesOrder, orderId, "SO-" + orderId.ToString("N")[..8].ToUpperInvariant(),
+                    DateOnly.FromDateTime(DateTime.UtcNow)), ct);
 
             var order = new Order
             {
-                Id = Guid.NewGuid(),
+                Id = orderId,
                 CustomerId = req.CustomerId,
                 Items = req.Items.Select(i => new OrderItem
                 {

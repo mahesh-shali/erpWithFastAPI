@@ -1,4 +1,4 @@
-import type { BridgeResponse, DesktopSettings, ErpBridge, SessionInfo, UpdateStatus } from '../../electron/shared/contract';
+import type { BridgeResponse, ChatStreamEvent, DesktopSettings, ErpBridge, SessionInfo, UpdateStatus } from '../../electron/shared/contract';
 import type { UserDto } from '../api/client';
 
 /**
@@ -8,6 +8,7 @@ import type { UserDto } from '../api/client';
 export const fakeState: {
   user: UserDto | null; settings: DesktopSettings; signedOut: Set<() => void>;
   update: UpdateStatus; updateListeners: Set<(s: UpdateStatus) => void>; updateCalls: string[];
+  chatRunning: boolean; chatListeners: Set<(e: ChatStreamEvent) => void>;
 } = {
   user: null,
   settings: { environment: 'local', serverUrl: 'http://localhost:8088', serverUrlLocked: false },
@@ -15,6 +16,8 @@ export const fakeState: {
   update: { state: 'idle' },
   updateListeners: new Set(),
   updateCalls: [],
+  chatRunning: false,
+  chatListeners: new Set(),
 };
 
 /** Simulates the main process pushing a new update status. */
@@ -70,8 +73,21 @@ export const fakeBridge: ErpBridge = {
       return () => fakeState.updateListeners.delete(fn);
     },
   },
+  chat: {
+    start: async () => { fakeState.chatRunning = true; },
+    stop: async () => { fakeState.chatRunning = false; },
+    onEvent: (fn) => {
+      fakeState.chatListeners.add(fn);
+      return () => fakeState.chatListeners.delete(fn);
+    },
+  },
   app: { platform: 'test', versions: { app: '0.0.0', electron: '', chrome: '' } },
 };
+
+/** Simulates the main process forwarding a Messages live event. */
+export function emitChat(event: ChatStreamEvent) {
+  fakeState.chatListeners.forEach((fn) => fn(event));
+}
 
 export function resetFakeBridge() {
   fakeState.user = null;
@@ -80,4 +96,6 @@ export function resetFakeBridge() {
   fakeState.update = { state: 'idle' };
   fakeState.updateListeners.clear();
   fakeState.updateCalls = [];
+  fakeState.chatRunning = false;
+  fakeState.chatListeners.clear();
 }

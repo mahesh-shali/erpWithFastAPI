@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC, type ErpBridge, type UpdateStatus } from '../shared/contract';
+import { IPC, type ChatStreamEvent, type ErpBridge, type UpdateStatus } from '../shared/contract';
 
 /**
  * The only API the renderer gets (window.erp). It exposes narrow functions, never ipcRenderer itself,
@@ -32,6 +32,15 @@ const bridge: ErpBridge = {
       const handler = (_e: unknown, status: UpdateStatus) => listener(status);
       ipcRenderer.on(IPC.updatesStatus, handler);
       return () => ipcRenderer.removeListener(IPC.updatesStatus, handler);
+    },
+  },
+  chat: {
+    start: () => ipcRenderer.invoke(IPC.chatStart),
+    stop: () => ipcRenderer.invoke(IPC.chatStop),
+    onEvent: (listener) => {
+      const handler = (_e: unknown, event: ChatStreamEvent) => listener(event);
+      ipcRenderer.on(IPC.chatEvent, handler);
+      return () => ipcRenderer.removeListener(IPC.chatEvent, handler);
     },
   },
   app: {

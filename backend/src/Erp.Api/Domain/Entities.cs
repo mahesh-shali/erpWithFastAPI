@@ -39,24 +39,28 @@ public class Role
     public int Level { get; set; }
 }
 
-/// <summary>Well-known seeded roles (hierarchy SuperAdmin > Admin > User). Ids are referenced by seed data.</summary>
+/// <summary>Well-known seeded roles (hierarchy SuperAdmin > Admin > Manager > User). Ids are referenced by seed data.</summary>
 public static class Roles
 {
     public const string SuperAdmin = "SuperAdmin";
     public const string Admin = "Admin";
+    public const string Manager = "Manager";
     public const string User = "User";
     public const int SuperAdminId = 3;
     public const int AdminId = 1;
     public const int UserId = 2;
+    public const int ManagerId = 4;
 
     public const int SuperAdminLevel = 100;
     public const int AdminLevel = 50;
+    public const int ManagerLevel = 30;
     public const int UserLevel = 10;
 
     public static int LevelOf(string role) => role switch
     {
         SuperAdmin => SuperAdminLevel,
         Admin => AdminLevel,
+        Manager => ManagerLevel,
         User => UserLevel,
         _ => 0,
     };
@@ -113,6 +117,8 @@ public static class PageKeys
     public const string Products = "products";
     public const string Orders = "orders";
     public const string AiChat = "ai-chat";
+    /// <summary>End-to-end encrypted messaging between organization members (+ owner announcements).</summary>
+    public const string Messages = "messages";
     public const string MasterUsers = "master-users";
     public const string MasterUserRights = "master-user-rights";
     public const string MasterRoleRights = "master-role-rights";
@@ -285,7 +291,10 @@ public class Product : ITenantOwned
     public string Name { get; set; } = default!;
     public string? Category { get; set; }
     public decimal UnitPrice { get; set; }
+    /// <summary>Total over all stores; kept equal to the sum of stock_balances by the posting service.</summary>
     public int StockQuantity { get; set; }
+    public Guid? UomId { get; set; }
+    public Uom? Uom { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 

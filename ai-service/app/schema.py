@@ -17,7 +17,7 @@ order_items(id uuid PK, order_id uuid FK->orders.id, product_id uuid FK->product
             quantity int, unit_price numeric(12,2)  -- price at time of order)
 
 org_users(id uuid, full_name text, email text,
-          role text  -- one of Admin, User,
+          role text  -- one of SuperAdmin, Admin, Manager, User,
           created_at timestamptz, last_login_at timestamptz  -- NULL = never signed in)
   -- The people who log in to this ERP (staff accounts of this organization). Read-only view.
 

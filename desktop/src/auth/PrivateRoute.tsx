@@ -3,7 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { Splash } from '../components/Splash';
 import { useAuth } from './AuthContext';
 
-export function PrivateRoute({ children, role }: { children: ReactNode; role?: 'SuperAdmin' | 'Admin' | 'User' }) {
+export function PrivateRoute({ children, role }: { children: ReactNode; role?: 'SuperAdmin' | 'Admin' | 'Manager' | 'User' }) {
   const { user, ready } = useAuth();
   const location = useLocation();
   if (!ready) return <Splash message="Opening where you left off…" />;
