@@ -150,3 +150,34 @@ describe('ApiClient', () => {
     expect(onSignedOut).not.toHaveBeenCalled(); // user-initiated
   });
 });
+
+describe('openStream (Messages live events)', () => {
+  const streamRes = (status = 200) => new Response(status === 200 ? 'event: ready\ndata: {}\n\n' : null, {
+    status, headers: { 'Content-Type': 'text/event-stream' },
+  });
+
+  it('sends the access token from the main process and refreshes it once on 401', async () => {
+    let streams = 0;
+    const { client, fetchMock, header } = setup((url) => {
+      if (url.endsWith('/api/auth/login')) return json(authBody('t1'), 200, [refreshCookie('r1')]);
+      if (url.endsWith('/api/auth/refresh')) return json(authBody('t2'), 200, [refreshCookie('r2')]);
+      if (url.endsWith('/api/chat/stream')) return streamRes(++streams === 1 ? 401 : 200);
+      return json({}, 404);
+    });
+    await client.login('admin@demo.com', 'pw');
+    const res = await client.openStream('/api/chat/stream', new AbortController().signal);
+    expect(res.status).toBe(200);
+    expect(res.body).not.toBeNull();
+    expect(header(1, 'Authorization')).toBe('Bearer t1');
+    expect(header(3, 'Authorization')).toBe('Bearer t2');
+    expect(header(3, 'Accept')).toBe('text/event-stream');
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it('refuses paths outside /api and /ai and needs a session', async () => {
+    const { client, fetchMock } = setup(() => json({}));
+    expect((await client.openStream('https://evil.test/x', new AbortController().signal)).status).toBe(400);
+    expect((await client.openStream('/api/chat/stream', new AbortController().signal)).status).toBe(401);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

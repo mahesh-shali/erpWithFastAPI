@@ -136,7 +136,40 @@ export class ApiClient {
     return { status: res.status, body: res.body };
   }
 
+  /**
+   * Opens a long-lived GET stream (Server-Sent Events, e.g. /api/chat/stream) with the session's access token,
+   * refreshing once on a 401 like request(). No timeout: the caller's signal ends it. The body is returned only
+   * for a 2xx response. Throws on network errors.
+   */
+  async openStream(path: string, signal: AbortSignal): Promise<{ status: number; body: ReadableStream<Uint8Array> | null }> {
+    if (!isAllowedPath(path)) return { status: 400, body: null };
+    await this.loadStoredToken();
+    if (!this.accessToken && !(this.refreshToken !== null && (await this.refresh()))) return { status: 401, body: null };
+
+    const token = this.accessToken;
+    let res = await this.fetchStream(path, signal);
+    if (res.status === 401) {
+      await res.body?.cancel().catch(() => undefined);
+      // refresh() signs the user out itself when the refresh token is rejected
+      const refreshed = this.accessToken !== token || (this.refreshToken !== null && (await this.refresh()));
+      if (!refreshed) return { status: 401, body: null };
+      res = await this.fetchStream(path, signal);
+    }
+    if (!res.ok) {
+      await res.body?.cancel().catch(() => undefined);
+      return { status: res.status, body: null };
+    }
+    return { status: res.status, body: res.body };
+  }
+
   // ---------- internals ----------
+
+  private fetchStream(path: string, signal: AbortSignal) {
+    const headers: Record<string, string> = { Accept: 'text/event-stream' };
+    if (this.accessToken) headers.Authorization = `Bearer ${this.accessToken}`;
+    if (this.opts.userAgent) headers['User-Agent'] = this.opts.userAgent;
+    return this.fetchImpl(new URL(path, this.opts.baseUrl()).toString(), { method: 'GET', headers, redirect: 'error', signal });
+  }
 
   private refresh(): Promise<boolean> {
     this.refreshing ??= (async () => {

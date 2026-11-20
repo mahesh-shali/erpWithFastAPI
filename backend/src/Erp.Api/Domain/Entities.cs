@@ -113,6 +113,8 @@ public static class PageKeys
     public const string Products = "products";
     public const string Orders = "orders";
     public const string AiChat = "ai-chat";
+    /// <summary>End-to-end encrypted messaging between organization members (+ owner announcements).</summary>
+    public const string Messages = "messages";
     public const string MasterUsers = "master-users";
     public const string MasterUserRights = "master-user-rights";
     public const string MasterRoleRights = "master-role-rights";

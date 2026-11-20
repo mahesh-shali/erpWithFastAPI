@@ -403,5 +403,42 @@
         "auto": "App.test.tsx › legacy V.SMART path"
       }
     ]
+  },
+  {
+    "screen": "Messages (end-to-end encrypted)",
+    "login": "admin@demo.com / Admin@123 (SuperAdmin), manager@demo.com / Manager@123 (Admin), staff@demo.com / Staff@1234 (User)",
+    "url": "http://localhost:5173/messages",
+    "checks": [
+      {
+        "title": "First visit asks for a passphrase",
+        "steps": ["Sign in as staff@demo.com", "Open Messages", "Enter the same passphrase (10+ characters) twice", "Click Set up"],
+        "expect": "The conversation list opens with an Announcements channel. Opening Messages again does not ask for the passphrase.",
+        "auto": "frontend MessagesPage.test.tsx; e2e screens.spec.ts › Messages"
+      },
+      {
+        "title": "Members chat privately, the SuperAdmin can't see it",
+        "steps": ["As manager@demo.com set up Messages, click New, pick Demo Staff, Start chat, send a message", "As staff@demo.com open the chat and reply", "As admin@demo.com open Messages"],
+        "expect": "Both members see the messages live. The SuperAdmin only sees Announcements and has no New button.",
+        "auto": "ChatTests › SuperAdmin_has_no_access_to_member_conversations"
+      },
+      {
+        "title": "Announcements are one-way",
+        "steps": ["As admin@demo.com post in Announcements", "As staff@demo.com open Announcements"],
+        "expect": "Staff sees the announcement and 'Only the organization owner can post here.' with no message box. Demo Admin is not in the New conversation people list.",
+        "auto": "ChatTests › Only_the_SuperAdmin_posts_announcements_and_every_member_receives_them"
+      },
+      {
+        "title": "Same messages in the desktop app",
+        "steps": ["Sign in to the desktop app as staff@demo.com", "Open Messages and unlock with the same passphrase"],
+        "expect": "The same conversations and messages appear; new messages arrive live in both apps.",
+        "auto": "desktop chat-stream.test.ts; MessagesPage.test.tsx"
+      },
+      {
+        "title": "The server only stores ciphertext",
+        "steps": ["Send a message", "In psql: SELECT ciphertext FROM chat_messages ORDER BY id DESC LIMIT 1;"],
+        "expect": "Random-looking base64, never the message text.",
+        "auto": "crypto.test.ts"
+      }
+    ]
   }
 ]

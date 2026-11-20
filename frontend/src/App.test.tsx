@@ -21,12 +21,14 @@ const EMPTY: Route[] = [
   ['GET', '/api/stores*', []],
   ['GET', '/api/stock/*', []],
   ['GET', '/api/stock-entries*', { items: [], page: 1, pageSize: 25, total: 0 }],
+  ['GET', '/api/chat/keys/me', undefined],
 ];
 
 const ALL_PAGES = [
   perm('dashboard', 'VR', { name: 'Dashboard', route: '/' }),
   perm('analytics', 'VR', { name: 'Analytics', route: '/analytics' }),
   perm('ai-chat', 'VR', { name: 'AI Assistant', route: '/assistant' }),
+  perm('messages', 'VRW', { name: 'Messages', route: '/messages' }),
   perm('customers', 'VR', { name: 'Customers', route: '/master/customers' }),
   perm('products', 'VR', { name: 'Products', route: '/master/products' }),
   perm('orders', 'VR', { name: 'Sales Orders', route: '/sales/orders' }),
@@ -54,6 +56,7 @@ describe('App routing', () => {
     ['/', 'Dashboard'],
     ['/analytics', 'Analytics'],
     ['/assistant', 'AI Assistant'],
+    ['/messages', 'Messages'],
     ['/master/customers', 'Customers'],
     ['/master/products', 'Products'],
     ['/sales/orders', 'Orders'],

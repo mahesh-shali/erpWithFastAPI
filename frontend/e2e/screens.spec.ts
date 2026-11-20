@@ -123,3 +123,54 @@ test.describe('screens (User role)', () => {
     await expect(page.getByRole('heading', { name: 'No access' })).toBeVisible();
   });
 });
+
+test.describe('Messages (end-to-end encrypted)', () => {
+  const PASSPHRASE = 'e2e secure chat passphrase';
+
+  /** Opens Messages and gets past the key gate whatever state an earlier run left the demo user in. */
+  async function openMessages(page: Page) {
+    await nav(page).getByRole('link', { name: 'Messages' }).click();
+    const setup = page.getByRole('heading', { name: 'Set up secure messaging' });
+    const unlock = page.getByRole('heading', { name: 'Unlock your messages' });
+    await expect(setup.or(unlock)).toBeVisible();
+    if (await setup.isVisible()) {
+      await page.getByLabel('New passphrase').fill(PASSPHRASE);
+      await page.getByLabel('Repeat passphrase').fill(PASSPHRASE);
+      await page.getByRole('button', { name: 'Set up' }).click();
+    } else {
+      await page.getByLabel('Passphrase').fill(PASSPHRASE);
+      await page.getByRole('button', { name: 'Unlock' }).click();
+      if (await page.getByText('That passphrase is not correct.').isVisible({ timeout: 3000 }).catch(() => false)) {
+        await page.getByRole('button', { name: 'Forgot your passphrase?' }).click();
+        await page.getByLabel('New passphrase').fill(PASSPHRASE);
+        await page.getByLabel('Repeat passphrase').fill(PASSPHRASE);
+        await page.getByRole('button', { name: 'Reset key' }).click();
+      }
+    }
+    await expect(page.getByRole('complementary', { name: 'Conversations' })).toBeVisible();
+  }
+
+  test('the SuperAdmin announces, a member decrypts it and cannot reply or start a chat with the SuperAdmin', async ({ browser }) => {
+    const staff = await (await browser.newContext()).newPage();
+    await login(staff, STAFF);
+    await openMessages(staff); // the member's key must exist before the announcement is encrypted for it
+
+    const owner = await (await browser.newContext()).newPage();
+    await login(owner);
+    await openMessages(owner);
+    await expect(owner.getByRole('button', { name: 'New' })).toHaveCount(0);
+    const text = `Plant closed on Friday (${Date.now()})`;
+    await owner.getByLabel('Message').fill(text);
+    await owner.getByRole('button', { name: 'Send' }).click();
+    await expect(owner.getByTestId('chat-message').filter({ hasText: text })).toBeVisible();
+
+    await staff.getByRole('button', { name: /Announcements/ }).click();
+    await expect(staff.getByTestId('chat-message').filter({ hasText: text })).toBeVisible();
+    await expect(staff.getByText('Only the organization owner can post here.')).toBeVisible();
+    await expect(staff.getByLabel('Message')).toHaveCount(0);
+
+    await staff.getByRole('button', { name: 'New' }).click();
+    await expect(staff.getByRole('checkbox').first()).toBeVisible();
+    await expect(staff.getByRole('checkbox', { name: /Demo Admin/ })).toHaveCount(0); // the SuperAdmin isn't a contact
+  });
+});

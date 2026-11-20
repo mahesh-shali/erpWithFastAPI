@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, setUnauthorizedHandler, storeSession, TOKEN_KEY, USER_KEY, type UserDto } from '../api/client';
+import { forgetDeviceKeys } from '../chat/deviceKeys';
 
 interface AuthState {
   user: UserDto | null;
@@ -26,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearLocal = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    void forgetDeviceKeys(); // the unlocked secure-messaging key never outlives the session
     setUser(null);
   }, []);
 

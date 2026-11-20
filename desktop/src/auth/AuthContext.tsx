@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { auth, setUnauthorizedHandler, type UserDto } from '../api/client';
+import { forgetDeviceKeys } from '../chat/deviceKeys';
 
 interface AuthState {
   user: UserDto | null;
@@ -38,7 +39,10 @@ export function AuthProvider({ children, initialUser }: { children: ReactNode; i
     return () => { cancelled = true; };
   }, [initialUser]);
 
-  const clearLocal = useCallback(() => setUser(null), []);
+  const clearLocal = useCallback(() => {
+    void forgetDeviceKeys(); // the unlocked secure-messaging key never outlives the session
+    setUser(null);
+  }, []);
 
   useEffect(() => {
     setUnauthorizedHandler(clearLocal); // 401 even after the main process refreshed -> back to login

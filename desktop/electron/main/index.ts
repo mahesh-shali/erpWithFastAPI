@@ -3,6 +3,7 @@ import path from 'node:path';
 import { IPC } from '../shared/contract';
 import { ApiClient } from './api-client';
 import { resolveEnvironment } from './environment';
+import { ChatStream } from './chat-stream';
 import { registerIpc } from './ipc';
 import { hardenSession, hardenWindow, isAppUrl } from './security';
 import { SettingsStore } from './settings';
@@ -48,12 +49,18 @@ async function start() {
   const settings = new SettingsStore(ENVIRONMENT);
   await settings.load();
 
+  let chat: ChatStream | null = null;
   const api = new ApiClient({
     baseUrl: () => settings.url,
     store: new TokenVault(),
     userAgent: `ERP-Desktop/${app.getVersion()} (${process.platform}) Electron/${process.versions.electron}`,
-    onSignedOut: () => mainWindow?.webContents.send(IPC.authSignedOut),
+    onSignedOut: () => {
+      chat?.stop();
+      mainWindow?.webContents.send(IPC.authSignedOut);
+    },
   });
+  // Messages live updates: the stream lives here; the renderer only receives validated notices.
+  chat = new ChatStream(api, (event) => mainWindow?.webContents.send(IPC.chatEvent, event));
   // Updates from GitHub Releases, only in installed builds (a dev run has no release to update from).
   const updater = app.isPackaged ? (await import('electron-updater')).autoUpdater : null;
   const updateLog = fileLogger(path.join(app.getPath('userData'), 'logs', 'updater.log'));
@@ -74,7 +81,7 @@ async function start() {
       });
     },
   });
-  registerIpc(api, settings, updates, isApp);
+  registerIpc(api, settings, updates, chat, isApp);
   Menu.setApplicationMenu(buildMenu());
 
   createWindow();

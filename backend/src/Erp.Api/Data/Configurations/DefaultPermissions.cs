@@ -81,6 +81,7 @@ public static class DefaultPermissions
         P(1,  PageKeys.Dashboard,        "Dashboard",           "/",                          null, 10),
         P(48, PageKeys.Analytics,        "Analytics",           "/analytics",                 null, 15),
         P(5,  PageKeys.AiChat,           "AI Assistant",        "/assistant",                 null, 20),
+        P(49, PageKeys.Messages,         "Messages",            "/messages",                  null, 25),
         // Master
         P(6,  PageKeys.MasterUsers,      "Users",               "/master/users",              101, 10),
         P(7,  PageKeys.MasterUserRights, "User Rights",         "/master/user-rights",        101, 20),
@@ -147,6 +148,7 @@ public static class DefaultPermissions
             [PageKeys.Dashboard] = "VR",
             [PageKeys.Analytics] = "VR",
             [PageKeys.AiChat] = "VR",
+            [PageKeys.Messages] = "VRW",
             [PageKeys.MasterUsers] = "VRWUD",
             [PageKeys.MasterUserRights] = "VRU",
             [PageKeys.MasterPages] = "VR",
@@ -196,6 +198,7 @@ public static class DefaultPermissions
         {
             [PageKeys.Dashboard] = "VR",
             [PageKeys.AiChat] = "VR",
+            [PageKeys.Messages] = "VRW",
             [PageKeys.Customers] = "VRWU",
             [PageKeys.Products] = "VR",
             [PageKeys.StockPosition] = "VR",

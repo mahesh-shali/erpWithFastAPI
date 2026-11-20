@@ -552,6 +552,51 @@ Next modules (planned, one at a time): Purchase (Vendors, Purchase Orders, Goods
 Delivery Challans), Accounts, and HR, with Indian GST on purchase and sales documents. Purchase and sales documents
 will post stock through the same service.
 
+## Messages: end-to-end encrypted chat
+
+Page `messages` (`/messages`, top-level menu, default rights Admin/User `VRW`; SuperAdmin has every right).
+Works the same in the web app and the desktop app: they share one identity per user.
+
+**Who can talk to whom** (enforced in `Services/ChatService.cs`, not only in the UI):
+
+| | Direct & group chats | Announcements |
+|---|---|---|
+| Members (every role below SuperAdmin: Admin, User, …) | with any member of **their own organization** | read only |
+| SuperAdmin (organization owner) | none: can't list, open, join or post in them, and can't be added | posts; every org user receives |
+
+Hidden conversations answer 404 (existence isn't revealed). Each organization has its own Announcements channel.
+
+**Encryption** (`frontend/src/chat/crypto.ts`, WebCrypto, copied unchanged to `desktop/src/chat/`):
+- Each user has an ECDH P-256 key pair. The private key is uploaded only encrypted with AES-256-GCM under a key
+  derived from the user's passphrase (PBKDF2-SHA256, 600k iterations); after unlocking it is kept on the device
+  as a non-extractable `CryptoKey` (IndexedDB) and deleted on sign-out.
+- Every message has a fresh AES-256-GCM key, wrapped for each recipient key via ECDH → HKDF → AES-GCM. The server
+  rejects a message (409) unless it is wrapped for **exactly** the members' current keys, so nobody is silently
+  left out and no extra key can be slipped in. Associated data binds ciphertext to conversation and sender key.
+- The server stores ciphertext, wrapped keys and public keys only. It still knows who talks to whom and when.
+  Users can compare key fingerprints (**Verify keys**) to rule out a substituted public key.
+- Forgotten passphrase = **Reset key**: a new key; messages sent to the old key become unreadable (by design).
+  People who haven't set up secure messaging yet can't read messages sent before they did.
+
+**Live updates**: `GET /api/chat/stream` (Server-Sent Events) sends notices only (`{type, conversationId, messageId}`),
+never content; clients then fetch and decrypt. Events fan out across API replicas over Redis pub/sub
+(`erp:chat:events`); without Redis, in-process. The stream closes when the access token expires (so a revoked
+session stops receiving) and clients reconnect. The UI also re-syncs every 45 s in case a proxy buffers SSE.
+In the desktop app the stream runs in the Electron main process and only validated notices reach the renderer.
+
+| Method | Path | Right |
+|---|---|---|
+| GET | `/api/chat/keys/me` (204 = not set up) | Read |
+| POST | `/api/chat/keys`, `/api/chat/keys/reset` · PUT `/api/chat/keys/me/backup` | Read |
+| GET | `/api/chat/contacts`, `/api/chat/conversations`, `/api/chat/conversations/{id}/messages?before=&after=` | Read |
+| POST | `/api/chat/conversations/{id}/read` | Read |
+| POST | `/api/chat/conversations` · GET `/api/chat/conversations/{id}/recipients` · POST `/api/chat/conversations/{id}/messages` | Write |
+| GET | `/api/chat/stream` | Read |
+
+Tables `chat_user_keys`, `chat_conversations`, `chat_participants`, `chat_messages`, `chat_message_keys`
+(migration `AddSecureChat`) have RLS enabled with no policies, so no role other than the API owner (in particular
+not the AI service's `erp_ai_ro`) can read them.
+
 ## How the AI chatbot works
 
 1. React posts `{question, history}` to `/ai/chat` with the user's JWT.

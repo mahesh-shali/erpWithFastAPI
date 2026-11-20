@@ -7,6 +7,7 @@ import { calls, jsonResponse, mockApi, perm, renderWithProviders, signIn, type R
 
 /** Every screen's data endpoint answers with empty data; only routing and guards are under test. */
 const EMPTY: Route[] = [
+  ['GET', '/api/chat/keys/me', undefined],
   ['GET', '/api/dashboard/stats', { customers: 1, products: 2, orders: 3, revenue: 4, lowStockProducts: 0 }],
   ['GET', '/api/analytics*', jsonResponse({ title: 'not needed' }, 500)],
   ['GET', '/api/customers*', { items: [], page: 1, pageSize: 25, total: 0 }],
@@ -23,6 +24,7 @@ const ALL_PAGES = [
   perm('dashboard', 'VR', { name: 'Dashboard', route: '/' }),
   perm('analytics', 'VR', { name: 'Analytics', route: '/analytics' }),
   perm('ai-chat', 'VR', { name: 'AI Assistant', route: '/assistant' }),
+  perm('messages', 'VRW', { name: 'Messages', route: '/messages' }),
   perm('customers', 'VR', { name: 'Customers', route: '/master/customers' }),
   perm('products', 'VR', { name: 'Products', route: '/master/products' }),
   perm('orders', 'VR', { name: 'Sales Orders', route: '/sales/orders' }),
@@ -45,6 +47,7 @@ describe('App routing', () => {
     ['/', 'Dashboard'],
     ['/analytics', 'Analytics'],
     ['/assistant', 'AI Assistant'],
+    ['/messages', 'Messages'],
     ['/master/customers', 'Customers'],
     ['/master/products', 'Products'],
     ['/sales/orders', 'Orders'],

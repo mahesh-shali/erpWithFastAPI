@@ -72,6 +72,266 @@ namespace Erp.Api.Data.Migrations
                     b.ToTable("chat_audit_log", (string)null);
                 });
 
+            modelBuilder.Entity("Erp.Api.Domain.ChatConversation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("DirectKey")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("direct_key");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<DateTime>("LastMessageAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_message_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_conversations");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_chat_conversations_created_by_user_id");
+
+                    b.HasIndex("OrganizationId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_chat_conversations_announcement")
+                        .HasFilter("kind = 'announcement'");
+
+                    b.HasIndex("OrganizationId", "DirectKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_chat_conversations_direct")
+                        .HasFilter("direct_key IS NOT NULL");
+
+                    b.ToTable("chat_conversations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_chat_conversations_kind", "kind IN ('direct', 'group', 'announcement')");
+                        });
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Ciphertext")
+                        .IsRequired()
+                        .HasMaxLength(65536)
+                        .HasColumnType("character varying(65536)")
+                        .HasColumnName("ciphertext");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Iv")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("iv");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid?>("SenderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sender_id");
+
+                    b.Property<Guid>("SenderKeyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sender_key_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_messages");
+
+                    b.HasIndex("SenderId")
+                        .HasDatabaseName("ix_chat_messages_sender_id");
+
+                    b.HasIndex("SenderKeyId")
+                        .HasDatabaseName("ix_chat_messages_sender_key_id");
+
+                    b.HasIndex("ConversationId", "Id")
+                        .HasDatabaseName("ix_chat_messages_conversation");
+
+                    b.ToTable("chat_messages", (string)null);
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatMessageKey", b =>
+                {
+                    b.Property<long>("MessageId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("message_id");
+
+                    b.Property<Guid>("RecipientKeyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipient_key_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("WrappedKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("wrapped_key");
+
+                    b.HasKey("MessageId", "RecipientKeyId")
+                        .HasName("pk_chat_message_keys");
+
+                    b.HasIndex("RecipientKeyId")
+                        .HasDatabaseName("ix_chat_message_keys_recipient");
+
+                    b.ToTable("chat_message_keys", (string)null);
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatParticipant", b =>
+                {
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("joined_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<long>("LastReadMessageId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_read_message_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.HasKey("ConversationId", "UserId")
+                        .HasName("pk_chat_participants");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_chat_participants_user");
+
+                    b.ToTable("chat_participants", (string)null);
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatUserKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("EncryptedPrivateKey")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("encrypted_private_key");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("fingerprint");
+
+                    b.Property<int>("KdfIterations")
+                        .HasColumnType("integer")
+                        .HasColumnName("kdf_iterations");
+
+                    b.Property<string>("KdfSalt")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("kdf_salt");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("PublicKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("public_key");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_user_keys");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_chat_user_keys_org");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_chat_user_keys_active")
+                        .HasFilter("revoked_at IS NULL");
+
+                    b.ToTable("chat_user_keys", (string)null);
+                });
+
             modelBuilder.Entity("Erp.Api.Domain.Customer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -882,6 +1142,16 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 49,
+                            IsActive = true,
+                            IsImplemented = true,
+                            Key = "messages",
+                            Name = "Messages",
+                            Route = "/messages",
+                            SortOrder = 25
+                        },
+                        new
+                        {
                             Id = 6,
                             GroupId = 101,
                             IsActive = true,
@@ -1608,6 +1878,18 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 149,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 49,
+                            RoleId = 1
+                        },
+                        new
+                        {
                             Id = 106,
                             CanDelete = true,
                             CanRead = true,
@@ -2180,6 +2462,18 @@ namespace Erp.Api.Data.Migrations
                             IsRestricted = false,
                             IsVisible = true,
                             PageId = 5,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 249,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 49,
                             RoleId = 2
                         },
                         new
@@ -3345,6 +3639,101 @@ namespace Erp.Api.Data.Migrations
                     b.ToTable("user_sessions", (string)null);
                 });
 
+            modelBuilder.Entity("Erp.Api.Domain.ChatConversation", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_chat_conversations_users_created_by_user_id");
+
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_conversations_organizations_organization_id");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatMessage", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.ChatConversation", null)
+                        .WithMany()
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_messages_chat_conversations_conversation_id");
+
+                    b.HasOne("Erp.Api.Domain.User", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_chat_messages_users_sender_id");
+
+                    b.HasOne("Erp.Api.Domain.ChatUserKey", "SenderKey")
+                        .WithMany()
+                        .HasForeignKey("SenderKeyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_messages_chat_user_keys_sender_key_id");
+
+                    b.Navigation("Sender");
+
+                    b.Navigation("SenderKey");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatMessageKey", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.ChatMessage", null)
+                        .WithMany("Keys")
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_message_keys_chat_messages_message_id");
+
+                    b.HasOne("Erp.Api.Domain.ChatUserKey", null)
+                        .WithMany()
+                        .HasForeignKey("RecipientKeyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_message_keys_chat_user_keys_recipient_key_id");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatParticipant", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.ChatConversation", null)
+                        .WithMany("Participants")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_participants_chat_conversations_conversation_id");
+
+                    b.HasOne("Erp.Api.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_participants_users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatUserKey", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_user_keys_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_chat_user_keys_users_user_id");
+                });
+
             modelBuilder.Entity("Erp.Api.Domain.Customer", b =>
                 {
                     b.HasOne("Erp.Api.Domain.Organization", null)
@@ -3660,6 +4049,16 @@ namespace Erp.Api.Data.Migrations
                         .HasConstraintName("fk_user_sessions_users_user_id");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatConversation", b =>
+                {
+                    b.Navigation("Participants");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.ChatMessage", b =>
+                {
+                    b.Navigation("Keys");
                 });
 
             modelBuilder.Entity("Erp.Api.Domain.Order", b =>

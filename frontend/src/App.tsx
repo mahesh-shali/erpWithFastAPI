@@ -10,6 +10,7 @@ import { StockLedgerPage, StockPositionPage } from './pages/inventory/StockRepor
 import { DashboardPage } from './pages/DashboardPage';
 import { AssistantPage, CustomersPage, OrdersPage, ProductsPage } from './pages/DataPages';
 import { LoginPage } from './pages/LoginPage';
+import { MessagesPage } from './pages/MessagesPage';
 import { PagesPage } from './pages/master/PagesPage';
 import { RoleRightsPage } from './pages/master/RoleRightsPage';
 import { UserRightsPage } from './pages/master/UserRightsPage';
@@ -42,6 +43,7 @@ export default function App() {
         <Route index element={<RequirePage page="dashboard"><DashboardPage /></RequirePage>} />
         <Route path="analytics" element={<RequirePage page="analytics"><AnalyticsPage /></RequirePage>} />
         <Route path="assistant" element={<RequirePage page="ai-chat"><AssistantPage /></RequirePage>} />
+        <Route path="messages" element={<RequirePage page="messages"><MessagesPage /></RequirePage>} />
         <Route path="master/users" element={<RequirePage page="master-users"><UsersPage /></RequirePage>} />
         <Route path="master/user-rights" element={<RequirePage page="master-user-rights"><UserRightsPage /></RequirePage>} />
         <Route path="master/role-rights" element={<RequirePage page="master-role-rights"><RoleRightsPage /></RequirePage>} />

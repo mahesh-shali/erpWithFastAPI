@@ -20,6 +20,11 @@ Everything the web app has, driven by the user's page rights (`GET /api/me/permi
 - **Dashboard** (key figures + sales analytics) and **Analytics** (30 / 90 days, 12 months; trend, statuses,
   top products, customers, cities, categories)
 - **AI Assistant**: plain-English questions answered from your data (`/ai/chat`)
+- **Messages**: end-to-end encrypted chat between organization members, and read-only announcements from the
+  SuperAdmin. Same identity and history as the web app (unlock with the same passphrase). The live event stream
+  runs in the main process (`electron/main/chat-stream.ts`); the renderer only receives validated notices
+  (`window.erp.chat`), so it still has no network access and never sees a token. Encryption happens in the renderer
+  (`src/chat/crypto.ts`, identical to the web app's).
 - **Master**: Customers, Products, Users (create, change role, delete), User rights, Role rights, Pages
 - **Sales**: Orders
 - **3-level menu** (Module › Group › Page) for every module in the Pages master: Sales & Labour Work,
@@ -130,6 +135,7 @@ desktop/
 │   ├── main/            # Electron main process
 │   │   ├── index.ts         app lifecycle, window, menu
 │   │   ├── api-client.ts    session owner: login, refresh rotation, 401 retry, path allow-list
+│   │   ├── chat-stream.ts   Messages live events (SSE) -> validated IPC notices
 │   │   ├── token-vault.ts   refresh token in OS-encrypted storage (safeStorage)
 │   │   ├── settings.ts      server URL (validated, persisted)
 │   │   ├── security.ts      navigation/popup/permission hardening
@@ -144,8 +150,8 @@ desktop/
 ```
 
 The renderer started as a copy of `frontend/src`. When a screen changes in the web app, copy it here;
-only `api/client.ts`, `auth/AuthContext.tsx`, `auth/PrivateRoute.tsx`, `main.tsx` and `pages/LoginPage.tsx`
-differ on purpose.
+only `api/client.ts`, `auth/AuthContext.tsx`, `auth/PrivateRoute.tsx`, `main.tsx`, `pages/LoginPage.tsx` and
+`chat/events.ts` differ on purpose.
 
 ## Scaling to 1 million concurrent users
 
