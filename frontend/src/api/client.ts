@@ -11,7 +11,7 @@ export interface UserDto {
   id: string;
   email: string;
   fullName: string;
-  role: 'SuperAdmin' | 'Admin' | 'User';
+  role: 'SuperAdmin' | 'Admin' | 'Manager' | 'User';
   organizationId: string;
 }
 /** The refresh token never appears here: the server keeps it in an HttpOnly cookie. */

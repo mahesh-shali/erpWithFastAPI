@@ -39,24 +39,28 @@ public class Role
     public int Level { get; set; }
 }
 
-/// <summary>Well-known seeded roles (hierarchy SuperAdmin > Admin > User). Ids are referenced by seed data.</summary>
+/// <summary>Well-known seeded roles (hierarchy SuperAdmin > Admin > Manager > User). Ids are referenced by seed data.</summary>
 public static class Roles
 {
     public const string SuperAdmin = "SuperAdmin";
     public const string Admin = "Admin";
+    public const string Manager = "Manager";
     public const string User = "User";
     public const int SuperAdminId = 3;
     public const int AdminId = 1;
     public const int UserId = 2;
+    public const int ManagerId = 4;
 
     public const int SuperAdminLevel = 100;
     public const int AdminLevel = 50;
+    public const int ManagerLevel = 30;
     public const int UserLevel = 10;
 
     public static int LevelOf(string role) => role switch
     {
         SuperAdmin => SuperAdminLevel,
         Admin => AdminLevel,
+        Manager => ManagerLevel,
         User => UserLevel,
         _ => 0,
     };

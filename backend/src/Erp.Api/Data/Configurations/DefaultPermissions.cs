@@ -141,59 +141,73 @@ public static class DefaultPermissions
     ];
 
     // V = visible, R = read, W = write (create), U = update, D = delete. Missing page = no rights.
+    private static readonly Dictionary<string, string> AdminRights = new()
+    {
+        [PageKeys.Dashboard] = "VR",
+        [PageKeys.Analytics] = "VR",
+        [PageKeys.AiChat] = "VR",
+        [PageKeys.Messages] = "VRW",
+        [PageKeys.MasterUsers] = "VRWUD",
+        [PageKeys.MasterUserRights] = "VRU",
+        [PageKeys.MasterPages] = "VR",
+        [PageKeys.Customers] = "VRWUD",
+        [PageKeys.Vendors] = "VRWUD",
+        [PageKeys.Products] = "VRWUD",
+        [PageKeys.StockPosition] = "VR",
+        [PageKeys.StockAddition] = "VRWUD",
+        [PageKeys.Orders] = "VRWUD",
+        [PageKeys.SalesInvoices] = "VRWUD",
+        [PageKeys.PurchaseOrders] = "VRWUD",
+        [PageKeys.PurchaseBills] = "VRWUD",
+        [PageKeys.ProductionPlan] = "VRWUD",
+        [PageKeys.WorkOrders] = "VRWUD",
+        [PageKeys.Receipts] = "VRWUD",
+        [PageKeys.Payments] = "VRWUD",
+        [PageKeys.IncomingInspection] = "VRWUD",
+        [PageKeys.QualityChecks] = "VRWUD",
+        [PageKeys.Employees] = "VRWUD",
+        [PageKeys.Attendance] = "VRWUD",
+        [PageKeys.SalesReport] = "VR",
+        [PageKeys.StockReport] = "VR",
+        [PageKeys.Uom] = "VRWUD",
+        [PageKeys.Stores] = "VRWUD",
+        [PageKeys.LabourWorkOrders] = "VRWUD",
+        [PageKeys.LabourWorkInvoices] = "VRWUD",
+        [PageKeys.DeliveryChallans] = "VRWUD",
+        [PageKeys.SubcontractOrders] = "VRWUD",
+        [PageKeys.SubcontractChallans] = "VRWUD",
+        [PageKeys.GoodsReceipts] = "VRWUD",
+        [PageKeys.Mrp] = "VRWUD",
+        [PageKeys.JobCards] = "VRWUD",
+        [PageKeys.BillOfMaterials] = "VRWUD",
+        [PageKeys.JournalVouchers] = "VRWUD",
+        [PageKeys.Ledger] = "VR",
+        [PageKeys.InProcessInspection] = "VRWUD",
+        [PageKeys.FinalInspection] = "VRWUD",
+        [PageKeys.Machines] = "VRWUD",
+        [PageKeys.PreventiveMaintenance] = "VRWUD",
+        [PageKeys.Breakdowns] = "VRWUD",
+        [PageKeys.Payroll] = "VRWUD",
+        [PageKeys.LeaveRequests] = "VRWUD",
+        [PageKeys.ProductionReport] = "VR",
+        [PageKeys.PurchaseReport] = "VR",
+    };
+
+    /// <summary>Pages only administrators get by default: rights administration and the Pages master.</summary>
+    private static readonly HashSet<string> AdminOnlyPages = [PageKeys.MasterUserRights, PageKeys.MasterRoleRights, PageKeys.MasterPages];
+
+    /// <summary>
+    /// Manager defaults: everything an Admin works with, without deleting and without rights administration.
+    /// Users master is view-only (managers see their colleagues but don't create or change accounts).
+    /// </summary>
+    private static readonly Dictionary<string, string> ManagerRights = AdminRights
+        .Where(r => !AdminOnlyPages.Contains(r.Key))
+        .ToDictionary(r => r.Key, r => r.Key == PageKeys.MasterUsers ? "VR" : r.Value.Replace("D", ""));
+
     private static readonly Dictionary<int, Dictionary<string, string>> Matrix = new()
     {
-        [Roles.AdminId] = new()
-        {
-            [PageKeys.Dashboard] = "VR",
-            [PageKeys.Analytics] = "VR",
-            [PageKeys.AiChat] = "VR",
-            [PageKeys.Messages] = "VRW",
-            [PageKeys.MasterUsers] = "VRWUD",
-            [PageKeys.MasterUserRights] = "VRU",
-            [PageKeys.MasterPages] = "VR",
-            [PageKeys.Customers] = "VRWUD",
-            [PageKeys.Vendors] = "VRWUD",
-            [PageKeys.Products] = "VRWUD",
-            [PageKeys.StockPosition] = "VR",
-            [PageKeys.StockAddition] = "VRWUD",
-            [PageKeys.Orders] = "VRWUD",
-            [PageKeys.SalesInvoices] = "VRWUD",
-            [PageKeys.PurchaseOrders] = "VRWUD",
-            [PageKeys.PurchaseBills] = "VRWUD",
-            [PageKeys.ProductionPlan] = "VRWUD",
-            [PageKeys.WorkOrders] = "VRWUD",
-            [PageKeys.Receipts] = "VRWUD",
-            [PageKeys.Payments] = "VRWUD",
-            [PageKeys.IncomingInspection] = "VRWUD",
-            [PageKeys.QualityChecks] = "VRWUD",
-            [PageKeys.Employees] = "VRWUD",
-            [PageKeys.Attendance] = "VRWUD",
-            [PageKeys.SalesReport] = "VR",
-            [PageKeys.StockReport] = "VR",
-            [PageKeys.Uom] = "VRWUD",
-            [PageKeys.Stores] = "VRWUD",
-            [PageKeys.LabourWorkOrders] = "VRWUD",
-            [PageKeys.LabourWorkInvoices] = "VRWUD",
-            [PageKeys.DeliveryChallans] = "VRWUD",
-            [PageKeys.SubcontractOrders] = "VRWUD",
-            [PageKeys.SubcontractChallans] = "VRWUD",
-            [PageKeys.GoodsReceipts] = "VRWUD",
-            [PageKeys.Mrp] = "VRWUD",
-            [PageKeys.JobCards] = "VRWUD",
-            [PageKeys.BillOfMaterials] = "VRWUD",
-            [PageKeys.JournalVouchers] = "VRWUD",
-            [PageKeys.Ledger] = "VR",
-            [PageKeys.InProcessInspection] = "VRWUD",
-            [PageKeys.FinalInspection] = "VRWUD",
-            [PageKeys.Machines] = "VRWUD",
-            [PageKeys.PreventiveMaintenance] = "VRWUD",
-            [PageKeys.Breakdowns] = "VRWUD",
-            [PageKeys.Payroll] = "VRWUD",
-            [PageKeys.LeaveRequests] = "VRWUD",
-            [PageKeys.ProductionReport] = "VR",
-            [PageKeys.PurchaseReport] = "VR",
-        },
+        [Roles.AdminId] = AdminRights,
+        [Roles.ManagerId] = ManagerRights,
         [Roles.UserId] = new()
         {
             [PageKeys.Dashboard] = "VR",

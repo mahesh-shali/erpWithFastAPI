@@ -62,7 +62,7 @@ export interface SessionUser {
   id: string;
   email: string;
   fullName: string;
-  role: 'SuperAdmin' | 'Admin' | 'User';
+  role: 'SuperAdmin' | 'Admin' | 'Manager' | 'User';
   organizationId: string;
 }
 

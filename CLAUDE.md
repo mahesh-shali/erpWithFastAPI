@@ -80,7 +80,7 @@ is an HttpOnly cookie (`erp_refresh`, path `/api/auth`) with rotation + reuse de
 org role default → system role default; SuperAdmin has everything; `isRestricted` hard-blocks.
 The single source of truth is the SQL function `effective_page_permissions(user)`, used by both API and AI.
 API endpoints are protected with `[RequirePage(PageKeys.X, PageAction.Y)]` (`Services/PermissionService.cs`).
-Role hierarchy by `level` (SuperAdmin 100 > Admin 50 > User 10): users only manage roles strictly below them
+Role hierarchy by `level` (SuperAdmin 100 > Admin 50 > Manager 30 > User 10): users only manage roles strictly below them
 and cannot grant rights they lack.
 
 **AI chat flow** (`ai-service/app/`): `auth.py` (JWT + session) → Redis rate limit and answer cache
@@ -126,4 +126,4 @@ Routes in `src/App.tsx` mirror each page's `route`; unbuilt pages fall through t
 
 `--seed` (dev only) creates *Demo Corp* and *Other Tenant Ltd* (used by tests to prove isolation).
 Logins: `admin@demo.com` / `Admin@123` (SuperAdmin), `manager@demo.com` / `Manager@123` (Admin),
-`staff@demo.com` / `Staff@1234` (User).
+`lead@demo.com` / `Lead@12345` (Manager), `staff@demo.com` / `Staff@1234` (User).

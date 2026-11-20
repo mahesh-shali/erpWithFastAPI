@@ -38,6 +38,8 @@ public sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
                        Description = "Organization owner: every right on every page; manages admins, users and all rights" },
             new Role { Id = Roles.AdminId, Name = Roles.Admin, Level = Roles.AdminLevel,
                        Description = "Manages users and their rights (never beyond the admin's own rights)" },
+            new Role { Id = Roles.ManagerId, Name = Roles.Manager, Level = Roles.ManagerLevel,
+                       Description = "Runs day-to-day operations: create and edit business documents, view users; no deletes or rights admin" },
             new Role { Id = Roles.UserId, Name = Roles.User, Level = Roles.UserLevel,
                        Description = "Standard access as granted by page rights" });
     }

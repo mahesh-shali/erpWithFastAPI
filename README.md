@@ -331,7 +331,7 @@ ever committed. The migrator then sets up `AI_DB_USER`:
 
 | Table | Contents |
 |---|---|
-| `roles` | `id`, `name` (unique), `description`. Seeded by migration: `1 = Admin`, `2 = User`. |
+| `roles` | `id`, `name` (unique), `description`. Seeded by migration: `1 = Admin`, `2 = User`, `3 = SuperAdmin`, `4 = Manager`. |
 | `users.role_id` | FK → `roles.id` (one role per user) |
 
 - Seed rows are defined in code (`RoleConfiguration.HasData`). To add a role, add a row there (plus a
@@ -405,9 +405,13 @@ shared by concurrent requests, then retries. If the refresh fails, it returns to
 
 | Role | Level | Can manage | Can assign roles |
 |---|---|---|---|
-| **SuperAdmin** | 100 | Admins and Users, role defaults of Admin and User | Admin, User |
-| **Admin** | 50 | Users | User |
+| **SuperAdmin** | 100 | Admins, Managers and Users, role defaults of Admin, Manager and User | Admin, Manager, User |
+| **Admin** | 50 | Managers and Users | Manager, User |
+| **Manager** | 30 | Users (only if given write rights on the Users page; by default it is view-only) | User |
 | **User** | 10 | nobody | – |
+
+Manager default rights: what an Admin has, **without Delete** and without User Rights, Role Rights and the
+Pages master; the Users list is read-only. Change them in Role Rights like any other role.
 
 - The person who **registers an organization becomes its SuperAdmin**. The migration promoted each
   existing organization's earliest Admin.
@@ -502,7 +506,7 @@ AI Assistant, read/write/update on Customers and Orders, and nothing in Master. 
 `DefaultPermissions.cs` plus a migration, or per organization in Master > Role Rights.
 
 Demo logins (fresh database): `admin@demo.com` / `Admin@123` (SuperAdmin), `manager@demo.com` /
-`Manager@123` (Admin), `staff@demo.com` / `Staff@1234` (User).
+`Manager@123` (Admin), `lead@demo.com` / `Lead@12345` (Manager), `staff@demo.com` / `Staff@1234` (User).
 
 ## Inventory module
 
@@ -561,7 +565,7 @@ Works the same in the web app and the desktop app: they share one identity per u
 
 | | Direct & group chats | Announcements |
 |---|---|---|
-| Members (every role below SuperAdmin: Admin, User, …) | with any member of **their own organization** | read only |
+| Members (every role below SuperAdmin: Admin, Manager, User) | with any member of **their own organization** | read only |
 | SuperAdmin (organization owner) | none: can't list, open, join or post in them, and can't be added | posts; every org user receives |
 
 Hidden conversations answer 404 (existence isn't revealed). Each organization has its own Announcements channel.

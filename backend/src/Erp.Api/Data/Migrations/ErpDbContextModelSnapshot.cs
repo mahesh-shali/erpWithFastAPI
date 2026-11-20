@@ -1761,6 +1761,13 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 4,
+                            Description = "Runs day-to-day operations: create and edit business documents, view users; no deletes or rights admin",
+                            Level = 30,
+                            Name = "Manager"
+                        },
+                        new
+                        {
                             Id = 2,
                             Description = "Standard access as granted by page rights",
                             Level = 10,
@@ -2427,6 +2434,594 @@ namespace Erp.Api.Data.Migrations
                             IsVisible = true,
                             PageId = 47,
                             RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 401,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 1,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 448,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 48,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 405,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 5,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 449,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 49,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 406,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 6,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 407,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 7,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 408,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 8,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 402,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 2,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 410,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 10,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 403,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 3,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 426,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 26,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 427,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 27,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 409,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 9,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 404,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 4,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 413,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 13,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 428,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 28,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 429,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 29,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 430,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 30,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 414,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 14,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 415,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 15,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 431,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 31,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 432,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 32,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 433,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 33,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 416,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 16,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 434,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 34,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 417,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 17,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 435,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 35,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 436,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 36,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 411,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 11,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 412,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 12,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 418,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 18,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 419,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 19,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 437,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 37,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 438,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 38,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 420,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 20,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 439,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 39,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 421,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 21,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 440,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 40,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 441,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 41,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 442,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 42,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 443,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 43,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 422,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 22,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 423,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 23,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 444,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 44,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 445,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 45,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 424,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 24,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 425,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 25,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 446,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 46,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 447,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 47,
+                            RoleId = 4
                         },
                         new
                         {

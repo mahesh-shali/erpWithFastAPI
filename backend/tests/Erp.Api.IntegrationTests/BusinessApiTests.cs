@@ -269,10 +269,10 @@ public class BusinessApiTests(ApiFactory factory)
     {
         var owner = await NewOrg();
         (await owner.GetFromJsonAsync<List<RoleDto>>("/api/roles/assignable"))!.Select(r => r.Name)
-            .Should().BeEquivalentTo("Admin", "User");
+            .Should().BeEquivalentTo("Admin", "Manager", "User");
         var admin = await NewUserIn(owner, "Admin");
         (await admin.GetFromJsonAsync<List<RoleDto>>("/api/roles/assignable"))!.Select(r => r.Name)
-            .Should().Equal("User");
+            .Should().Equal("Manager", "User");
     }
 
     [Fact]

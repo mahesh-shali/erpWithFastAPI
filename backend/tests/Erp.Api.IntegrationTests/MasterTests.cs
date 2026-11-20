@@ -59,7 +59,7 @@ public class MasterTests(ApiFactory factory)
     }
 
     [Fact]
-    public async Task SuperAdmin_creates_Admins_Admin_creates_Users_only()
+    public async Task SuperAdmin_creates_Admins_Admin_creates_Managers_and_Users_only()
     {
         var (super, _) = await NewOrgSuperAdmin();
         var (admin, _) = await CreateAndLogin(super, "Admin");
@@ -68,7 +68,7 @@ public class MasterTests(ApiFactory factory)
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await admin.PostAsJsonAsync("/api/users", new CreateUserRequest($"u{Guid.NewGuid():N}@x.com", "X", Pw, "User")))
             .StatusCode.Should().Be(HttpStatusCode.Created);
-        (await admin.GetFromJsonAsync<List<RoleDto>>("/api/roles/assignable"))!.Select(r => r.Name).Should().Equal("User");
+        (await admin.GetFromJsonAsync<List<RoleDto>>("/api/roles/assignable"))!.Select(r => r.Name).Should().Equal("Manager", "User");
     }
 
     [Fact]

@@ -144,6 +144,7 @@ button.link.small { font-size: .8rem; margin-left: .5rem; }
 .role { border-radius: 999px; padding: .1rem .55rem; font-size: .78rem; font-weight: 600; }
 .role-superadmin { background: #f3e8ff; color: #6b21a8; }
 .role-admin { background: var(--accent-weak); color: var(--accent); }
+.role-manager { background: #e0f2f1; color: #00695c; }
 .role-user { background: #f3f4f6; color: #374151; }
 code { background: #f3f4f6; padding: .05rem .35rem; border-radius: 4px; font-size: .85em; }
 
