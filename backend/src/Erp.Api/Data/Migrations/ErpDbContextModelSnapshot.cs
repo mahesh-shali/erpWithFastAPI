@@ -132,9 +132,14 @@ namespace Erp.Api.Data.Migrations
                         .HasDatabaseName("ux_chat_conversations_direct")
                         .HasFilter("direct_key IS NOT NULL");
 
+                    b.HasIndex(new[] { "OrganizationId" }, "ux_chat_conversations_general")
+                        .IsUnique()
+                        .HasDatabaseName("ux_chat_conversations_general")
+                        .HasFilter("kind = 'general'");
+
                     b.ToTable("chat_conversations", null, t =>
                         {
-                            t.HasCheckConstraint("ck_chat_conversations_kind", "kind IN ('direct', 'group', 'announcement')");
+                            t.HasCheckConstraint("ck_chat_conversations_kind", "kind IN ('direct', 'group', 'general', 'announcement')");
                         });
                 });
 
@@ -1152,6 +1157,16 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 50,
+                            IsActive = true,
+                            IsImplemented = true,
+                            Key = "messages-senior",
+                            Name = "Message Senior Roles",
+                            Route = "/messages/senior-roles",
+                            SortOrder = 26
+                        },
+                        new
+                        {
                             Id = 6,
                             GroupId = 101,
                             IsActive = true,
@@ -1897,6 +1912,18 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 150,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 50,
+                            RoleId = 1
+                        },
+                        new
+                        {
                             Id = 106,
                             CanDelete = true,
                             CanRead = true,
@@ -2485,6 +2512,18 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 450,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 50,
+                            RoleId = 4
+                        },
+                        new
+                        {
                             Id = 406,
                             CanDelete = false,
                             CanRead = true,
@@ -3069,6 +3108,18 @@ namespace Erp.Api.Data.Migrations
                             IsRestricted = false,
                             IsVisible = true,
                             PageId = 49,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 250,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = false,
+                            PageId = 50,
                             RoleId = 2
                         },
                         new

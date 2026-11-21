@@ -12,8 +12,9 @@ import { subscribeChatEvents } from '../chat/events';
 /**
  * Messages: end-to-end encrypted chat. Identical in the web and desktop apps (only chat/events.ts differs).
  *
- * Who can talk to whom is decided by the server (see ChatService): organization members chat with each
- * other; the SuperAdmin only posts to the read-only Announcements channel and can't see member chats.
+ * Who can talk to whom is decided by the server (see ChatService): everyone in the organization chats in
+ * direct and group conversations, but starting one with a more senior role needs the "Message Senior Roles"
+ * right. General is an org-wide channel for everyone; only the SuperAdmin posts to Announcements.
  * Encryption and decryption happen only here, in the client (chat/crypto.ts).
  */
 
@@ -186,15 +187,20 @@ interface Thread { messages: Shown[]; hasOlder: boolean }
 
 export function conversationTitle(c: ChatConversation, meId: string) {
   if (c.kind === 'announcement') return 'Announcements';
+  if (c.kind === 'general') return 'General';
   if (c.kind === 'group') return c.title ?? 'Group';
   return c.members.find((m) => m.userId !== meId)?.fullName ?? 'Direct message';
 }
 
 function conversationSubtitle(c: ChatConversation, meId: string) {
   if (c.kind === 'announcement') return 'From the organization owner to everyone';
+  if (c.kind === 'general') return 'Everyone in your organization';
   if (c.kind === 'group') return `${c.members.length} members`;
   return c.members.find((m) => m.userId !== meId)?.role ?? '';
 }
+
+/** Sort rank: Announcements, then General, above everything else. */
+const pinRank = (c: ChatConversation) => (c.kind === 'announcement' ? 2 : c.kind === 'general' ? 1 : 0);
 
 const timeOf = (iso: string) => {
   const d = new Date(iso);
@@ -223,16 +229,14 @@ function ChatWorkspace({ user, myKey, bundle, onBundle, onLock }: {
   const loadConversations = useCallback(async () => {
     try {
       const list = await chatApi.conversations();
-      // Announcements first, then most recent activity
-      list.sort((a, b) => Number(b.kind === 'announcement') - Number(a.kind === 'announcement') || b.lastMessageAt.localeCompare(a.lastMessageAt));
+      // Org-wide channels first (Announcements, then General), then most recent activity
+      list.sort((a, b) => pinRank(b) - pinRank(a) || b.lastMessageAt.localeCompare(a.lastMessageAt));
       setConversations(list);
       setError(null);
-      // The owner only has the Announcements channel: open it straight away.
-      if (isOwner && !selectedRef.current && list.length) setSelectedId(list[0].id);
     } catch (e) {
       setError(errorText(e));
     }
-  }, [isOwner]);
+  }, []);
 
   const decrypt = useCallback(async (m: ChatMessageDto): Promise<Shown> => {
     const base = { id: m.id, senderId: m.senderId, senderName: m.senderName, senderPublicKey: m.senderPublicKey, createdAt: m.createdAt };
@@ -321,7 +325,7 @@ function ChatWorkspace({ user, myKey, bundle, onBundle, onLock }: {
       <aside className="conv-list" aria-label="Conversations">
         <div className="conv-list-head">
           <strong>Conversations</strong>
-          {!isOwner && <button type="button" onClick={() => { setComposing(true); setSelectedId(null); }}>New</button>}
+          <button type="button" onClick={() => { setComposing(true); setSelectedId(null); }}>New</button>
         </div>
         {error && <p className="error" role="alert">{error}</p>}
         {!conversations && !error && <p className="hint">Loading…</p>}
@@ -337,17 +341,12 @@ function ChatWorkspace({ user, myKey, bundle, onBundle, onLock }: {
             </li>
           ))}
         </ul>
-        {isOwner && (
-          <p className="hint">
-            As the organization owner you post announcements to everyone. Conversations between members are private to them.
-          </p>
-        )}
         <SecurityPanel myKey={myKey} bundle={bundle} onBundle={onBundle} onLock={onLock} />
       </aside>
 
       <section className="thread" aria-label="Conversation">
         {composing ? (
-          <NewConversation onStarted={started} onCancel={() => setComposing(false)} />
+          <NewConversation isOwner={isOwner} onStarted={started} onCancel={() => setComposing(false)} />
         ) : selected ? (
           <ThreadView
             key={selected.id} conversation={selected} me={user} myKey={myKey}
@@ -355,7 +354,7 @@ function ChatWorkspace({ user, myKey, bundle, onBundle, onLock }: {
             onSent={appendSent} onBack={() => setSelectedId(null)}
           />
         ) : (
-          <p className="hint thread-empty">Choose a conversation{isOwner ? '' : ' or start a new one'}.</p>
+          <p className="hint thread-empty">Choose a conversation or start a new one.</p>
         )}
       </section>
     </div>
@@ -419,7 +418,7 @@ function ThreadView({ conversation: c, me, myKey, thread, onOlder, onSent, onBac
         <div>
           <h2>{conversationTitle(c, me.id)}</h2>
           <p className="hint">
-            {c.kind === 'announcement' ? 'Everyone in your organization receives these messages.'
+            {c.kind === 'announcement' || c.kind === 'general' ? 'Everyone in your organization receives these messages.'
               : c.members.map((m) => (m.userId === me.id ? 'You' : m.fullName)).join(', ')}
           </p>
         </div>
@@ -501,7 +500,9 @@ function VerifyKeys({ conversation: c, myKey, messages }: { conversation: ChatCo
   );
 }
 
-function NewConversation({ onStarted, onCancel }: { onStarted: (c: ChatConversation) => Promise<void>; onCancel: () => void }) {
+function NewConversation({ isOwner, onStarted, onCancel }: {
+  isOwner: boolean; onStarted: (c: ChatConversation) => Promise<void>; onCancel: () => void;
+}) {
   const [contacts, setContacts] = useState<ChatContact[] | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [title, setTitle] = useState('');
@@ -538,7 +539,13 @@ function NewConversation({ onStarted, onCancel }: { onStarted: (c: ChatConversat
       <h2>New conversation</h2>
       <input type="search" placeholder="Search people" aria-label="Search people" value={filter} onChange={(e) => setFilter(e.target.value)} />
       {!contacts && !error && <p className="hint">Loading…</p>}
-      {contacts?.length === 0 && <p className="hint">There is nobody else in your organization yet.</p>}
+      {contacts?.length === 0 && <p className="hint">There is nobody you can start a conversation with yet.</p>}
+      {!isOwner && contacts && (
+        <p className="hint">
+          People in more senior roles are listed only if you have the Message Senior Roles right. You can always reply
+          when they message you.
+        </p>
+      )}
       <ul className="people">
         {shown.map((c) => (
           <li key={c.userId}>

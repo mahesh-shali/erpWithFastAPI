@@ -10,7 +10,7 @@ export interface ChatContact {
   keyId: string | null; publicKey: string | null; fingerprint: string | null;
 }
 export interface ChatMember { userId: string; fullName: string; role: string; fingerprint: string | null }
-export type ChatKind = 'direct' | 'group' | 'announcement';
+export type ChatKind = 'direct' | 'group' | 'general' | 'announcement';
 export interface ChatConversation {
   id: string; kind: ChatKind; title: string | null; members: ChatMember[]; lastMessageAt: string;
   unread: number; lastReadMessageId: number; canPost: boolean;

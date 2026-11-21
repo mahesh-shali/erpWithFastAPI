@@ -412,19 +412,31 @@
       {
         "title": "First visit asks for a passphrase",
         "steps": ["Sign in as staff@demo.com", "Open Messages", "Enter the same passphrase (10+ characters) twice", "Click Set up"],
-        "expect": "The conversation list opens with an Announcements channel. Opening Messages again does not ask for the passphrase.",
+        "expect": "The conversation list opens with the Announcements and General channels. Opening Messages again does not ask for the passphrase.",
         "auto": "frontend MessagesPage.test.tsx; e2e screens.spec.ts › Messages"
       },
       {
-        "title": "Members chat privately, the SuperAdmin can't see it",
-        "steps": ["As manager@demo.com set up Messages, click New, pick Demo Staff, Start chat, send a message", "As staff@demo.com open the chat and reply", "As admin@demo.com open Messages"],
-        "expect": "Both members see the messages live. The SuperAdmin only sees Announcements and has no New button.",
-        "auto": "ChatTests › SuperAdmin_has_no_access_to_member_conversations"
+        "title": "Members chat privately, the SuperAdmin can join chats",
+        "steps": ["As manager@demo.com set up Messages, click New, pick Demo Staff, Start chat, send a message", "As staff@demo.com open the chat and reply", "As admin@demo.com open Messages, click New, pick Demo Staff, send a message"],
+        "expect": "Both members see the messages live. The SuperAdmin doesn't see the manager-staff chat, but can start their own; staff can reply to it.",
+        "auto": "ChatTests › SuperAdmin_takes_part_in_member_conversations_and_juniors_can_reply"
+      },
+      {
+        "title": "Messaging senior roles needs a right",
+        "steps": ["As staff@demo.com click New", "As admin@demo.com open User Rights for Demo Staff, give Write on 'Message Senior Roles', save", "As staff@demo.com reload Messages and click New"],
+        "expect": "At first staff only sees other Users in the people list. After the right is granted, Admin, Manager and SuperAdmin people appear and a chat can be started.",
+        "auto": "ChatTests › Starting_a_chat_with_a_more_senior_role_needs_the_senior_messaging_right"
+      },
+      {
+        "title": "General channel is for everyone",
+        "steps": ["As staff@demo.com post in General", "As admin@demo.com and manager@demo.com open General"],
+        "expect": "Everyone sees the message live and can reply in General.",
+        "auto": "ChatTests › Everyone_in_the_organization_posts_in_the_General_channel"
       },
       {
         "title": "Announcements are one-way",
         "steps": ["As admin@demo.com post in Announcements", "As staff@demo.com open Announcements"],
-        "expect": "Staff sees the announcement and 'Only the organization owner can post here.' with no message box. Demo Admin is not in the New conversation people list.",
+        "expect": "Staff sees the announcement and 'Only the organization owner can post here.' with no message box.",
         "auto": "ChatTests › Only_the_SuperAdmin_posts_announcements_and_every_member_receives_them"
       },
       {

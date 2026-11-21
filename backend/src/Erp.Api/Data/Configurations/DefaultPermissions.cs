@@ -82,6 +82,8 @@ public static class DefaultPermissions
         P(48, PageKeys.Analytics,        "Analytics",           "/analytics",                 null, 15),
         P(5,  PageKeys.AiChat,           "AI Assistant",        "/assistant",                 null, 20),
         P(49, PageKeys.Messages,         "Messages",            "/messages",                  null, 25),
+        // Rights-only entry (never in the menu: no V/R by default). W = may start chats with more senior roles.
+        P(50, PageKeys.MessagesSenior,   "Message Senior Roles", "/messages/senior-roles",    null, 26),
         // Master
         P(6,  PageKeys.MasterUsers,      "Users",               "/master/users",              101, 10),
         P(7,  PageKeys.MasterUserRights, "User Rights",         "/master/user-rights",        101, 20),
@@ -147,6 +149,7 @@ public static class DefaultPermissions
         [PageKeys.Analytics] = "VR",
         [PageKeys.AiChat] = "VR",
         [PageKeys.Messages] = "VRW",
+        [PageKeys.MessagesSenior] = "W",
         [PageKeys.MasterUsers] = "VRWUD",
         [PageKeys.MasterUserRights] = "VRU",
         [PageKeys.MasterPages] = "VR",

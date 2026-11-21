@@ -170,16 +170,37 @@ describe('MessagesPage', () => {
     expect(sent!.ciphertext).toBe(btoa('Hello Bob'));
   });
 
-  it('the SuperAdmin only gets the Announcements channel, with a composer and no way to start member chats', async () => {
+  it('the SuperAdmin posts announcements and can also start conversations', async () => {
     await unlockedOnThisDevice(owner);
     render(owner, [
       ['GET', '/api/chat/keys/me', bundle(owner.id)],
       ['GET', '/api/chat/conversations', [{ ...announcement, canPost: true, unread: 0 }]],
       ['GET', '/api/chat/conversations/c-ann/messages', []],
+      ['POST', '/api/chat/conversations/c-ann/read', undefined],
     ]);
+    const u = userEvent.setup();
+    await u.click(await screen.findByRole('button', { name: /Announcements/ }));
     expect(await screen.findByLabelText('Message')).toHaveAttribute('placeholder', 'Write an announcement…');
-    expect(screen.queryByRole('button', { name: 'New' })).not.toBeInTheDocument();
-    expect(screen.getByText(/Conversations between members are private to them/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'New' })).toBeInTheDocument();
+  });
+
+  it('everyone can post in the General channel, listed right after Announcements', async () => {
+    await unlockedOnThisDevice(member);
+    const general: ChatConversation = { ...announcement, id: 'c-gen', kind: 'general', title: 'General', canPost: true, unread: 0 };
+    render(member, [
+      ['GET', '/api/chat/keys/me', bundle(member.id)],
+      ['GET', '/api/chat/conversations', [direct, general, announcement]],
+      ['GET', '/api/chat/conversations/c-gen/messages', [msg(7, 'c-gen', 'u-b', 'Bob User', 'Morning all')]],
+      ['POST', '/api/chat/conversations/c-gen/read', undefined],
+    ]);
+    const u = userEvent.setup();
+    const names = (await screen.findAllByRole('button', { name: /Announcements|General|Bob User/ })).map((b) => b.textContent);
+    expect(names[0]).toMatch(/Announcements/);
+    expect(names[1]).toMatch(/General/);
+    await u.click(screen.getByRole('button', { name: /General/ }));
+    expect(await screen.findByText('Morning all')).toBeInTheDocument();
+    expect(screen.getByLabelText('Message')).toHaveAttribute('placeholder', 'Write a message…');
+    expect(screen.getByText('Everyone in your organization receives these messages.')).toBeInTheDocument();
   });
 
   it('new messages announced on the live stream are fetched and shown', async () => {

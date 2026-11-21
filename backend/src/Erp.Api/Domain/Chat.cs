@@ -9,17 +9,24 @@ namespace Erp.Api.Domain;
 //  - per message: AES-256-GCM ciphertext, plus the message key wrapped separately for every
 //    recipient's public key (ECDH -> HKDF -> AES-GCM). See frontend/src/chat/crypto.ts.
 //
-// Access rules (ChatService): organization members (every role below SuperAdmin) talk to each other in
-// direct and group conversations; the SuperAdmin (organization owner) can only post to the read-only
-// Announcements channel of the organization and has no access to member conversations.
+// Access rules (ChatService): everyone in the organization, the SuperAdmin (owner) included, talks in
+// direct and group conversations. Starting a conversation with someone in a more senior role (higher
+// Role.Level) needs the "messages-senior" right; seniors can always reach juniors, and anyone can reply in a
+// conversation they are already a member of. Every organization also has two org-wide channels: General
+// (everyone posts) and Announcements (only the owner posts, everyone reads).
 // ------------------------------------------------------------------------------------------------
 
 public static class ChatKinds
 {
     public const string Direct = "direct";
     public const string Group = "group";
+    /// <summary>One per organization: every member posts and reads.</summary>
+    public const string General = "general";
     /// <summary>One per organization: the SuperAdmin posts, everyone else reads.</summary>
     public const string Announcement = "announcement";
+
+    /// <summary>Org-wide channels have no stored membership: every user of the organization is in them.</summary>
+    public static bool IsOrgWide(string kind) => kind is General or Announcement;
 }
 
 public static class ChatLimits
@@ -69,7 +76,7 @@ public class ChatConversation : ITenantOwned
 }
 
 /// <summary>
-/// Membership + read position. Announcements have no stored membership (every org user is in it); a row
+/// Membership + read position. Org-wide channels (General, Announcements) have no stored membership (every org user is in it); a row
 /// is added there only to remember the user's read position.
 /// </summary>
 public class ChatParticipant : ITenantOwned

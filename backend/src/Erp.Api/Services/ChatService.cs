@@ -11,10 +11,12 @@ namespace Erp.Api.Services;
 /// End-to-end encrypted chat. The server only relays and stores ciphertext; it enforces WHO may talk to whom:
 ///
 ///  - Everything is inside the caller's organization (EF tenant filter + explicit org checks on users).
-///  - Organization members (every role below SuperAdmin: Admin, User, ...) create direct and group
-///    conversations with each other. The SuperAdmin can't be added to them and can't list, read or post in them.
-///  - Each organization has one Announcements channel: only the SuperAdmin posts, every member reads.
-///    Members can't reply there, and there is no other way for members to reach the SuperAdmin's chat.
+///  - Everyone in the organization (the SuperAdmin included) creates direct and group conversations.
+///  - Seniority: starting a conversation with anyone whose role level is higher than the caller's needs Write on
+///    the "messages-senior" right (PageKeys.MessagesSenior). Same or lower levels are always allowed. Once a
+///    conversation exists its members may post in it, so a junior can reply to a senior who wrote first.
+///  - Each organization has two org-wide channels with every user as a member: General (everyone posts) and
+///    Announcements (only the SuperAdmin posts, everyone reads).
 ///  - A message must be encrypted for exactly the current keys of the conversation's members (409 otherwise),
 ///    so nobody is silently left out and no extra key can be slipped in.
 /// </summary>
@@ -34,9 +36,11 @@ public interface IChatService
     Task MarkReadAsync(Guid conversationId, long messageId, CancellationToken ct);
 }
 
-public sealed class ChatService(ErpDbContext db, ITenantContext tenant, IChatEventBus events, TimeProvider clock) : IChatService
+public sealed class ChatService(
+    ErpDbContext db, ITenantContext tenant, IChatEventBus events, IPermissionService permissions, TimeProvider clock) : IChatService
 {
     public const string AnnouncementTitle = "Announcements";
+    public const string GeneralTitle = "General";
     private const int SpkiP256Length = 91;     // WebCrypto exportKey('spki') of an ECDH P-256 key
     private const int IvLength = 12;
     private const int WrappedKeyLength = IvLength + 32 + 16; // IV + AES-GCM(32-byte key) + tag
@@ -44,9 +48,9 @@ public sealed class ChatService(ErpDbContext db, ITenantContext tenant, IChatEve
     private Guid Org => tenant.OrganizationId;
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
-    private sealed record Actor(Guid Id, string FullName, int RoleId)
+    private sealed record Actor(Guid Id, string FullName, int RoleId, int Level)
     {
-        /// <summary>The organization owner: announcements only, never in member conversations.</summary>
+        /// <summary>The organization owner: the only one who posts announcements.</summary>
         public bool IsOwner => RoleId == Roles.SuperAdminId;
     }
 
@@ -110,44 +114,46 @@ public sealed class ChatService(ErpDbContext db, ITenantContext tenant, IChatEve
     public async Task<IReadOnlyList<ChatContactDto>> ContactsAsync(CancellationToken ct)
     {
         var me = await ActorAsync(ct);
-        if (me.IsOwner) return []; // the owner only posts announcements
-        return await ContactsQuery(db.Users.Where(u => u.OrganizationId == Org && u.Id != me.Id && u.RoleId != Roles.SuperAdminId))
+        // People the caller may start a conversation with: more senior roles only with the right.
+        var maxLevel = await MaxReachableLevelAsync(me, ct);
+        return await ContactsQuery(db.Users.Where(u => u.OrganizationId == Org && u.Id != me.Id && u.Role!.Level <= maxLevel))
             .ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<ChatConversationDto>> ConversationsAsync(CancellationToken ct)
     {
         var me = await ActorAsync(ct);
-        await EnsureAnnouncementAsync(ct);
+        await EnsureOrgChannelsAsync(ct);
         return await BuildAsync(me, null, ct);
     }
 
     public async Task<ChatConversationDto> CreateConversationAsync(CreateConversationRequest req, CancellationToken ct)
     {
         var me = await ActorAsync(ct);
-        if (me.IsOwner)
-            throw new ForbiddenException("Member conversations are private to the organization's members. Use Announcements to message everyone.");
-
         var ids = (req.MemberIds ?? []).Distinct().Where(id => id != me.Id).ToList();
         if (ids.Count == 0) throw new DomainException("Choose at least one person.");
         if (ids.Count + 1 > ChatLimits.MaxGroupMembers)
             throw new DomainException($"A group can have at most {ChatLimits.MaxGroupMembers} members.");
 
         var members = await db.Users.AsNoTracking().Where(u => u.OrganizationId == Org && ids.Contains(u.Id))
-            .Select(u => new { u.Id, u.RoleId }).ToListAsync(ct);
+            .Select(u => new { u.Id, u.Role!.Level }).ToListAsync(ct);
         if (members.Count != ids.Count) throw new NotFoundException("Some of the selected people were not found.");
-        if (members.Any(m => m.RoleId == Roles.SuperAdminId))
-            throw new ForbiddenException("The organization owner can't be added to member conversations.");
 
         string? directKey = null, title = null;
         var kind = ids.Count == 1 ? ChatKinds.Direct : ChatKinds.Group;
         if (kind == ChatKinds.Direct)
         {
+            // An existing direct chat is always reopened, e.g. a junior answering a senior who wrote first.
             directKey = DirectKeyOf(me.Id, ids[0]);
             var existing = await db.ChatConversations.Where(c => c.DirectKey == directKey).Select(c => (Guid?)c.Id).FirstOrDefaultAsync(ct);
             if (existing is { } id) return (await BuildAsync(me, id, ct)).Single();
         }
-        else
+
+        var maxLevel = await MaxReachableLevelAsync(me, ct);
+        if (members.Any(m => m.Level > maxLevel))
+            throw new ForbiddenException("You don't have permission to start conversations with people in more senior roles.");
+
+        if (kind == ChatKinds.Group)
         {
             title = req.Title?.Trim();
             if (string.IsNullOrEmpty(title)) throw new DomainException("Give the group a name.");
@@ -264,8 +270,8 @@ public sealed class ChatService(ErpDbContext db, ITenantContext tenant, IChatEve
         var p = await db.ChatParticipants.FirstOrDefaultAsync(x => x.ConversationId == conv.Id && x.UserId == me.Id, ct);
         if (p is null)
         {
-            // Announcements keep no membership rows; this row only remembers the read position.
-            if (conv.Kind != ChatKinds.Announcement) throw new NotFoundException("Conversation not found.");
+            // Org-wide channels keep no membership rows; this row only remembers the read position.
+            if (!ChatKinds.IsOrgWide(conv.Kind)) throw new NotFoundException("Conversation not found.");
             db.ChatParticipants.Add(new ChatParticipant { ConversationId = conv.Id, UserId = me.Id, JoinedAt = Now, LastReadMessageId = messageId });
         }
         else if (messageId > p.LastReadMessageId) p.LastReadMessageId = messageId;
@@ -278,7 +284,7 @@ public sealed class ChatService(ErpDbContext db, ITenantContext tenant, IChatEve
     private async Task<Actor> ActorAsync(CancellationToken ct) =>
         await db.Users.AsNoTracking()
             .Where(u => u.Id == tenant.UserId && u.OrganizationId == Org)
-            .Select(u => new Actor(u.Id, u.FullName, u.RoleId))
+            .Select(u => new Actor(u.Id, u.FullName, u.RoleId, u.Role!.Level))
             .FirstOrDefaultAsync(ct)
         ?? throw new ForbiddenException("Your account was not found.");
 
@@ -289,26 +295,32 @@ public sealed class ChatService(ErpDbContext db, ITenantContext tenant, IChatEve
     {
         var conv = await db.ChatConversations.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id, ct)
                    ?? throw new NotFoundException("Conversation not found.");
-        if (conv.Kind == ChatKinds.Announcement) return conv;
-        if (me.IsOwner || !await db.ChatParticipants.AnyAsync(p => p.ConversationId == id && p.UserId == me.Id, ct))
+        if (ChatKinds.IsOrgWide(conv.Kind)) return conv;
+        if (!await db.ChatParticipants.AnyAsync(p => p.ConversationId == id && p.UserId == me.Id, ct))
             throw new NotFoundException("Conversation not found.");
         return conv;
     }
 
-    private static bool CanPost(Actor me, ChatConversation conv) =>
-        conv.Kind == ChatKinds.Announcement ? me.IsOwner : !me.IsOwner;
+    private static bool CanPost(Actor me, string kind) => kind != ChatKinds.Announcement || me.IsOwner;
+
+    /// <summary>
+    /// Highest role level the caller may start a conversation with: any level with the "messages-senior" right
+    /// (the owner has every right), otherwise their own level and below.
+    /// </summary>
+    private async Task<int> MaxReachableLevelAsync(Actor me, CancellationToken ct) =>
+        me.IsOwner || await permissions.HasAsync(me.Id, Org, PageKeys.MessagesSenior, PageAction.Write, ct) ? int.MaxValue : me.Level;
 
     private static void EnsureCanPost(Actor me, ChatConversation conv)
     {
-        if (!CanPost(me, conv))
+        if (!CanPost(me, conv.Kind))
             throw new ForbiddenException(conv.Kind == ChatKinds.Announcement
                 ? "Only the organization owner can post announcements."
                 : "You can't post in this conversation.");
     }
 
-    /// <summary>Everyone who receives the conversation's messages. Announcements: every user of the organization.</summary>
+    /// <summary>Everyone who receives the conversation's messages. Org-wide channels: every user of the organization.</summary>
     private IQueryable<Guid> MemberIds(ChatConversation conv) =>
-        conv.Kind == ChatKinds.Announcement
+        ChatKinds.IsOrgWide(conv.Kind)
             ? db.Users.Where(u => u.OrganizationId == Org).Select(u => u.Id)
             : db.ChatParticipants.Where(p => p.ConversationId == conv.Id).Select(p => p.UserId);
 
@@ -323,24 +335,32 @@ public sealed class ChatService(ErpDbContext db, ITenantContext tenant, IChatEve
     private Task<Guid?> ActiveKeyIdAsync(Guid userId, CancellationToken ct) =>
         db.ChatUserKeys.Where(k => k.UserId == userId && k.RevokedAt == null).Select(k => (Guid?)k.Id).FirstOrDefaultAsync(ct);
 
-    private async Task EnsureAnnouncementAsync(CancellationToken ct)
+    /// <summary>Creates the organization's General and Announcements channels on first use.</summary>
+    private async Task EnsureOrgChannelsAsync(CancellationToken ct)
     {
-        if (await db.ChatConversations.AnyAsync(c => c.Kind == ChatKinds.Announcement, ct)) return;
-        db.ChatConversations.Add(new ChatConversation
+        var existing = await db.ChatConversations.Where(c => c.Kind == ChatKinds.General || c.Kind == ChatKinds.Announcement)
+            .Select(c => c.Kind).ToListAsync(ct);
+        foreach (var (kind, title) in new[] { (ChatKinds.General, GeneralTitle), (ChatKinds.Announcement, AnnouncementTitle) })
         {
-            Id = Guid.NewGuid(), Kind = ChatKinds.Announcement, Title = AnnouncementTitle, CreatedAt = Now, LastMessageAt = Now,
-        });
-        try { await db.SaveChangesAsync(ct); }
-        catch (DbUpdateException) { db.ChangeTracker.Clear(); } // created concurrently (unique per organization)
+            if (existing.Contains(kind)) continue;
+            db.ChatConversations.Add(new ChatConversation { Id = Guid.NewGuid(), Kind = kind, Title = title, CreatedAt = Now, LastMessageAt = Now });
+            try { await db.SaveChangesAsync(ct); }
+            catch (DbUpdateException) { db.ChangeTracker.Clear(); } // created concurrently (unique per organization)
+        }
     }
+
+    private static string? TitleOf(string kind, string? title) => kind switch
+    {
+        ChatKinds.Announcement => AnnouncementTitle,
+        ChatKinds.General => GeneralTitle,
+        _ => title,
+    };
 
     /// <summary>Conversation list for the caller (or the one conversation `onlyId`), newest activity first.</summary>
     private async Task<List<ChatConversationDto>> BuildAsync(Actor me, Guid? onlyId, CancellationToken ct)
     {
-        var q = db.ChatConversations.AsNoTracking();
-        q = me.IsOwner
-            ? q.Where(c => c.Kind == ChatKinds.Announcement)
-            : q.Where(c => c.Kind == ChatKinds.Announcement || c.Participants.Any(p => p.UserId == me.Id));
+        var q = db.ChatConversations.AsNoTracking()
+            .Where(c => c.Kind == ChatKinds.General || c.Kind == ChatKinds.Announcement || c.Participants.Any(p => p.UserId == me.Id));
         if (onlyId is { } only) q = q.Where(c => c.Id == only);
 
         var rows = await q
@@ -357,7 +377,7 @@ public sealed class ChatService(ErpDbContext db, ITenantContext tenant, IChatEve
             .OrderByDescending(c => c.LastMessageAt)
             .ToListAsync(ct);
 
-        var memberConvIds = rows.Where(r => r.Kind != ChatKinds.Announcement).Select(r => r.Id).ToList();
+        var memberConvIds = rows.Where(r => !ChatKinds.IsOrgWide(r.Kind)).Select(r => r.Id).ToList();
         var members = await (
                 from p in db.ChatParticipants.AsNoTracking().Where(p => memberConvIds.Contains(p.ConversationId))
                 join k in db.ChatUserKeys.Where(k => k.RevokedAt == null) on (Guid?)p.UserId equals k.UserId into keys
@@ -368,9 +388,8 @@ public sealed class ChatService(ErpDbContext db, ITenantContext tenant, IChatEve
         var byConv = members.ToLookup(m => m.ConversationId, m => m.Member);
 
         return rows.Select(r => new ChatConversationDto(
-            r.Id, r.Kind, r.Kind == ChatKinds.Announcement ? AnnouncementTitle : r.Title,
-            byConv[r.Id].ToList(), r.LastMessageAt, r.Unread, r.LastRead,
-            r.Kind == ChatKinds.Announcement ? me.IsOwner : !me.IsOwner)).ToList();
+            r.Id, r.Kind, TitleOf(r.Kind, r.Title),
+            byConv[r.Id].ToList(), r.LastMessageAt, r.Unread, r.LastRead, CanPost(me, r.Kind))).ToList();
     }
 
     internal static string DirectKeyOf(Guid a, Guid b)
