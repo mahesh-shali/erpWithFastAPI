@@ -10,7 +10,8 @@ namespace Erp.Api.Controllers;
 
 /// <summary>
 /// End-to-end encrypted messaging (page "messages"). The server stores and relays ciphertext only;
-/// ChatService enforces who can talk to whom (members among themselves, SuperAdmin announcements only).
+/// ChatService enforces who can talk to whom (senior roles need the messages-senior right; General is
+/// org-wide; only the SuperAdmin posts announcements).
 /// </summary>
 [ApiController]
 [Route("api/chat")]

@@ -117,8 +117,13 @@ public static class PageKeys
     public const string Products = "products";
     public const string Orders = "orders";
     public const string AiChat = "ai-chat";
-    /// <summary>End-to-end encrypted messaging between organization members (+ owner announcements).</summary>
+    /// <summary>End-to-end encrypted messaging inside the organization (+ General channel and owner announcements).</summary>
     public const string Messages = "messages";
+    /// <summary>
+    /// Not a screen: Write on it lets a user start conversations with people in more senior roles.
+    /// Granted per role / user in Role Rights and User Rights.
+    /// </summary>
+    public const string MessagesSenior = "messages-senior";
     public const string MasterUsers = "master-users";
     public const string MasterUserRights = "master-user-rights";
     public const string MasterRoleRights = "master-role-rights";

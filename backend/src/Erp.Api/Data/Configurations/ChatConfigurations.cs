@@ -38,12 +38,15 @@ public sealed class ChatConversationConfiguration : IEntityTypeConfiguration<Cha
         e.Property(x => x.DirectKey).HasMaxLength(80);
         e.Property(x => x.CreatedAt).HasDefaultValueSql(Sql.Now);
         e.Property(x => x.LastMessageAt).HasDefaultValueSql(Sql.Now);
-        e.ToTable(t => t.HasCheckConstraint("ck_chat_conversations_kind", "kind IN ('direct', 'group', 'announcement')"));
+        e.ToTable(t => t.HasCheckConstraint("ck_chat_conversations_kind", "kind IN ('direct', 'group', 'general', 'announcement')"));
 
         e.HasIndex(x => new { x.OrganizationId, x.DirectKey }).IsUnique().HasFilter("direct_key IS NOT NULL")
             .HasDatabaseName("ux_chat_conversations_direct");
         e.HasIndex(x => x.OrganizationId).IsUnique().HasFilter("kind = 'announcement'")
             .HasDatabaseName("ux_chat_conversations_announcement");
+        // Named: a second unnamed index on organization_id would merge into the one above.
+        e.HasIndex(x => x.OrganizationId, "ux_chat_conversations_general").IsUnique().HasFilter("kind = 'general'")
+            .HasDatabaseName("ux_chat_conversations_general");
 
         e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Cascade);
         e.HasOne<User>().WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);

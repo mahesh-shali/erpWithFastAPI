@@ -150,7 +150,7 @@ test.describe('Messages (end-to-end encrypted)', () => {
     await expect(page.getByRole('complementary', { name: 'Conversations' })).toBeVisible();
   }
 
-  test('the SuperAdmin announces, a member decrypts it and cannot reply or start a chat with the SuperAdmin', async ({ browser }) => {
+  test('the SuperAdmin announces, a member decrypts it but cannot reply there or start a chat with senior roles', async ({ browser }) => {
     const staff = await (await browser.newContext()).newPage();
     await login(staff, STAFF);
     await openMessages(staff); // the member's key must exist before the announcement is encrypted for it
@@ -158,7 +158,8 @@ test.describe('Messages (end-to-end encrypted)', () => {
     const owner = await (await browser.newContext()).newPage();
     await login(owner);
     await openMessages(owner);
-    await expect(owner.getByRole('button', { name: 'New' })).toHaveCount(0);
+    await expect(owner.getByRole('button', { name: 'New' })).toBeVisible(); // the owner can start chats too
+    await owner.getByRole('button', { name: /Announcements/ }).click();
     const text = `Plant closed on Friday (${Date.now()})`;
     await owner.getByLabel('Message').fill(text);
     await owner.getByRole('button', { name: 'Send' }).click();
@@ -169,8 +170,32 @@ test.describe('Messages (end-to-end encrypted)', () => {
     await expect(staff.getByText('Only the organization owner can post here.')).toBeVisible();
     await expect(staff.getByLabel('Message')).toHaveCount(0);
 
+    // A User has no "Message Senior Roles" right by default: more senior people aren't contacts
     await staff.getByRole('button', { name: 'New' }).click();
-    await expect(staff.getByRole('checkbox').first()).toBeVisible();
-    await expect(staff.getByRole('checkbox', { name: /Demo Admin/ })).toHaveCount(0); // the SuperAdmin isn't a contact
+    await expect(staff.getByText(/listed only if you have the Message Senior Roles right/)).toBeVisible();
+    for (const senior of [/Demo Admin/, /Demo Manager/, /Demo Team Lead/])
+      await expect(staff.getByRole('checkbox', { name: senior })).toHaveCount(0);
+  });
+
+  test('everyone in the organization posts in the General channel', async ({ browser }) => {
+    const staff = await (await browser.newContext()).newPage();
+    await login(staff, STAFF);
+    await openMessages(staff);
+
+    const owner = await (await browser.newContext()).newPage();
+    await login(owner);
+    await openMessages(owner);
+    await owner.getByRole('button', { name: /General/ }).click();
+    const hello = `Good morning everyone (${Date.now()})`;
+    await owner.getByLabel('Message').fill(hello);
+    await owner.getByRole('button', { name: 'Send' }).click();
+    await expect(owner.getByTestId('chat-message').filter({ hasText: hello })).toBeVisible();
+
+    await staff.getByRole('button', { name: /General/ }).click();
+    await expect(staff.getByTestId('chat-message').filter({ hasText: hello })).toBeVisible();
+    const reply = `Morning! (${Date.now()})`;
+    await staff.getByLabel('Message').fill(reply);
+    await staff.getByRole('button', { name: 'Send' }).click();
+    await expect(owner.getByTestId('chat-message').filter({ hasText: reply })).toBeVisible();
   });
 });

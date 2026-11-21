@@ -148,35 +148,89 @@ public class ChatTests(ApiFactory factory)
         (await Send(org.UserA, conv.Id, Guid.NewGuid())).StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
-    [Fact]
-    public async Task SuperAdmin_has_no_access_to_member_conversations()
+    private static async Task GrantSeniorMessaging(Org org, Person p)
     {
-        var org = await NewOrg();
-        await SetUpKey(org.Owner);
-        await SetUpKey(org.UserA);
-        await SetUpKey(org.Admin);
-        var conv = await Open(org.Admin, null, org.UserA);
-
-        (await Conversations(org.Owner)).Should().ContainSingle().Which.Kind.Should().Be("announcement");
-        (await org.Owner.Client.GetFromJsonAsync<List<ChatContactDto>>("/api/chat/contacts")).Should().BeEmpty();
-        (await org.Owner.Client.GetAsync($"/api/chat/conversations/{conv.Id}/messages")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await org.Owner.Client.GetAsync($"/api/chat/conversations/{conv.Id}/recipients")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await org.Owner.Client.PostAsJsonAsync("/api/chat/conversations", new CreateConversationRequest([org.UserA.Id], null)))
-            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var pageId = (await org.Owner.Client.GetFromJsonAsync<List<PageDto>>("/api/master/pages"))!.Single(x => x.Key == "messages-senior").Id;
+        (await org.Owner.Client.PutAsJsonAsync($"/api/master/users/{p.Id}/rights",
+                new SetRightsRequest([new SetRightsItem(pageId, false, new PageRightsDto(false, false, false, true, false, false))])))
+            .EnsureSuccessStatusCode();
     }
 
     [Fact]
-    public async Task Members_cannot_reach_the_SuperAdmin_and_do_not_see_them_as_a_contact()
+    public async Task SuperAdmin_takes_part_in_member_conversations_and_juniors_can_reply()
     {
         var org = await NewOrg();
-        var contacts = (await org.UserA.Client.GetFromJsonAsync<List<ChatContactDto>>("/api/chat/contacts"))!;
-        contacts.Select(c => c.UserId).Should().BeEquivalentTo([org.Admin.Id, org.UserB.Id]);
-        contacts.Should().NotContain(c => c.Role == "SuperAdmin");
+        var ownerKey = await SetUpKey(org.Owner);
+        var aKey = await SetUpKey(org.UserA);
 
-        (await org.UserA.Client.PostAsJsonAsync("/api/chat/conversations", new CreateConversationRequest([org.Owner.Id], null)))
+        var contacts = (await org.Owner.Client.GetFromJsonAsync<List<ChatContactDto>>("/api/chat/contacts"))!;
+        contacts.Select(c => c.UserId).Should().BeEquivalentTo([org.Admin.Id, org.UserA.Id, org.UserB.Id]);
+
+        var conv = await Open(org.Owner, null, org.UserA);
+        (await Send(org.Owner, conv.Id, ownerKey.KeyId)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // UserA has no right to start chats with senior roles, but may answer in a chat the owner started
+        var seenByA = (await Conversations(org.UserA)).Single(c => c.Id == conv.Id);
+        seenByA.CanPost.Should().BeTrue();
+        (await Open(org.UserA, null, org.Owner)).Id.Should().Be(conv.Id);
+        (await Send(org.UserA, conv.Id, aKey.KeyId)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var g = await Open(org.Owner, "Leadership", org.Admin, org.UserA);
+        g.Members.Should().HaveCount(3);
+        (await Conversations(org.Owner)).Select(c => c.Kind).Should().Contain(["general", "announcement", "direct", "group"]);
+    }
+
+    [Fact]
+    public async Task Starting_a_chat_with_a_more_senior_role_needs_the_senior_messaging_right()
+    {
+        var org = await NewOrg();
+        var manager = await Create(org.Owner.Client, "Manager");
+
+        // User (level 10): only same level or below by default
+        var contacts = (await org.UserA.Client.GetFromJsonAsync<List<ChatContactDto>>("/api/chat/contacts"))!;
+        contacts.Select(c => c.UserId).Should().BeEquivalentTo([org.UserB.Id]);
+        foreach (var senior in new[] { org.Owner, org.Admin, manager })
+            (await org.UserA.Client.PostAsJsonAsync("/api/chat/conversations", new CreateConversationRequest([senior.Id], null)))
+                .StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await org.UserA.Client.PostAsJsonAsync("/api/chat/conversations", new CreateConversationRequest([org.UserB.Id, manager.Id], "Team")))
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await org.Admin.Client.PostAsJsonAsync("/api/chat/conversations", new CreateConversationRequest([org.UserA.Id, org.Owner.Id], "Team")))
-            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        await Open(org.UserA, null, org.UserB);
+
+        // Admin and Manager have the right by default
+        (await Open(org.Admin, null, org.Owner)).Kind.Should().Be("direct");
+        (await Open(manager, "Escalations", org.Admin, org.Owner)).Kind.Should().Be("group");
+
+        // Granting it to a user unlocks senior contacts
+        await GrantSeniorMessaging(org, org.UserA);
+        (await org.UserA.Client.GetFromJsonAsync<List<ChatContactDto>>("/api/chat/contacts"))!
+            .Select(c => c.UserId).Should().BeEquivalentTo([org.Owner.Id, org.Admin.Id, org.UserB.Id, manager.Id]);
+        (await Open(org.UserA, null, org.Admin)).Kind.Should().Be("direct");
+    }
+
+    [Fact]
+    public async Task Everyone_in_the_organization_posts_in_the_General_channel()
+    {
+        var org = await NewOrg();
+        await SetUpKey(org.Owner);
+        var aKey = await SetUpKey(org.UserA);
+        await SetUpKey(org.Admin);
+        // UserB has not set up secure messaging yet
+
+        var general = (await Conversations(org.UserA)).Single(c => c.Kind == "general");
+        general.Title.Should().Be("General");
+        general.CanPost.Should().BeTrue();
+        var recipients = (await org.UserA.Client.GetFromJsonAsync<ChatRecipientsDto>($"/api/chat/conversations/{general.Id}/recipients"))!;
+        recipients.Recipients.Should().HaveCount(3);
+        recipients.WithoutKey.Should().ContainSingle();
+
+        (await Send(org.UserA, general.Id, aKey.KeyId)).StatusCode.Should().Be(HttpStatusCode.OK);
+        foreach (var p in new[] { org.Owner, org.Admin, org.UserB })
+        {
+            var seen = (await Conversations(p)).Single(c => c.Kind == "general");
+            seen.Id.Should().Be(general.Id);
+            seen.Unread.Should().Be(1);
+            seen.CanPost.Should().BeTrue();
+        }
     }
 
     [Fact]
@@ -188,7 +242,7 @@ public class ChatTests(ApiFactory factory)
         await SetUpKey(org.Admin);
         // UserB has not set up secure messaging yet
 
-        var ann = (await Conversations(org.Owner)).Single();
+        var ann = (await Conversations(org.Owner)).Single(c => c.Kind == "announcement");
         ann.CanPost.Should().BeTrue();
         var recipients = (await org.Owner.Client.GetFromJsonAsync<ChatRecipientsDto>($"/api/chat/conversations/{ann.Id}/recipients"))!;
         recipients.Recipients.Should().HaveCount(3);

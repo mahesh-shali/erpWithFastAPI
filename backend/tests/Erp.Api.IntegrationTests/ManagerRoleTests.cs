@@ -78,7 +78,7 @@ public class ManagerRoleTests(ApiFactory factory)
     }
 
     [Fact]
-    public async Task Managers_chat_with_members_but_not_with_the_SuperAdmin()
+    public async Task Managers_reach_every_role_by_default_and_member_chats_stay_private_to_members()
     {
         var owner = await NewOrgOwner();
         var (admin, adminUser) = await Create(owner, "Admin");
@@ -86,7 +86,8 @@ public class ManagerRoleTests(ApiFactory factory)
         var (_, staff) = await Create(owner, "User");
 
         var contacts = (await manager.GetFromJsonAsync<List<ChatContactDto>>("/api/chat/contacts"))!;
-        contacts.Select(c => c.Role).Should().BeEquivalentTo("Admin", "User");
+        // Managers have the Message Senior Roles right by default
+        contacts.Select(c => c.Role).Should().BeEquivalentTo("SuperAdmin", "Admin", "User");
 
         var group = await manager.PostAsJsonAsync("/api/chat/conversations",
             new CreateConversationRequest([adminUser.Id, staff.Id], "Floor team"));
@@ -94,7 +95,7 @@ public class ManagerRoleTests(ApiFactory factory)
         var conv = (await group.Content.ReadFromJsonAsync<ChatConversationDto>())!;
         conv.Members.Select(m => m.Role).Should().BeEquivalentTo("Admin", "Manager", "User");
 
-        // The Admin sees it; the SuperAdmin doesn't
+        // The Admin sees it; the SuperAdmin isn't a member, so doesn't
         (await admin.GetFromJsonAsync<List<ChatConversationDto>>("/api/chat/conversations"))!.Should().Contain(c => c.Id == conv.Id);
         (await owner.GetFromJsonAsync<List<ChatConversationDto>>("/api/chat/conversations"))!.Should().NotContain(c => c.Id == conv.Id);
     }
