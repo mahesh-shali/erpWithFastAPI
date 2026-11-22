@@ -96,6 +96,15 @@ services:
         value: erp-clients
       - key: Cors__Origins__0
         value: https://erpwithfastapi.onrender.com
+      # New-device sign-in alerts. Without SMTP_USERNAME/SMTP_PASSWORD the API only logs them.
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false              # the Gmail address that sends the alerts
+      - key: SMTP_PASSWORD
+        sync: false              # Gmail App Password (16 characters), not the account password
 
   - type: web
     name: erpwithfastapi-ai

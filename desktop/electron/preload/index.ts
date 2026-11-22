@@ -10,7 +10,7 @@ const bridge: ErpBridge = {
     request: (method, path, body) => ipcRenderer.invoke(IPC.apiRequest, method, path, body),
   },
   auth: {
-    login: (email, password) => ipcRenderer.invoke(IPC.authLogin, email, password),
+    login: (email, password, code, rememberDevice) => ipcRenderer.invoke(IPC.authLogin, email, password, code, rememberDevice),
     restore: () => ipcRenderer.invoke(IPC.authRestore),
     logout: () => ipcRenderer.invoke(IPC.authLogout),
     onSignedOut: (listener) => {

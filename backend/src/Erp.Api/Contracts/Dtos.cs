@@ -9,7 +9,13 @@ public record RegisterRequest(
     [Required, MinLength(8)] string Password,
     [Required, MaxLength(200)] string FullName);
 
-public record LoginRequest([Required, EmailAddress] string Email, [Required] string Password);
+/// <param name="Code">Authenticator or recovery code; only needed when the account has two-factor sign-in on.</param>
+/// <param name="RememberDevice">With a code: don't ask for a code on this browser/app for Auth:TwoFactorRememberDays (30).</param>
+public record LoginRequest([Required, EmailAddress] string Email, [Required] string Password, [MaxLength(32)] string? Code = null,
+    bool RememberDevice = false);
+
+/// <summary>Login answer when the password was right but a two-factor code is still needed (send it with the login again).</summary>
+public record TwoFactorChallengeResponse(bool TwoFactorRequired = true);
 
 /// <summary>The refresh token is NOT in the body: it is set as an HttpOnly cookie (erp_refresh).</summary>
 public record AuthResponse(string AccessToken, DateTime ExpiresAt, UserDto User, Guid SessionId, DateTime SessionExpiresAt);
@@ -24,7 +30,7 @@ public record RoleDto(int Id, string Name, string? Description, int Level);
 
 /// <param name="CanManage">True if the caller is higher in the hierarchy and may edit/delete this user.</param>
 public record OrgUserDto(Guid Id, string Email, string FullName, string Role, DateTime CreatedAt, DateTime? LastLoginAt,
-    bool CanManage = false);
+    bool CanManage = false, bool TwoFactorEnabled = false);
 
 // ---------- Pages & rights (Master) ----------
 /// <summary>Where a page sits in the 3-level menu. Module/Group are null for top-level pages (Dashboard, AI Assistant).</summary>
@@ -66,6 +72,34 @@ public record CreateUserRequest(
     [Required] string Role);
 
 public record UpdateUserRoleRequest([Required] string Role);
+
+// ---------- Settings: my account ----------
+/// <param name="TrustedDevices">Devices that skip the two-factor code ("Remember this device") right now.</param>
+public record AccountDto(Guid Id, string Email, string FullName, string Role, bool TwoFactorEnabled, int RecoveryCodesLeft,
+    int TrustedDevices = 0);
+
+/// <param name="CurrentPassword">Required only when the email changes.</param>
+public record UpdateProfileRequest(
+    [Required, MaxLength(200)] string FullName,
+    [Required, EmailAddress, MaxLength(320)] string Email,
+    string? CurrentPassword);
+
+public record ChangePasswordRequest([Required] string CurrentPassword, [Required, MinLength(8), MaxLength(200)] string NewPassword);
+
+/// <param name="Secret">Base32 key for manual entry; <paramref name="OtpAuthUri"/> goes into the QR code.</param>
+public record TwoFactorSetupResponse(string Secret, string OtpAuthUri);
+public record TwoFactorCodeRequest([Required, MaxLength(32)] string Code);
+public record DisableTwoFactorRequest([Required] string Password, [Required, MaxLength(32)] string Code);
+public record RecoveryCodesResponse(IReadOnlyList<string> RecoveryCodes);
+
+// ---------- Settings: users (edit lower roles) ----------
+/// <param name="Role">New role, or null to keep it.</param>
+/// <param name="NewPassword">New password, or null/empty to keep it. Changing it signs the user out everywhere.</param>
+public record UpdateUserRequest(
+    [Required, MaxLength(200)] string FullName,
+    [Required, EmailAddress, MaxLength(320)] string Email,
+    string? Role,
+    [MaxLength(200)] string? NewPassword);
 
 // ---------- Paging ----------
 public record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSize, long Total);

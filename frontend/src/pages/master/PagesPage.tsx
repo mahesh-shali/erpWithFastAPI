@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
 import { api, type PageDto } from '../../api/client';
 
-/** Master > Pages: the screens rights can be granted on. Defined in code and seeded by migration. */
-export function PagesPage() {
+/**
+ * Pages master: the screens rights can be granted on. Defined in code and seeded by migration.
+ * Shown as the "Pages" tab of Settings (`embedded`: no page heading of its own).
+ */
+export function PagesPage({ embedded = false }: { embedded?: boolean }) {
   const [pages, setPages] = useState<PageDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => { api.pages().then(setPages).catch((e: Error) => setError(e.message)); }, []);
 
   return (
     <>
-      <h1>Pages</h1>
+      {!embedded && <h1>Pages</h1>}
       {error && <p role="alert" className="error">{error}</p>}
       <div className="card">
         <p className="hint">Pages are defined in code (code-first) and added by database migrations.</p>

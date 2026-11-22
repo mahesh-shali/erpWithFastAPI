@@ -69,6 +69,14 @@ services:
       AiService__BaseUrl: http://ai-service:8000
       ASPNETCORE_URLS: http://+:8080
       Cors__Origins__0: ${CORS_ORIGINS:-http://localhost}
+      # New-device sign-in alerts (empty SMTP_HOST = log only)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-ERP Platform}
+      LOGIN_ALERTS_ENABLED: ${LOGIN_ALERTS_ENABLED:-true}
     depends_on:
       migrator: { condition: service_completed_successfully }
       redis: { condition: service_healthy }

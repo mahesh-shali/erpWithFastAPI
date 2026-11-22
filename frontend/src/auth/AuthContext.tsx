@@ -1,13 +1,20 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { api, setUnauthorizedHandler, storeSession, TOKEN_KEY, USER_KEY, type UserDto } from '../api/client';
+import { api, isTwoFactorChallenge, setUnauthorizedHandler, storeSession, TOKEN_KEY, USER_KEY, type UserDto } from '../api/client';
 import { forgetDeviceKeys } from '../chat/deviceKeys';
+import { restoreLastPageAfterSignIn } from '../components/lastPage';
+
+/** 'two-factor' = password accepted, now call login again with the authenticator (or recovery) code. */
+export type LoginResult = 'signed-in' | 'two-factor';
 
 interface AuthState {
   user: UserDto | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  /** `rememberDevice` (with a code): this browser skips the two-factor code for 30 days. */
+  login: (email: string, password: string, code?: string, rememberDevice?: boolean) => Promise<LoginResult>;
   /** Signs out on the server (revokes the session) and locally. */
   logout: () => void;
+  /** Shows a changed name/email (Settings) without signing in again. */
+  updateUser: (changes: Partial<Pick<UserDto, 'fullName' | 'email'>>) => void;
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -41,13 +48,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setUnauthorizedHandler(null);
   }, [clearLocal]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await api.login(email, password);
+  const login = useCallback(async (email: string, password: string, code?: string, rememberDevice = false): Promise<LoginResult> => {
+    const res = await api.login(email, password, code, rememberDevice);
+    if (isTwoFactorChallenge(res)) return 'two-factor';
     storeSession(res);
+    restoreLastPageAfterSignIn(); // the first screen after this sign-in reopens where this user left off
     setUser(res.user);
+    return 'signed-in';
   }, []);
 
-  const value = useMemo(() => ({ user, isAuthenticated: !!user, login, logout }), [user, login, logout]);
+  const updateUser = useCallback((changes: Partial<Pick<UserDto, 'fullName' | 'email'>>) => {
+    setUser((u) => {
+      if (!u) return u;
+      const next = { ...u, ...changes };
+      localStorage.setItem(USER_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const value = useMemo(() => ({ user, isAuthenticated: !!user, login, logout, updateUser }),
+    [user, login, logout, updateUser]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

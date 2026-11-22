@@ -73,6 +73,11 @@ export interface SessionInfo {
   persistent: boolean;
 }
 
+/** Login answer when the password was right but the account has two-factor sign-in: call login again with the code. */
+export interface TwoFactorChallenge {
+  twoFactorRequired: true;
+}
+
 /** local = Docker stack on this machine; production = the deployed ERP (set with ERP_ENV). */
 export type ErpEnvironment = 'local' | 'production';
 
@@ -88,7 +93,12 @@ export interface ErpBridge {
     request<T = unknown>(method: HttpMethod, path: string, body?: unknown): Promise<BridgeResponse<T>>;
   };
   auth: {
-    login(email: string, password: string): Promise<BridgeResponse<SessionInfo>>;
+    /**
+     * `code` = authenticator or recovery code, sent after a TwoFactorChallenge. `rememberDevice` = this app skips the
+     * code for 30 days (the main process keeps that token OS-encrypted; it survives sign-out).
+     */
+    login(email: string, password: string, code?: string, rememberDevice?: boolean)
+      : Promise<BridgeResponse<SessionInfo | TwoFactorChallenge>>;
     /** Resumes the last session with the stored refresh token; null if there is none or it was revoked. */
     restore(): Promise<SessionInfo | null>;
     logout(): Promise<void>;

@@ -20,7 +20,8 @@ export function registerIpc(
     };
 
   ipcMain.handle(IPC.apiRequest, guard((method: unknown, path: unknown, body?: unknown) => api.request(method, path, body)));
-  ipcMain.handle(IPC.authLogin, guard((email: string, password: string) => api.login(email, password)));
+  ipcMain.handle(IPC.authLogin, guard((email: string, password: string, code?: string, rememberDevice?: boolean) =>
+    api.login(email, password, code, rememberDevice === true)));
   ipcMain.handle(IPC.authRestore, guard(() => api.restore()));
   ipcMain.handle(IPC.authLogout, guard(() => {
     chat.stop();

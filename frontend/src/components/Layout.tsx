@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { usePermissions } from '../auth/PermissionsContext';
 import { Icon } from './Icon';
+import { useLastPage } from './lastPage';
 import { activePath, buildMenu, type MenuModuleNode } from './menu';
 
 const TOP_ICONS: Record<string, string> = { dashboard: 'home', analytics: 'chart', 'ai-chat': 'sparkle', messages: 'chat' };
@@ -17,6 +18,7 @@ export function Layout() {
   const { pages, loading, error } = usePermissions();
   const location = useLocation();
   const tree = useMemo(() => buildMenu(pages), [pages]);
+  const reopening = useLastPage(user?.id); // after sign-in: reopen where this user left off, else the Dashboard
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -47,6 +49,9 @@ export function Layout() {
       return next;
     });
 
+  // Going back to the user's last page: a short loading line instead of flashing the Dashboard.
+  if (reopening) return <p className="hint reopening" role="status">Opening where you left off…</p>;
+
   return (
     <div className="layout">
       <header className="topbar">
@@ -59,6 +64,9 @@ export function Layout() {
           <span className="user-name">{user?.fullName}</span>
           <span className={`role role-${user?.role.toLowerCase()}`}>{user?.role}</span>
         </span>
+        <NavLink to="/settings" className="icon-btn settings-link" aria-label="Settings" title="Settings">
+          <Icon name="settings" size={20} />
+        </NavLink>
         <button onClick={logout} className="link">Sign out</button>
       </header>
 

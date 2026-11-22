@@ -41,14 +41,27 @@ public class AuthController(IAuthService auth, ISessionService sessions, IOption
             return StatusCode(StatusCodes.Status429TooManyRequests,
                 new ProblemDetails { Title = "Too many failed sign-in attempts. Try again later." });
         }
-        var res = await auth.LoginAsync(req, Client(), ct);
-        if (res is null)
+        var res = await auth.LoginAsync(req, Client(), Request.Cookies[_opt.TrustedDeviceCookieName], ct);
+        switch (res.Status)
         {
-            await throttle.RecordFailureAsync(req.Email, ct);
-            return Unauthorized(new ProblemDetails { Title = "Invalid email or password." });
+            case LoginStatus.TwoFactorRequired:
+                // Password was right; no session yet. The client asks for the code and posts the login again with it.
+                Response.Headers.CacheControl = "no-store";
+                return Ok(new TwoFactorChallengeResponse());
+            case LoginStatus.InvalidCredentials:
+            case LoginStatus.InvalidTwoFactorCode:
+                // Wrong codes count like wrong passwords, so the lockout also stops guessing codes.
+                await throttle.RecordFailureAsync(req.Email, ct);
+                return Unauthorized(new ProblemDetails
+                {
+                    Title = res.Status == LoginStatus.InvalidTwoFactorCode ? "Invalid verification code." : "Invalid email or password.",
+                });
         }
         await throttle.ResetAsync(req.Email, ct);
-        return Issue(res);
+        // "Remember this device": its own HttpOnly cookie, kept on sign-out, so the next sign-in here skips the code.
+        if (res.TrustedDevice is { } trusted)
+            Response.Cookies.Append(_opt.TrustedDeviceCookieName, trusted.Token, CookieOptions(trusted.ExpiresAt));
+        return Issue(res.Auth!);
     }
 
     /// <summary>New access token from the refresh cookie. The cookie is rotated on every call.</summary>

@@ -68,6 +68,9 @@ export function Layout() {
         </span>
         <UpdateButton />
         <NavLink to="/account/devices" className="link">Devices</NavLink>
+        <NavLink to="/settings" className="icon-btn settings-link" aria-label="Settings" title="Settings">
+          <Icon name="settings" size={20} />
+        </NavLink>
         <button onClick={() => void logout()} className="link">Sign out</button>
       </header>
 

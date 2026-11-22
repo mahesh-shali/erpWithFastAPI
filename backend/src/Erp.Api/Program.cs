@@ -63,6 +63,8 @@ builder.Services.AddScoped<IMasterService, MasterService>();
 builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider, PagePolicyProvider>();
 builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, PageRequirementHandler>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ITwoFactorService, TwoFactorService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddSingleton<ILoginThrottle, LoginThrottle>();
 builder.Services.AddHostedService<SessionCleanupService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
@@ -74,6 +76,15 @@ builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddSingleton<ChatEventBus>();
 builder.Services.AddSingleton<IChatEventBus>(sp => sp.GetRequiredService<ChatEventBus>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ChatEventBus>());
+// Email (new-device sign-in alerts): queued and sent in the background; logged only when SMTP isn't configured
+var emailOptions = EmailOptions.FromConfiguration(cfg);
+builder.Services.AddSingleton(Microsoft.Extensions.Options.Options.Create(emailOptions));
+if (emailOptions.IsConfigured) builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+else builder.Services.AddSingleton<IEmailSender, LogOnlyEmailSender>();
+builder.Services.AddSingleton<EmailDispatcher>();
+builder.Services.AddSingleton<IEmailQueue>(sp => sp.GetRequiredService<EmailDispatcher>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<EmailDispatcher>());
+builder.Services.AddScoped<ILoginAlertService, LoginAlertService>();
 
 // ---------- Auth ----------
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -162,6 +173,8 @@ if (!string.IsNullOrWhiteSpace(cfg.GetConnectionString("Postgres")))
 if (!string.IsNullOrWhiteSpace(redis)) hc.AddRedis(redis, tags: ["ready"]);
 
 var app = builder.Build();
+if (!emailOptions.IsConfigured)
+    app.Logger.LogWarning("SMTP is not fully configured (SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD): new-device sign-in alerts are only logged, not emailed.");
 
 // ---------- Database (code-first) ----------
 // `dotnet Erp.Api.dll --migrate [--seed]` applies EF Core migrations (and demo data), then exits.

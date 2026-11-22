@@ -24,6 +24,16 @@ public class User
     public Role? Role { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? LastLoginAt { get; set; }
+
+    // ---- Two-factor sign-in (authenticator app, TOTP RFC 6238) ----
+    /// <summary>On = sign-in needs a 6-digit authenticator code (or a recovery code) after the password.</summary>
+    public bool TwoFactorEnabled { get; set; }
+    /// <summary>Base32 TOTP secret. Set by setup (still off until a code confirms it), cleared when 2FA is turned off.</summary>
+    public string? TwoFactorSecret { get; set; }
+    /// <summary>Time step of the last accepted code: the same code can't be used twice (replay).</summary>
+    public long? TwoFactorLastStep { get; set; }
+    /// <summary>SHA-256 hashes of the unused one-time recovery codes.</summary>
+    public List<string> TwoFactorRecoveryCodes { get; set; } = [];
 }
 
 /// <summary>
@@ -124,6 +134,11 @@ public static class PageKeys
     /// Granted per role / user in Role Rights and User Rights.
     /// </summary>
     public const string MessagesSenior = "messages-senior";
+    /// <summary>
+    /// Not a menu page: Update on it lets a user edit the accounts of people in lower roles from Settings > Users
+    /// (name, email, role, password, 2FA reset). The role hierarchy still applies.
+    /// </summary>
+    public const string SettingsUsers = "settings-users";
     public const string MasterUsers = "master-users";
     public const string MasterUserRights = "master-user-rights";
     public const string MasterRoleRights = "master-role-rights";
@@ -275,6 +290,23 @@ public class UserSession
     public User? User { get; set; }
 
     public bool IsActive(DateTime now) => RevokedAt is null && ExpiresAt > now;
+}
+
+/// <summary>
+/// A browser or desktop app where the user ticked "Remember this device" on the two-factor step: sign-ins from it
+/// skip the code until <see cref="ExpiresAt"/>. The device holds the token in an HttpOnly cookie; only its hash is stored.
+/// All rows of a user are deleted when 2FA is turned off or reset and when the password changes.
+/// </summary>
+public class TrustedDevice
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public string TokenHash { get; set; } = default!;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime ExpiresAt { get; set; }
+    public string? IpAddress { get; set; }
+    public string? UserAgent { get; set; }
+    public User? User { get; set; }
 }
 
 public class Customer : ITenantOwned

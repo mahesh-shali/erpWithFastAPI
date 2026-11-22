@@ -52,6 +52,8 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         e.Property(x => x.Id).HasDefaultValueSql(Sql.NewUuid);
         e.Property(x => x.RoleId).HasDefaultValue(Roles.UserId);
         e.Property(x => x.CreatedAt).HasDefaultValueSql(Sql.Now);
+        e.Property(x => x.TwoFactorSecret).HasMaxLength(64);
+        e.Property(x => x.TwoFactorRecoveryCodes).HasDefaultValueSql("'{}'::text[]");
 
         e.HasIndex(x => x.Email).IsUnique().HasDatabaseName("ux_users_email");
         e.HasIndex(x => x.OrganizationId).HasDatabaseName("ix_users_org");
@@ -82,6 +84,25 @@ public sealed class UserSessionConfiguration : IEntityTypeConfiguration<UserSess
 
         e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+/// <summary>"Remember this device" for two-factor sign-in. Never granted to the AI role.</summary>
+public sealed class TrustedDeviceConfiguration : IEntityTypeConfiguration<TrustedDevice>
+{
+    public void Configure(EntityTypeBuilder<TrustedDevice> e)
+    {
+        e.Property(x => x.Id).HasDefaultValueSql(Sql.NewUuid);
+        e.Property(x => x.TokenHash).HasMaxLength(64); // SHA-256 hex
+        e.Property(x => x.IpAddress).HasMaxLength(64);
+        e.Property(x => x.UserAgent).HasMaxLength(512);
+        e.Property(x => x.CreatedAt).HasDefaultValueSql(Sql.Now);
+
+        e.HasIndex(x => x.TokenHash).IsUnique().HasDatabaseName("ux_trusted_devices_token_hash");
+        e.HasIndex(x => x.UserId).HasDatabaseName("ix_trusted_devices_user");
+        e.HasIndex(x => x.ExpiresAt).HasDatabaseName("ix_trusted_devices_expires"); // cleanup job
+
+        e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

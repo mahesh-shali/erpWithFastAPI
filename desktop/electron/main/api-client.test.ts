@@ -68,6 +68,61 @@ describe('ApiClient', () => {
     expect(client.currentUser).toBeNull();
   });
 
+  it('passes a two-factor challenge to the UI without a session, then signs in with the code', async () => {
+    const { client, store, fetchMock } = setup((_url, init) => {
+      const body = JSON.parse(String(init.body));
+      return body.code === '123456' ? json(authBody('jwt-2fa'), 200, [refreshCookie('r2')]) : json({ twoFactorRequired: true });
+    });
+    expect(await client.login('admin@demo.com', 'Admin@123')).toEqual({ status: 200, body: { twoFactorRequired: true } });
+    expect(store.save).not.toHaveBeenCalled();
+    expect(client.currentUser).toBeNull();
+
+    const res = await client.login('admin@demo.com', 'Admin@123', '123456');
+    expect(res.body).toEqual({ user, sessionExpiresAt: '2030-01-01T00:00:00Z', persistent: true });
+    expect(store.save).toHaveBeenCalledWith('r2');
+    expect(JSON.parse(String(fetchMock.mock.calls[1][1]!.body)))
+      .toEqual({ email: 'admin@demo.com', password: 'Admin@123', code: '123456', rememberDevice: false });
+  });
+
+  it('"remember this device": keeps the trust cookie encrypted, sends it on the next login and keeps it after sign-out', async () => {
+    const trust = new MemoryStore();
+    const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      if (String(url).endsWith('/logout')) return json(null, 204);
+      if (body.rememberDevice) {
+        return json(authBody('jwt-a'), 200, [refreshCookie('r1'), 'erp_2fa_trust=t-1; expires=Wed, 01 Jan 2031 00:00:00 GMT; path=/api/auth; httponly']);
+      }
+      const cookie = (init?.headers as Record<string, string>).Cookie ?? '';
+      return cookie.includes('erp_2fa_trust=t-1') ? json(authBody('jwt-b'), 200, [refreshCookie('r2')]) : json({ twoFactorRequired: true });
+    });
+    const client = new ApiClient({ baseUrl: () => BASE, store: new MemoryStore(), trustStore: trust, fetch: fetchMock as unknown as typeof fetch });
+
+    await client.login('admin@demo.com', 'Admin@123', '123456', true);
+    expect(trust.save).toHaveBeenCalledWith('t-1');
+    await client.logout();
+    expect(trust.token).toBe('t-1'); // sign-out keeps the device remembered
+
+    const res = await client.login('admin@demo.com', 'Admin@123'); // no code needed
+    expect(res.body).toMatchObject({ user });
+    const lastCookie = (fetchMock.mock.calls.at(-1)![1]!.headers as Record<string, string>).Cookie;
+    expect(lastCookie).toBe('erp_2fa_trust=t-1'); // never the refresh token on login
+  });
+
+  it('forgets the stored trust token when the server deletes the cookie', async () => {
+    const trust = new MemoryStore('old');
+    const fetchMock = vi.fn(async () =>
+      json({ twoFactorRequired: true }, 200, ['erp_2fa_trust=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/api/auth']));
+    const client = new ApiClient({ baseUrl: () => BASE, store: new MemoryStore(), trustStore: trust, fetch: fetchMock as unknown as typeof fetch });
+    await client.login('a@b.c', 'p');
+    expect(trust.token).toBeNull();
+  });
+
+  it('rejects an oversized two-factor code without calling the server', async () => {
+    const { client, fetchMock } = setup(() => json({}));
+    expect((await client.login('a@b.c', 'p', 'x'.repeat(33))).status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('attaches the bearer token to API calls', async () => {
     const { client, header } = setup((url) =>
       url.endsWith('/login') ? json(authBody('jwt-1'), 200, [refreshCookie('r1')]) : json({ ok: 1 }));

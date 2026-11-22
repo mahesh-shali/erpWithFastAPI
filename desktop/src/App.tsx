@@ -9,10 +9,10 @@ import { DashboardPage } from './pages/DashboardPage';
 import { AssistantPage, CustomersPage, OrdersPage, ProductsPage } from './pages/DataPages';
 import { LoginPage } from './pages/LoginPage';
 import { MessagesPage } from './pages/MessagesPage';
-import { PagesPage } from './pages/master/PagesPage';
 import { RoleRightsPage } from './pages/master/RoleRightsPage';
 import { UserRightsPage } from './pages/master/UserRightsPage';
 import { UsersPage } from './pages/master/UsersPage';
+import { SettingsPage } from './pages/settings/SettingsPage';
 
 /**
  * Flat URLs used by V.SMART ERP (and old bookmarks) redirect to their place in this app's menu,
@@ -47,8 +47,11 @@ export default function App() {
         <Route path="master/role-rights" element={<RequirePage page="master-role-rights"><RoleRightsPage /></RequirePage>} />
         <Route path="master/customers" element={<RequirePage page="customers"><CustomersPage /></RequirePage>} />
         <Route path="master/products" element={<RequirePage page="products"><ProductsPage /></RequirePage>} />
-        <Route path="master/pages" element={<RequirePage page="master-pages"><PagesPage /></RequirePage>} />
+        {/* The Pages master moved into Settings; old links and bookmarks land on its tab. */}
+        <Route path="master/pages" element={<Navigate to="/settings/pages" replace />} />
         <Route path="account/devices" element={<DevicesPage />} />
+        {/* Own account settings: every signed-in user. The Users tab checks "settings-users" itself. */}
+        <Route path="settings/:tab?" element={<SettingsPage />} />
         <Route path="sales/orders" element={<RequirePage page="orders"><OrdersPage /></RequirePage>} />
         {LEGACY_ALIASES.map(([from, to]) => (
           <Route key={from} path={from} element={<Navigate to={to} replace />} />

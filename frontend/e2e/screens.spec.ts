@@ -26,7 +26,11 @@ test.describe('screens (SuperAdmin)', () => {
   });
 
   test('Analytics: KPIs, chart tooltip, range switch, data table', async ({ page }) => {
+    // Reports > Analytics > Analytics in the side menu (the URL is still /analytics)
+    await nav(page).getByRole('button', { name: 'Reports' }).click();
+    await nav(page).getByRole('button', { name: 'Analytics' }).click();
     await nav(page).getByRole('link', { name: 'Analytics' }).click();
+    await expect(page).toHaveURL(/\/analytics$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Analytics' })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Key figures' })).toContainText('Revenue');
 
@@ -90,14 +94,37 @@ test.describe('screens (SuperAdmin)', () => {
     await expect(page.getByRole('row', { name: /Customers/ }).first()).toBeVisible();
   });
 
-  test('Pages master: Analytics is listed as Ready', async ({ page }) => {
-    await page.goto('/master/pages');
+  test('Pages master (Settings › Pages): Analytics is listed as Ready; not in the side menu', async ({ page }) => {
+    await expect(nav(page).getByRole('link', { name: 'Pages' })).toHaveCount(0);
+    await page.goto('/master/pages'); // old URL redirects to the Settings tab
+    await expect(page).toHaveURL(/\/settings\/pages$/);
     await expect(page.getByRole('row', { name: /analytics/ })).toContainText('Ready');
   });
 
   test('legacy V.SMART URL redirects', async ({ page }) => {
     await page.goto('/customer');
     await expect(page).toHaveURL(/\/master\/customers$/);
+  });
+
+  test('Settings: profile, two-factor setup (cancelled) and the Users tab', async ({ page }) => {
+    await page.getByRole('link', { name: 'Settings' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    await expect(page.getByLabel('Email')).toHaveValue(ADMIN.email);
+
+    // Start the setup to see the QR code, then cancel: 2FA stays off, so other journeys can still sign in
+    await page.getByRole('navigation', { name: 'Settings sections' }).getByRole('link', { name: 'Two-factor sign-in' }).click();
+    await page.getByRole('button', { name: /set up two-factor/i }).click();
+    await expect(page.getByRole('img', { name: /qr code/i })).toBeVisible();
+    await expect(page.getByLabel('Setup key')).not.toBeEmpty();
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByRole('button', { name: /set up two-factor/i })).toBeVisible();
+
+    // SuperAdmin edits everyone below: the demo Admin, Manager and User are listed, the owner is not
+    await page.getByRole('navigation', { name: 'Settings sections' }).getByRole('link', { name: 'Users' }).click();
+    const table = page.getByRole('table', { name: 'Editable users' });
+    await expect(table.getByText('manager@demo.com')).toBeVisible();
+    await expect(table.getByText('staff@demo.com')).toBeVisible();
+    await expect(table.getByText(ADMIN.email)).toHaveCount(0);
   });
 });
 
@@ -121,6 +148,14 @@ test.describe('screens (User role)', () => {
   test('Master screens are blocked', async ({ page }) => {
     await page.goto('/master/users');
     await expect(page.getByRole('heading', { name: 'No access' })).toBeVisible();
+  });
+
+  test('Settings: own account only, no Users tab', async ({ page }) => {
+    await page.goto('/settings/users');
+    await expect(page.getByRole('form', { name: 'Profile' })).toBeVisible(); // sent back to Profile
+    const tabs = page.getByRole('navigation', { name: 'Settings sections' });
+    await expect(tabs.getByRole('link', { name: 'Two-factor sign-in' })).toBeVisible();
+    await expect(tabs.getByRole('link', { name: 'Users' })).toHaveCount(0);
   });
 });
 

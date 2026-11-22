@@ -20,6 +20,10 @@ public sealed class LoginSessionOptions
     public int ActiveCheckCacheSeconds { get; set; } = 30;
     /// <summary>Revoked/expired sessions are deleted after this many days (cleanup job).</summary>
     public int RetainEndedSessionsDays { get; set; } = 30;
+    /// <summary>"Remember this device" on the two-factor step: days a device may skip the code (0 = feature off).</summary>
+    public int TwoFactorRememberDays { get; set; } = 30;
+    /// <summary>HttpOnly cookie holding the trusted-device token. Scoped to /api/auth, survives sign-out.</summary>
+    public string TrustedDeviceCookieName { get; set; } = "erp_2fa_trust";
 }
 
 public static class AuthClaims

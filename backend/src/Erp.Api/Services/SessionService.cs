@@ -188,6 +188,9 @@ public sealed class SessionCleanupService(IServiceScopeFactory scopes, IOptions<
                     .Where(s => s.ExpiresAt < cutoff || (s.RevokedAt != null && s.RevokedAt < cutoff))
                     .ExecuteDeleteAsync(stoppingToken);
                 if (n > 0) log.LogInformation("Deleted {Count} ended sessions", n);
+                var now = clock.GetUtcNow().UtcDateTime;
+                var t = await db.TrustedDevices.Where(d => d.ExpiresAt < now).ExecuteDeleteAsync(stoppingToken);
+                if (t > 0) log.LogInformation("Deleted {Count} expired trusted devices", t);
             }
             catch (Exception e) when (e is not OperationCanceledException)
             {

@@ -112,6 +112,8 @@ API_ENV=(
   Database__MigrateOnStartup=false
   Database__SeedDemoData="$SEED_DEMO_DATA"
   AI_DB_USER="$AI_DB_USER" AI_DB_PASSWORD="$AI_DB_PASSWORD"
+  SMTP_HOST="${SMTP_HOST:-}" SMTP_PORT="${SMTP_PORT:-587}" SMTP_USERNAME="${SMTP_USERNAME:-}" SMTP_PASSWORD="${SMTP_PASSWORD:-}"
+  EMAIL_FROM="${EMAIL_FROM:-}" EMAIL_FROM_NAME="${EMAIL_FROM_NAME:-ERP Platform}" LOGIN_ALERTS_ENABLED="${LOGIN_ALERTS_ENABLED:-true}"
 )
 AI_ENV=(
   AI_SERVICE_ENV_FILE=none   # ignore ai-service/.env; use only the values below

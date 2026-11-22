@@ -11,10 +11,10 @@ import { DashboardPage } from './pages/DashboardPage';
 import { AssistantPage, CustomersPage, OrdersPage, ProductsPage } from './pages/DataPages';
 import { LoginPage } from './pages/LoginPage';
 import { MessagesPage } from './pages/MessagesPage';
-import { PagesPage } from './pages/master/PagesPage';
 import { RoleRightsPage } from './pages/master/RoleRightsPage';
 import { UserRightsPage } from './pages/master/UserRightsPage';
 import { UsersPage } from './pages/master/UsersPage';
+import { SettingsPage } from './pages/settings/SettingsPage';
 
 /**
  * Flat URLs used by V.SMART ERP (and old bookmarks) redirect to their place in this app's menu,
@@ -44,12 +44,15 @@ export default function App() {
         <Route path="analytics" element={<RequirePage page="analytics"><AnalyticsPage /></RequirePage>} />
         <Route path="assistant" element={<RequirePage page="ai-chat"><AssistantPage /></RequirePage>} />
         <Route path="messages" element={<RequirePage page="messages"><MessagesPage /></RequirePage>} />
+        {/* Own account settings: every signed-in user. The Users tab checks "settings-users" itself. */}
+        <Route path="settings/:tab?" element={<SettingsPage />} />
         <Route path="master/users" element={<RequirePage page="master-users"><UsersPage /></RequirePage>} />
         <Route path="master/user-rights" element={<RequirePage page="master-user-rights"><UserRightsPage /></RequirePage>} />
         <Route path="master/role-rights" element={<RequirePage page="master-role-rights"><RoleRightsPage /></RequirePage>} />
         <Route path="master/customers" element={<RequirePage page="customers"><CustomersPage /></RequirePage>} />
         <Route path="master/products" element={<RequirePage page="products"><ProductsPage /></RequirePage>} />
-        <Route path="master/pages" element={<RequirePage page="master-pages"><PagesPage /></RequirePage>} />
+        {/* The Pages master moved into Settings; old links and bookmarks land on its tab. */}
+        <Route path="master/pages" element={<Navigate to="/settings/pages" replace />} />
         <Route path="sales/orders" element={<RequirePage page="orders"><OrdersPage /></RequirePage>} />
         {/* Inventory */}
         <Route path="master/uom" element={<RequirePage page="uom"><UomsPage /></RequirePage>} />
