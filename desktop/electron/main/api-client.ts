@@ -1,4 +1,6 @@
-import { HTTP_METHODS, type BridgeResponse, type HttpMethod, type SessionInfo, type SessionUser } from '../shared/contract';
+import {
+  HTTP_METHODS, type BridgeResponse, type HttpMethod, type SessionInfo, type SessionUser, type TwoFactorChallenge,
+} from '../shared/contract';
 
 /** Where the refresh token lives between app runs (see token-vault.ts). */
 export interface RefreshTokenStore {
@@ -15,6 +17,12 @@ export interface ApiClientOptions {
   fetch?: typeof fetch;
   /** Name of the API's HttpOnly refresh cookie (Jwt:CookieName in the API). */
   cookieName?: string;
+  /**
+   * "Remember this device" for two-factor sign-in: the API's trusted-device cookie, kept OS-encrypted like the
+   * refresh token but NOT cleared on sign-out (that is the point: the next sign-in here skips the code).
+   */
+  trustStore?: RefreshTokenStore;
+  trustCookieName?: string;
   userAgent?: string;
   timeoutMs?: number;
   /** Called when a session is lost without the user asking (refresh rejected / revoked). */
@@ -85,13 +93,27 @@ export class ApiClient {
     return this.user;
   }
 
-  async login(email: string, password: string): Promise<BridgeResponse<SessionInfo>> {
-    if (typeof email !== 'string' || typeof password !== 'string' || email.length > 320 || password.length > 1024) {
+  async login(email: string, password: string, code?: string, rememberDevice?: boolean)
+    : Promise<BridgeResponse<SessionInfo | TwoFactorChallenge>> {
+    if (typeof email !== 'string' || typeof password !== 'string' || email.length > 320 || password.length > 1024
+        || (code !== undefined && code !== null && (typeof code !== 'string' || code.length > 32))) {
       return { status: 400, body: null };
     }
     await this.clearSession(false);
-    const res = await this.send('POST', '/api/auth/login', { email, password });
+    const trustName = this.opts.trustCookieName ?? 'erp_2fa_trust';
+    const trust = await this.opts.trustStore?.load().catch(() => null);
+    const res = await this.send('POST', '/api/auth/login',
+      { email, password, code: code || undefined, rememberDevice: rememberDevice === true },
+      false, trust ? `${trustName}=${trust}` : undefined);
+    // A new trusted-device token (code + "remember this device") replaces the stored one; a deleted cookie clears it.
+    const newTrust = readCookie(res.setCookies, trustName);
+    if (newTrust) await this.opts.trustStore?.save(newTrust).catch(() => undefined);
+    else if (newTrust === '') await this.opts.trustStore?.clear().catch(() => undefined);
     if (!res.ok) return { status: res.status, body: res.body as SessionInfo | null };
+    // Two-factor: the password was right but there is no session yet; the UI asks for the code.
+    if ((res.body as Partial<TwoFactorChallenge> | null)?.twoFactorRequired === true) {
+      return { status: res.status, body: { twoFactorRequired: true } };
+    }
     await this.acceptAuth(res.body as AuthResponseBody, res.setCookies);
     return { status: res.status, body: this.sessionInfo() };
   }
@@ -224,11 +246,13 @@ export class ApiClient {
     if (notify && hadUser) this.opts.onSignedOut?.();
   }
 
-  private async send(method: HttpMethod, path: string, body: unknown, withRefreshCookie = false) {
+  private async send(method: HttpMethod, path: string, body: unknown, withRefreshCookie = false, extraCookie?: string) {
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     if (this.accessToken) headers.Authorization = `Bearer ${this.accessToken}`;
-    if (withRefreshCookie && this.refreshToken) headers.Cookie = `${this.cookieName}=${this.refreshToken}`;
+    const cookies = [withRefreshCookie && this.refreshToken ? `${this.cookieName}=${this.refreshToken}` : null, extraCookie ?? null]
+      .filter(Boolean);
+    if (cookies.length) headers.Cookie = cookies.join('; ');
     if (this.opts.userAgent) headers['User-Agent'] = this.opts.userAgent;
 
     let url: string;

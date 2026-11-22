@@ -89,6 +89,20 @@ describe('buildMenu', () => {
     expect(tree.modules[0].groups[1].pages.map((p) => p.name)).toEqual(['Customers']); // restricted Vendors dropped
   });
 
+  it('leaves the Settings group (Pages) out of the side menu: it lives on the Settings screen', () => {
+    const tree = buildMenu([page('master-users', 'Users', '/master/users', 'master-users'),
+      page('master-pages', 'Pages', '/master/pages', 'master-settings')]);
+    expect(tree.modules[0].groups.map((g) => g.name)).toEqual(['Users']);
+    expect(tree.modules.flatMap((m) => m.groups).flatMap((g) => g.pages).map((p) => p.pageKey)).not.toContain('master-pages');
+  });
+
+  it('never lists rights-only entries, even when visible (SuperAdmin has every right)', () => {
+    const tree = buildMenu([page('messages', 'Messages', '/messages', null),
+      page('messages-senior', 'Message Senior Roles', '/messages/senior-roles', null),
+      page('settings-users', 'Edit Users (Settings)', '/settings/users', null)]);
+    expect(tree.top.map((p) => p.name)).toEqual(['Messages']);
+  });
+
   it('hides a whole module when the user has no page in it', () => {
     const tree = buildMenu([page('dashboard', 'Dashboard', '/', null),
       page('stock-position', 'Stock Position', '/s', 'inventory-stock-position', { canRead: false })]);

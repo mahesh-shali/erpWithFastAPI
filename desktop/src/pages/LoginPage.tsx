@@ -25,6 +25,10 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Step 2: the password was right and the account has two-factor sign-in on. */
+  const [needsCode, setNeedsCode] = useState(false);
+  const [code, setCode] = useState('');
+  const [rememberDevice, setRememberDevice] = useState(false);
 
   if (!ready) return <Splash message="Opening where you left off…" />;
   if (isAuthenticated) return <Navigate to="/" replace />;
@@ -34,14 +38,25 @@ export function LoginPage() {
     setError(null);
     setBusy(true);
     try {
-      await login(email, password);
+      if (await login(email, password, needsCode ? code : undefined, needsCode && rememberDevice) === 'two-factor') {
+        setNeedsCode(true);
+        return;
+      }
       const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? '/';
       navigate(from, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
+      if (needsCode) setCode('');
     } finally {
       setBusy(false);
     }
+  }
+
+  function backToPassword() {
+    setNeedsCode(false);
+    setCode('');
+    setPassword('');
+    setError(null);
   }
 
   return (
@@ -59,6 +74,25 @@ export function LoginPage() {
         </div>
       </section>
 
+      {needsCode ? (
+        <form onSubmit={onSubmit} className="card login-card" aria-label="two-factor form">
+          <h1>Two-step verification</h1>
+          <p className="hint">Enter the 6-digit code from your authenticator app for <strong>{email}</strong>.
+            Lost your phone? Enter one of your recovery codes instead.</p>
+          <label>
+            Verification code
+            <input value={code} onChange={(e) => setCode(e.target.value)} required autoFocus maxLength={32}
+                   inputMode="numeric" autoComplete="one-time-code" placeholder="123456" />
+          </label>
+          <label className="check">
+            <input type="checkbox" checked={rememberDevice} onChange={(e) => setRememberDevice(e.target.checked)} />
+            Remember this device for 30 days
+          </label>
+          {error && <p role="alert" className="error">{error}</p>}
+          <button type="submit" disabled={busy || !code.trim()}>{busy ? 'Verifying…' : 'Verify and sign in'}</button>
+          <button type="button" className="link" onClick={backToPassword}>Back to sign in</button>
+        </form>
+      ) : (
       <form onSubmit={onSubmit} className="card login-card" aria-label="login form">
         <h1>Welcome back</h1>
         <p className="hint">Sign in to your ERP workspace</p>
@@ -75,6 +109,7 @@ export function LoginPage() {
         <button type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
         <ModeBadge />
       </form>
+      )}
     </main>
   );
 }

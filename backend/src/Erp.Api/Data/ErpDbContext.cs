@@ -14,6 +14,7 @@ public class ErpDbContext(DbContextOptions<ErpDbContext> options, ITenantContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<UserSession> UserSessions => Set<UserSession>();
+    public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
     public DbSet<Page> Pages => Set<Page>();
     public DbSet<MenuModule> MenuModules => Set<MenuModule>();
     public DbSet<MenuGroup> MenuGroups => Set<MenuGroup>();

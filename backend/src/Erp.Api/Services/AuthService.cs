@@ -8,16 +8,30 @@ namespace Erp.Api.Services;
 /// <summary>Response body plus the refresh token, which the controller puts in an HttpOnly cookie.</summary>
 public record AuthResult(AuthResponse Response, string RefreshToken, DateTime SessionExpiresAt);
 
+public enum LoginStatus { Success, InvalidCredentials, TwoFactorRequired, InvalidTwoFactorCode }
+
+/// <summary>
+/// Result of a login attempt; <see cref="Auth"/> is set only on success. <see cref="TrustedDevice"/> is set when the
+/// user verified a code and asked to remember this device (the controller puts it in an HttpOnly cookie).
+/// </summary>
+public sealed record LoginOutcome(LoginStatus Status, AuthResult? Auth = null, TrustedDeviceToken? TrustedDevice = null)
+{
+    public static readonly LoginOutcome InvalidCredentials = new(LoginStatus.InvalidCredentials);
+    public static readonly LoginOutcome TwoFactorRequired = new(LoginStatus.TwoFactorRequired);
+    public static readonly LoginOutcome InvalidTwoFactorCode = new(LoginStatus.InvalidTwoFactorCode);
+}
+
 public interface IAuthService
 {
     Task<AuthResult> RegisterAsync(RegisterRequest req, ClientInfo client, CancellationToken ct);
-    Task<AuthResult?> LoginAsync(LoginRequest req, ClientInfo client, CancellationToken ct);
+    /// <param name="trustedDeviceToken">The device's "remember this device" cookie, if any.</param>
+    Task<LoginOutcome> LoginAsync(LoginRequest req, ClientInfo client, string? trustedDeviceToken, CancellationToken ct);
     Task<AuthResult?> RefreshAsync(string refreshToken, ClientInfo client, CancellationToken ct);
     Task LogoutAsync(Guid? sessionId, string? refreshToken, CancellationToken ct);
 }
 
 public sealed class AuthService(ErpDbContext db, IPasswordHasher hasher, ITokenService tokens, ISessionService sessions,
-    ILoginAlertService loginAlerts, TimeProvider clock) : IAuthService
+    ILoginAlertService loginAlerts, ITwoFactorService twoFactor, TimeProvider clock) : IAuthService
 {
     public async Task<AuthResult> RegisterAsync(RegisterRequest req, ClientInfo client, CancellationToken ct)
     {
@@ -42,22 +56,32 @@ public sealed class AuthService(ErpDbContext db, IPasswordHasher hasher, ITokenS
         return await StartSessionAsync(user, Roles.SuperAdmin, client, ct);
     }
 
-    public async Task<AuthResult?> LoginAsync(LoginRequest req, ClientInfo client, CancellationToken ct)
+    public async Task<LoginOutcome> LoginAsync(LoginRequest req, ClientInfo client, string? trustedDeviceToken, CancellationToken ct)
     {
         var email = req.Email.Trim().ToLowerInvariant();
         var user = await db.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email == email, ct);
         if (user is null)
         {
             hasher.Verify(req.Password, DummyHash); // same cost as a real check: don't leak which emails exist
-            return null;
+            return LoginOutcome.InvalidCredentials;
         }
-        if (!hasher.Verify(req.Password, user.PasswordHash)) return null;
+        if (!hasher.Verify(req.Password, user.PasswordHash)) return LoginOutcome.InvalidCredentials;
+
+        // Two-factor: password alone is not enough, unless this device was remembered within the last 30 days.
+        // Otherwise the client asks for the code and sends the login again with it.
+        TrustedDeviceToken? trusted = null;
+        if (user.TwoFactorEnabled && !await twoFactor.IsTrustedDeviceAsync(user.Id, trustedDeviceToken, ct))
+        {
+            if (string.IsNullOrWhiteSpace(req.Code)) return LoginOutcome.TwoFactorRequired;
+            if (!twoFactor.VerifyAndConsume(user, req.Code)) return LoginOutcome.InvalidTwoFactorCode;
+            if (req.RememberDevice) trusted = await twoFactor.TrustDeviceAsync(user.Id, client, ct);
+        }
 
         user.LastLoginAt = clock.GetUtcNow().UtcDateTime;
-        await db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(ct); // also stores the used TOTP step / recovery code
         var result = await StartSessionAsync(user, user.Role!.Name, client, ct);
         await loginAlerts.NotifyIfNewDeviceAsync(user, result.Response.SessionId, client, ct); // email is queued, never blocks
-        return result;
+        return new LoginOutcome(LoginStatus.Success, result, trusted);
     }
 
     public async Task<AuthResult?> RefreshAsync(string refreshToken, ClientInfo client, CancellationToken ct)

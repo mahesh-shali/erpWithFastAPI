@@ -322,10 +322,89 @@ ever committed. The migrator then sets up `AI_DB_USER`:
 | `Auth__ActiveCheckCacheSeconds` | api | How long a session-active check is cached (default 30) |
 | `Auth__RetainEndedSessionsDays` | api | Keep ended sessions this long before cleanup (default 30) |
 | `SESSION_CHECK_TTL_SECONDS` | ai-service | How long the AI caches a session-active check (default 30) |
+| `SMTP_HOST` / `SMTP_PORT` | api | Mail server for new-device sign-in alerts (`smtp.gmail.com` / `587`). Empty host = alerts are only logged |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | api | SMTP login. Gmail: the Gmail address + an App Password (needs 2-Step Verification) |
+| `EMAIL_FROM` / `EMAIL_FROM_NAME` | api | Sender address (default `SMTP_USERNAME`) and display name (default `ERP Platform`) |
+| `LOGIN_ALERTS_ENABLED` | api | `false` turns new-device sign-in emails off (default `true`) |
 
 ---
 
 ## Authentication: login sessions and roles
+
+### New-device sign-in alerts
+After a successful password sign-in the API compares the device (app/browser family + OS from the User-Agent,
+e.g. "Chrome on Windows" or "ERP Desktop app on Windows"; browser updates don't count) with the user's other
+sessions still on record (ended sessions are kept `Auth__RetainEndedSessionsDays`, default 30). A device not
+among them gets an email to the user's own address with the device, IP address and time
+(`Services/LoginAlertService.cs`). No email on registration or an account's first sign-in. Emails are queued
+and sent in the background (`Services/Email.cs`), so SMTP problems never slow down or break a login.
+
+Local `dev.sh` reads the SMTP settings from .NET user secrets (no file in the repo):
+
+```bash
+cd backend/src/Erp.Api
+dotnet user-secrets set Email:Host smtp.gmail.com
+dotnet user-secrets set Email:Username you@gmail.com
+dotnet user-secrets set Email:Password "<16-character app password>"
+```
+
+`run-local.sh` and docker compose read `SMTP_*` from `.env.<mode>`; on Render set `SMTP_USERNAME` and
+`SMTP_PASSWORD` on the API service.
+
+### Two-factor sign-in (authenticator app)
+Every user can turn it on in **Settings › Two-factor sign-in** (web and desktop). The codes are TOTP (RFC 6238:
+HMAC-SHA1, 6 digits, 30 s), so any authenticator app works (Google/Microsoft Authenticator, 1Password, Authy).
+The code lives in `Services/TwoFactor.cs`.
+
+1. `POST /api/account/two-factor/setup` stores a new secret in `users.two_factor_secret` and returns it with an
+   `otpauth://` URI. The UI draws the QR code itself (npm `qrcode`), so the secret never goes to a QR service.
+2. `POST /api/account/two-factor/enable` with a first code turns it on and returns **10 recovery codes**,
+   shown once. Only their SHA-256 hashes are stored, and each one works once.
+3. After that, `POST /api/auth/login` with the right password but no `code` answers `200 { "twoFactorRequired": true }`
+   with no session and no cookie. The client sends the same login again with `code`, which can be an app code
+   or a recovery code.
+
+Rules: ±1 time step of clock drift is accepted. A code can't be used twice (`two_factor_last_step`). Wrong codes
+count toward the same lockout as wrong passwords (`LoginThrottle`). Turning 2FA off needs the password and a code.
+A superior can **Reset 2FA** for someone who lost their phone (Settings › Users), which also signs that person out.
+The issuer name in the authenticator app is `Auth:TwoFactorIssuer` (default `ERP Platform`). The secret is stored
+in plain text, as ASP.NET Identity stores its authenticator keys. The AI role can't read `users`.
+
+**Remember this device for 30 days.** The code step has this checkbox. When it's ticked, login sends
+`rememberDevice: true` with the code. The API stores the SHA-256 hash of a random token in `trusted_devices` and sets
+it as the HttpOnly cookie `erp_2fa_trust` (`Path=/api/auth`, `SameSite=Strict`, expires with the row). The cookie is
+kept on sign-out, and the next login from that browser skips the code for that user only. The password is always
+checked. The desktop app keeps the token OS-encrypted in `trusted-device.bin`, next to `session.bin`. All of a user's
+remembered devices are forgotten when 2FA is turned off or reset, when the password is changed or reset, or with
+**Forget all remembered devices** in Settings › Two-factor sign-in (`DELETE /api/account/two-factor/trusted-devices`).
+Length: `Auth:TwoFactorRememberDays` (default 30; 0 turns the feature off). Expired rows are removed by the session
+cleanup job.
+
+**Reopen where you left off.** Both apps remember each user's last page (path only, in `localStorage`, see
+`components/lastPage.ts`). After a sign-in, or when the app loads on the start page with a session still active, the
+user goes back there. With nothing remembered, the Dashboard opens. A direct link (a bookmark, or the page that sent
+the user to the login) wins over the remembered page. Page rights are still checked when the page opens.
+
+### Settings screen
+`/settings` is open to every signed-in user (gear icon in the top bar). It has no page right of its own.
+
+| Tab | Who | What |
+|---|---|---|
+| Profile | everyone | Own name, and own email (needs the current password) |
+| Password | everyone | Change own password; your other devices are signed out |
+| Two-factor sign-in | everyone | Set up, turn off, new recovery codes |
+| Users | Update on `settings-users` | Edit people **below** you: name, email, role, new password, reset 2FA |
+| Pages | Read on `master-pages` | The Pages master. Its menu group (Master › Settings) is no longer in the side menu; `/master/pages` redirects here |
+
+The gear icon stays in the top bar at every screen width, including the mobile header next to the menu button.
+Groups listed in `SETTINGS_GROUPS` (`components/menu.ts`) are left out of the side menu.
+
+`settings-users` (page id 51) is a rights-only entry like `messages-senior`. It never appears in the menu.
+By default Admin and Manager have Update on it; User doesn't, and SuperAdmin has everything. On top of that
+right, `MasterService` enforces the hierarchy: **SuperAdmin edits everyone, Admin edits Managers and Users, Manager
+edits Users**. Nobody edits their own account or a same-level account there. A new password or role signs the
+user out everywhere. To take the Users tab away from a role or a person, remove Update on "Edit Users (Settings)"
+in Role Rights or User Rights.
 
 ### Roles (stored in the database)
 
@@ -380,7 +459,14 @@ Properties:
 | Method & path | Auth | Purpose |
 |---|---|---|
 | `POST /api/auth/register` | – | New organization + its first user (Admin); starts a session |
-| `POST /api/auth/login` | – | Starts a session (rate limited per IP) |
+| `POST /api/auth/login` | – | Starts a session (rate limited per IP). With 2FA on: `{ twoFactorRequired: true }` until `code` is sent |
+| `GET /api/account` | token | Own profile + 2FA status (`recoveryCodesLeft`) |
+| `PUT /api/account/profile` | token | Own name/email (`currentPassword` needed to change the email) |
+| `POST /api/account/password` | token | Change own password; signs out your other sessions |
+| `POST /api/account/two-factor/setup` · `/enable` · `/disable` · `/recovery-codes` | token | Two-factor sign-in |
+| `GET /api/settings/users` · `GET /api/settings/users/roles` | `settings-users` U | Users you may edit, roles you may give |
+| `PUT /api/settings/users/{id}` | `settings-users` U + lower role | Name, email, role, optional new password |
+| `DELETE /api/settings/users/{id}/two-factor` | `settings-users` U + lower role | Turn off someone's 2FA (lost phone) |
 | `POST /api/auth/refresh` | refresh cookie | New access token; rotates the cookie |
 | `POST /api/auth/logout` | token or cookie | Revokes the current session, clears the cookie |
 | `GET /api/auth/me` | token | Current user from the token |
@@ -426,9 +512,9 @@ The side menu has three levels, stored in `menu_modules` > `menu_groups` > `page
 defined in code (`Data/Configurations/DefaultPermissions.cs`) and seeded by migration:
 
 ```
-Dashboard, Analytics, AI Assistant             (top level)
+Dashboard, AI Assistant, Messages             (top level)
 Master          Users > Users, User Rights, Role Rights · Customers > Customers · Vendors > Vendors
-                Products > Products · Settings > Pages
+                Products > Products · (Settings > Pages: on the Settings screen, not in the side menu)
 Inventory       Stock Position > Stock Position · Stock Addition > Stock Addition
 Sales           Orders > Sales Orders · Invoices > Sales Invoices
 Purchase        Orders > Purchase Orders · Bills > Purchase Bills
@@ -436,8 +522,11 @@ Production      Planning > Production Plan · Work Orders > Work Orders
 Cash Flow       Receipts > Receipts · Payments > Payments
 Inspection      Incoming > Incoming Inspection · Quality > Quality Checks
 Human Resource  Employees > Employees · Attendance > Attendance
-Reports         Sales > Sales Report · Inventory > Stock Report
+Reports         Analytics > Analytics · Sales > Sales Report · Inventory > Stock Report
 ```
+
+Analytics (page 48) was top level until `MoveAnalyticsUnderReports` moved it to the Reports › Analytics group
+(id 905). Its route stays `/analytics`. Rights-only entries (`messages-senior`, `settings-users`) never appear in the menu.
 
 - The menu is built per user from their rights. Pages they can't see are hidden, and so are groups and
   modules left with no pages.

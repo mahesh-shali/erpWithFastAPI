@@ -310,3 +310,36 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   .back { display: inline; }
   .bubble { max-width: 88%; }
 }
+
+/* ---- Settings ---- */
+.settings-link { flex: none; } /* never squeezed out of the top bar on phones */
+.settings-link.active { background: var(--accent-weak); color: var(--accent); }
+.tabs { display: flex; gap: .25rem; border-bottom: 1px solid var(--border); margin: 0 0 1rem; overflow-x: auto; }
+.tabs a { padding: .6rem .9rem; color: var(--muted); text-decoration: none; border-bottom: 2px solid transparent;
+          margin-bottom: -1px; white-space: nowrap; font-weight: 500; }
+.tabs a:hover { color: var(--text); }
+.tabs a.active { color: var(--accent); border-bottom-color: var(--accent); }
+.badge.on { background: #e6f4ea; color: #1b7f3b; }
+.badge.off { background: #f3f4f6; color: #4b5563; }
+.settings-card { max-width: 760px; }
+.settings-card h2 { display: flex; gap: .6rem; align-items: center; margin-top: 0; }
+.settings-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem; }
+.code-action { display: grid; gap: .6rem; align-content: start; border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+.code-action h3 { margin: 0; font-size: 1rem; }
+.code-action .hint { margin: 0; }
+button.danger { background: var(--danger); }
+.twofa-setup ol { padding-left: 1.2rem; display: grid; gap: 1rem; }
+.twofa-setup input { max-width: 220px; margin-top: .4rem; letter-spacing: .15em; }
+.qr { margin: .6rem 0; width: 200px; height: 200px; display: grid; place-items: center;
+      border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+.secret { letter-spacing: .08em; word-break: break-all; }
+.recovery-codes { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: .5rem; }
+.recovery-codes code { display: block; text-align: center; padding: .45rem; font-size: .95rem; letter-spacing: .05em; }
+.settings-users-head { display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.settings-users-head .hint { margin: 0; }
+.settings-users-head input { max-width: 280px; }
+td > .card.form-grid { margin: .4rem 0; background: var(--bg); }
+label.check { display: flex; align-items: center; gap: .5rem; color: var(--text); cursor: pointer; }
+label.check input { width: auto; margin: 0; transform: scale(1.1); }
+.trusted-devices { border-top: 1px solid var(--border); padding-top: .75rem; }
+.trusted-devices p { margin: 0 0 .4rem; }

@@ -53,6 +53,7 @@ async function start() {
   const api = new ApiClient({
     baseUrl: () => settings.url,
     store: new TokenVault(),
+    trustStore: new TokenVault('trusted-device.bin'), // survives sign-out: skips the 2FA code for 30 days
     userAgent: `ERP-Desktop/${app.getVersion()} (${process.platform}) Electron/${process.versions.electron}`,
     onSignedOut: () => {
       chat?.stop();

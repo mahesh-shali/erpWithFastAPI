@@ -9,7 +9,7 @@ namespace Erp.Api.Services;
 /// <summary>
 /// Master module: users and page rights inside one organization.
 ///
-/// Hierarchy SuperAdmin (100) > Admin (50) > User (10). Rules, enforced here (not only in the UI):
+/// Hierarchy SuperAdmin (100) > Admin (50) > Manager (30) > User (10). Rules, enforced here (not only in the UI):
 ///  - you can only create, edit, delete, or change rights of users whose role level is BELOW yours;
 ///  - you can only assign roles below your own level (SuperAdmin creates Admins and Users; Admin creates Users);
 ///  - nobody can change their own role or rights;
@@ -24,6 +24,10 @@ public interface IMasterService
     Task<OrgUserDto> ChangeRoleAsync(Guid userId, string role, CancellationToken ct);
     Task DeleteUserAsync(Guid userId, CancellationToken ct);
     Task<IReadOnlyList<RoleDto>> AssignableRolesAsync(CancellationToken ct);
+    /// <summary>Settings > Users: name, email, role and password of a user below the caller.</summary>
+    Task<OrgUserDto> UpdateUserAsync(Guid userId, UpdateUserRequest req, CancellationToken ct);
+    /// <summary>Turns off two-factor sign-in for a user below the caller (lost phone) and signs them out.</summary>
+    Task<OrgUserDto> ResetTwoFactorAsync(Guid userId, CancellationToken ct);
 
     Task<UserRightsDto> GetUserRightsAsync(Guid userId, CancellationToken ct);
     Task<UserRightsDto> SetUserRightsAsync(Guid userId, SetRightsRequest req, CancellationToken ct);
@@ -33,7 +37,7 @@ public interface IMasterService
 
 public sealed class MasterService(
     ErpDbContext db, ITenantContext tenant, IPasswordHasher hasher, ISessionService sessions,
-    IPermissionService permissions, TimeProvider clock) : IMasterService
+    IPermissionService permissions, ITwoFactorService twoFactor, TimeProvider clock) : IMasterService
 {
     private Guid Org => tenant.OrganizationId;
 
@@ -104,6 +108,59 @@ public sealed class MasterService(
         db.Users.Remove(target); // sessions and rights overrides cascade
         await db.SaveChangesAsync(ct);
         await permissions.InvalidateOrganizationAsync(Org, ct);
+    }
+
+    public async Task<OrgUserDto> UpdateUserAsync(Guid userId, UpdateUserRequest req, CancellationToken ct)
+    {
+        var actor = await ActorAsync(ct);
+        var target = await ManageableUserAsync(actor, userId, ct);
+
+        var email = req.Email.Trim().ToLowerInvariant();
+        if (email != target.Email && await db.Users.AnyAsync(u => u.Email == email && u.Id != target.Id, ct))
+            throw new ConflictException("Email already registered.");
+
+        var roleChanged = false;
+        if (!string.IsNullOrWhiteSpace(req.Role) && req.Role != target.Role!.Name)
+        {
+            var role = await RoleByNameAsync(req.Role, ct);
+            if (role.Level >= actor.Role!.Level)
+                throw new ForbiddenException($"A {actor.Role.Name} can't assign the {role.Name} role.");
+            target.RoleId = role.Id;
+            target.Role = role;
+            roleChanged = true;
+        }
+
+        var passwordChanged = !string.IsNullOrEmpty(req.NewPassword);
+        if (passwordChanged)
+        {
+            if (req.NewPassword!.Length < 8) throw new DomainException("The new password must have at least 8 characters.");
+            target.PasswordHash = hasher.Hash(req.NewPassword);
+        }
+
+        target.FullName = req.FullName.Trim();
+        target.Email = email;
+        await db.SaveChangesAsync(ct);
+
+        // A new password or role applies at once: every session of that user ends (name/email reach the token on refresh).
+        if (roleChanged || passwordChanged)
+            await sessions.RevokeAllForUserAsync(target.Id, passwordChanged ? "password_reset" : "role_changed", ct);
+        if (passwordChanged) await twoFactor.ForgetDevicesAsync(target.Id, ct);
+        if (roleChanged) await permissions.InvalidateOrganizationAsync(Org, ct);
+        return ToDto(target, actor);
+    }
+
+    public async Task<OrgUserDto> ResetTwoFactorAsync(Guid userId, CancellationToken ct)
+    {
+        var actor = await ActorAsync(ct);
+        var target = await ManageableUserAsync(actor, userId, ct);
+        if (target.TwoFactorEnabled || target.TwoFactorSecret is not null)
+        {
+            twoFactor.Clear(target);
+            await db.SaveChangesAsync(ct);
+            await sessions.RevokeAllForUserAsync(target.Id, "two_factor_reset", ct);
+        }
+        await twoFactor.ForgetDevicesAsync(target.Id, ct);
+        return ToDto(target, actor);
     }
 
     // ---------------- User rights ----------------
@@ -300,5 +357,5 @@ public sealed class MasterService(
     }
 
     private OrgUserDto ToDto(User u, User actor) =>
-        new(u.Id, u.Email, u.FullName, u.Role!.Name, u.CreatedAt, u.LastLoginAt, CanManage(actor, u));
+        new(u.Id, u.Email, u.FullName, u.Role!.Name, u.CreatedAt, u.LastLoginAt, CanManage(actor, u), u.TwoFactorEnabled);
 }

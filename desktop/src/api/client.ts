@@ -22,6 +22,10 @@ export interface UserDto {
  * access token in memory and the refresh token in OS-encrypted storage.
  */
 export interface SessionInfo { user: UserDto; sessionExpiresAt: string | null; persistent: boolean }
+/** Login answer when the password was right but the account has two-factor sign-in: log in again with a code. */
+export interface TwoFactorChallenge { twoFactorRequired: true }
+export const isTwoFactorChallenge = (r: unknown): r is TwoFactorChallenge =>
+  typeof r === 'object' && r !== null && (r as TwoFactorChallenge).twoFactorRequired === true;
 export interface DashboardStats {
   customers: number; products: number; orders: number; revenue: number; lowStockProducts: number;
 }
@@ -72,7 +76,9 @@ export async function request<T>(path: string, init: { method?: string; body?: s
 }
 
 export const auth = {
-  login: async (email: string, password: string) => unwrap<SessionInfo>(await window.erp.auth.login(email, password)),
+  /** `code` = authenticator or recovery code; `rememberDevice` = this app skips the code for 30 days. */
+  login: async (email: string, password: string, code?: string, rememberDevice = false) =>
+    unwrap<SessionInfo | TwoFactorChallenge>(await window.erp.auth.login(email, password, code, rememberDevice)),
   restore: () => window.erp.auth.restore() as Promise<SessionInfo | null>,
   logout: () => window.erp.auth.logout(),
   onSignedOut: (fn: () => void) => window.erp.auth.onSignedOut(fn),
@@ -111,6 +117,7 @@ export interface PageDto {
 export interface RoleDto { id: number; name: string; description: string | null; level: number }
 export interface OrgUser {
   id: string; email: string; fullName: string; role: string; createdAt: string; lastLoginAt: string | null; canManage: boolean;
+  twoFactorEnabled?: boolean;
 }
 export interface UserRightsRow {
   pageId: number; pageKey: string; pageName: string; menu: MenuPosition;

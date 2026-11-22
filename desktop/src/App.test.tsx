@@ -54,7 +54,9 @@ describe('App routing', () => {
     ['/master/users', 'Users'],
     ['/master/user-rights', 'User rights'],
     ['/master/role-rights', 'Role rights'],
-    ['/master/pages', 'Pages'],
+    ['/master/pages', 'Settings'], // the Pages master moved to Settings › Pages
+    ['/settings', 'Settings'],
+    ['/settings/security', 'Settings'],
   ])('%s opens the %s screen', async (route, heading) => {
     renderApp(route);
     expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeInTheDocument();

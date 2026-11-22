@@ -18,6 +18,10 @@ export interface UserDto {
 export interface AuthResponse {
   accessToken: string; expiresAt: string; user: UserDto; sessionId?: string; sessionExpiresAt?: string;
 }
+/** Login answer when the password was right but the account has two-factor sign-in: send the login again with a code. */
+export interface TwoFactorChallenge { twoFactorRequired: true }
+export const isTwoFactorChallenge = (r: unknown): r is TwoFactorChallenge =>
+  typeof r === 'object' && r !== null && (r as TwoFactorChallenge).twoFactorRequired === true;
 export interface DashboardStats {
   customers: number; products: number; orders: number; revenue: number; lowStockProducts: number;
 }
@@ -129,6 +133,7 @@ export interface PageDto {
 export interface RoleDto { id: number; name: string; description: string | null; level: number }
 export interface OrgUser {
   id: string; email: string; fullName: string; role: string; createdAt: string; lastLoginAt: string | null; canManage: boolean;
+  twoFactorEnabled?: boolean;
 }
 export interface UserRightsRow {
   pageId: number; pageKey: string; pageName: string; menu: MenuPosition;
@@ -198,8 +203,13 @@ const json = (body: unknown) => JSON.stringify(body);
 export const sectionOf = (m: MenuPosition) => (m.module ? `${m.module} › ${m.group}` : 'General');
 
 export const api = {
-  login: (email: string, password: string) =>
-    request<AuthResponse>('/api/auth/login', { method: 'POST', body: json({ email, password }) }),
+  /**
+   * `code` = authenticator or recovery code, for accounts with two-factor sign-in. `rememberDevice` = skip the code on
+   * this browser for 30 days (the server keeps that in an HttpOnly cookie, sent automatically on the next login).
+   */
+  login: (email: string, password: string, code?: string, rememberDevice = false) =>
+    request<AuthResponse | TwoFactorChallenge>('/api/auth/login',
+      { method: 'POST', body: json({ email, password, code, rememberDevice }) }),
   /** Ends the session on the server (revokes it and clears the refresh cookie). */
   logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
   stats: () => request<DashboardStats>('/api/dashboard/stats'),

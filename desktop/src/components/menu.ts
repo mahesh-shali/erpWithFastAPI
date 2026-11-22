@@ -4,8 +4,22 @@ export interface MenuGroupNode { key: string; name: string; pages: MyPagePermiss
 export interface MenuModuleNode { key: string; name: string; icon: string; groups: MenuGroupNode[] }
 export interface MenuTree { top: MyPagePermission[]; modules: MenuModuleNode[] }
 
-/** A page appears in the menu if it is visible, readable and not restricted. */
-export const inMenu = (p: MyPagePermission) => p.isVisible && p.canRead && !p.isRestricted;
+/**
+ * Groups that are reached from the Settings screen (gear icon in the top bar) instead of the side menu.
+ * Their pages keep their rights; they just don't appear in the menu.
+ */
+export const SETTINGS_GROUPS = new Set(['master-settings']);
+
+/**
+ * Rights-only entries: not screens, just switches in Role/User Rights (start chats with senior roles, edit users
+ * in Settings). Never in the menu, even for SuperAdmin, who holds every right including "visible".
+ */
+export const RIGHTS_ONLY_PAGES = new Set(['messages-senior', 'settings-users']);
+
+/** A page appears in the menu if it is visible, readable, not restricted, a real screen and not a Settings page. */
+export const inMenu = (p: MyPagePermission) =>
+  p.isVisible && p.canRead && !p.isRestricted
+  && !RIGHTS_ONLY_PAGES.has(p.pageKey) && !SETTINGS_GROUPS.has(p.menu.groupKey ?? '');
 
 /**
  * Builds the 3-level menu (Module > Group > Page) from the user's effective rights.

@@ -35,9 +35,11 @@ async function viaFetch<T>(method: string, path: string, body?: unknown): Promis
 export const fakeBridge: ErpBridge = {
   api: { request: (method, path, body) => viaFetch(method, path, body) },
   auth: {
-    login: async (email, password) => {
-      const res = await viaFetch<{ user: UserDto }>('POST', '/api/auth/login', { email, password });
+    login: async (email, password, code, rememberDevice) => {
+      const res = await viaFetch<{ user: UserDto; twoFactorRequired?: boolean }>('POST', '/api/auth/login',
+        { email, password, code, rememberDevice: rememberDevice === true });
       if (res.status !== 200 || !res.body) return res as BridgeResponse<SessionInfo>;
+      if (res.body.twoFactorRequired) return { status: 200, body: { twoFactorRequired: true } }; // like the main process
       fakeState.user = res.body.user;
       return { status: 200, body: { user: res.body.user, sessionExpiresAt: null, persistent: true } };
     },

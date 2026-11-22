@@ -63,6 +63,8 @@ builder.Services.AddScoped<IMasterService, MasterService>();
 builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider, PagePolicyProvider>();
 builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, PageRequirementHandler>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ITwoFactorService, TwoFactorService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddSingleton<ILoginThrottle, LoginThrottle>();
 builder.Services.AddHostedService<SessionCleanupService>();
 builder.Services.AddScoped<IOrderService, OrderService>();

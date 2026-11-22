@@ -452,5 +452,60 @@
         "auto": "crypto.test.ts"
       }
     ]
+  },
+  {
+    "screen": "Settings & two-factor sign-in",
+    "login": "admin@demo.com / Admin@123 (then lead@demo.com / Lead@12345 and staff@demo.com / Staff@1234)",
+    "url": "http://localhost:5173/settings",
+    "checks": [
+      {
+        "title": "Settings opens from the top bar for every role",
+        "steps": ["Sign in as staff@demo.com", "Click the gear icon in the top bar"],
+        "expect": "Settings opens with Profile, Password and Two-factor sign-in tabs; there is no Users tab.",
+        "auto": "SettingsPage.test.tsx; e2e screens.spec.ts › Settings: own account only"
+      },
+      {
+        "title": "Turn on two-factor sign-in",
+        "steps": ["Settings › Two-factor sign-in › Set up", "Scan the QR code with Google or Microsoft Authenticator", "Enter the 6-digit code and click Turn on"],
+        "expect": "Ten recovery codes are shown once; after 'I saved them' the status badge says On.",
+        "auto": "TwoFactorAndSettingsTests; SettingsPage.test.tsx › sets up two-factor"
+      },
+      {
+        "title": "Sign-in asks for the code",
+        "steps": ["Sign out", "Sign in with email and password"],
+        "expect": "A 'Two-step verification' step asks for the code; a wrong code is refused, the app code signs you in. Same in the desktop app.",
+        "auto": "auth.test.tsx › asks for the authenticator code; TwoFactorAndSettingsTests › Login_asks_for_the_code"
+      },
+      {
+        "title": "Remember this device for 30 days",
+        "steps": ["With 2FA on, sign out", "Sign in; on the code step tick 'Remember this device for 30 days' and enter the code", "Sign out and sign in again in the same browser (or desktop app)", "Sign in from another browser"],
+        "expect": "The same browser/app signs in with the password only; another browser still asks for the code. Settings > Two-factor shows 'Remembered devices: 1'; 'Forget all remembered devices' makes it ask again.",
+        "auto": "TwoFactorAndSettingsTests › Remember_this_device_*; desktop api-client.test.ts; auth.test.tsx"
+      },
+      {
+        "title": "Reopen where you left off",
+        "steps": ["Open Master › Customers", "Sign out", "Sign in again (web and desktop)"],
+        "expect": "Customers opens again instead of the Dashboard; a user who never opened a page lands on the Dashboard.",
+        "auto": "App.test.tsx › Reopens where the user left off"
+      },
+      {
+        "title": "A recovery code works once",
+        "steps": ["Sign out", "Sign in and enter one recovery code instead of the app code", "Sign out and try the same recovery code again"],
+        "expect": "The first time signs you in; the second time is refused.",
+        "auto": "TwoFactorAndSettingsTests › Recovery_codes_work_once"
+      },
+      {
+        "title": "Edit lower roles only",
+        "steps": ["As admin@demo.com: Settings › Users", "As manager@demo.com (Admin): Settings › Users", "As lead@demo.com (Manager): Settings › Users"],
+        "expect": "SuperAdmin sees every other user; the Admin sees Managers and Users; the Manager sees only Users. Edit saves name, email, role and an optional new password.",
+        "auto": "TwoFactorAndSettingsTests › SuperAdmin_edits_everyone_Admin_edits_Managers_and_Users_Manager_edits_Users"
+      },
+      {
+        "title": "Reset another user's two-factor sign-in",
+        "steps": ["Turn on 2FA for staff@demo.com", "As admin@demo.com: Settings › Users › Reset 2FA on Demo Staff"],
+        "expect": "Staff is signed out and can sign in with the password only.",
+        "auto": "TwoFactorAndSettingsTests › A_password_reset_signs_the_user_out_and_a_2FA_reset"
+      }
+    ]
   }
 ]

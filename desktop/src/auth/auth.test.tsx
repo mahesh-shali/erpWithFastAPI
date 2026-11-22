@@ -61,6 +61,35 @@ describe('LoginPage', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Invalid email or password.'));
     expect(fakeState.user).toBeNull();
   });
+
+  it('asks for the authenticator code when two-factor sign-in is on, then signs in with it', async () => {
+    const codes: (string | undefined)[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      codes.push(body.code);
+      if (!body.code) return jsonResponse({ twoFactorRequired: true });
+      return body.code === '123456'
+        ? jsonResponse({ accessToken: 'jwt-2fa', expiresAt: '2030-01-01', user: demoUser })
+        : jsonResponse({ title: 'Invalid verification code.' }, 401);
+    });
+    renderWithProviders(<AppRoutes />, '/login');
+
+    await userEvent.type(screen.getByLabelText(/email/i), 'admin@demo.com');
+    await userEvent.type(screen.getByLabelText(/password/i), 'Admin@123');
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    const code = await screen.findByLabelText(/verification code/i);
+    expect(fakeState.user).toBeNull();
+
+    await userEvent.type(code, '000000');
+    await userEvent.click(screen.getByRole('button', { name: /verify/i }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Invalid verification code.'));
+
+    await userEvent.type(screen.getByLabelText(/verification code/i), '123456');
+    await userEvent.click(screen.getByRole('button', { name: /verify/i }));
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(fakeState.user).toEqual(demoUser);
+    expect(codes).toEqual([undefined, '000000', '123456']);
+  });
 });
 
 describe('session restore at startup', () => {

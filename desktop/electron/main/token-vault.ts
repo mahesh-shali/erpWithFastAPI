@@ -12,7 +12,12 @@ import type { RefreshTokenStore } from './api-client';
  */
 export class TokenVault implements RefreshTokenStore {
   private memory: string | null = null;
-  private readonly file = path.join(app.getPath('userData'), 'session.bin');
+  private readonly file: string;
+
+  /** session.bin = refresh token; trusted-device.bin = "remember this device" token for two-factor sign-in. */
+  constructor(fileName = 'session.bin') {
+    this.file = path.join(app.getPath('userData'), fileName);
+  }
 
   get persistent(): boolean {
     if (!safeStorage.isEncryptionAvailable()) return false;

@@ -1,6 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { auth, setUnauthorizedHandler, type UserDto } from '../api/client';
+import { auth, isTwoFactorChallenge, setUnauthorizedHandler, type UserDto } from '../api/client';
 import { forgetDeviceKeys } from '../chat/deviceKeys';
+import { restoreLastPageAfterSignIn } from '../components/lastPage';
+
+/** 'two-factor' = password accepted, now call login again with the authenticator (or recovery) code. */
+export type LoginResult = 'signed-in' | 'two-factor';
 
 interface AuthState {
   user: UserDto | null;
@@ -9,9 +13,12 @@ interface AuthState {
   ready: boolean;
   /** False when the OS has no secure key store: the session ends when the app closes. */
   persistent: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  /** `rememberDevice` (with a code): this app skips the two-factor code for 30 days. */
+  login: (email: string, password: string, code?: string, rememberDevice?: boolean) => Promise<LoginResult>;
   /** Signs out on the server (revokes the session) and locally. */
   logout: () => Promise<void>;
+  /** Shows a changed name/email (Settings) without signing in again. */
+  updateUser: (changes: Partial<Pick<UserDto, 'fullName' | 'email'>>) => void;
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -58,15 +65,22 @@ export function AuthProvider({ children, initialUser }: { children: ReactNode; i
     await auth.logout().catch(() => undefined); // best effort: the session also expires on its own
   }, [clearLocal]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const s = await auth.login(email, password);
+  const login = useCallback(async (email: string, password: string, code?: string, rememberDevice = false): Promise<LoginResult> => {
+    const s = await auth.login(email, password, code, rememberDevice);
+    if (isTwoFactorChallenge(s)) return 'two-factor';
+    restoreLastPageAfterSignIn(); // the first screen after this sign-in reopens where this user left off
     setPersistent(s.persistent);
     setUser(s.user);
+    return 'signed-in';
+  }, []);
+
+  const updateUser = useCallback((changes: Partial<Pick<UserDto, 'fullName' | 'email'>>) => {
+    setUser((u) => (u ? { ...u, ...changes } : u));
   }, []);
 
   const value = useMemo(
-    () => ({ user, isAuthenticated: !!user, ready, persistent, login, logout }),
-    [user, ready, persistent, login, logout],
+    () => ({ user, isAuthenticated: !!user, ready, persistent, login, logout, updateUser }),
+    [user, ready, persistent, login, logout, updateUser],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

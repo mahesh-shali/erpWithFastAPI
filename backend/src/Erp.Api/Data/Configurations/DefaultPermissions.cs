@@ -68,6 +68,7 @@ public static class DefaultPermissions
         G(802, 8, "hr-attendance", "Attendance", 20),
         G(803, 8, "hr-payroll", "Payroll", 30),
         G(804, 8, "hr-leave", "Leave", 40),
+        G(905, 9, "reports-analytics", "Analytics", 5),
         G(901, 9, "reports-sales", "Sales", 10),
         G(902, 9, "reports-inventory", "Inventory", 20),
         G(903, 9, "reports-production", "Production", 30),
@@ -79,11 +80,12 @@ public static class DefaultPermissions
     [
         // top level (no module)
         P(1,  PageKeys.Dashboard,        "Dashboard",           "/",                          null, 10),
-        P(48, PageKeys.Analytics,        "Analytics",           "/analytics",                 null, 15),
         P(5,  PageKeys.AiChat,           "AI Assistant",        "/assistant",                 null, 20),
         P(49, PageKeys.Messages,         "Messages",            "/messages",                  null, 25),
         // Rights-only entry (never in the menu: no V/R by default). W = may start chats with more senior roles.
         P(50, PageKeys.MessagesSenior,   "Message Senior Roles", "/messages/senior-roles",    null, 26),
+        // Rights-only entry (never in the menu). U = may edit lower-role accounts in Settings > Users.
+        P(51, PageKeys.SettingsUsers,    "Edit Users (Settings)", "/settings/users",          null, 27),
         // Master
         P(6,  PageKeys.MasterUsers,      "Users",               "/master/users",              101, 10),
         P(7,  PageKeys.MasterUserRights, "User Rights",         "/master/user-rights",        101, 20),
@@ -135,8 +137,9 @@ public static class DefaultPermissions
         P(23, PageKeys.Attendance,       "Attendance",          "/hr/attendance",             802, 10, implemented: false),
         P(44, PageKeys.Payroll,          "Payroll",             "/hr/payroll",                803, 10, implemented: false),
         P(45, PageKeys.LeaveRequests,    "Leave Requests",      "/hr/leave",                  804, 10, implemented: false),
-        // Reports
-        P(24, PageKeys.SalesReport,      "Sales Report",        "/reports/sales",             901, 10, implemented: false),
+        // Reports (Analytics was top level until it moved here; the route stays /analytics)
+        P(48, PageKeys.Analytics,        "Analytics",           "/analytics",                 905, 10),
+        P(24, PageKeys.SalesReport,     "Sales Report",        "/reports/sales",             901, 10, implemented: false),
         P(25, PageKeys.StockReport,      "Stock Ledger",        "/reports/stock",             902, 10),
         P(46, PageKeys.ProductionReport, "Production Report",   "/reports/production",        903, 10, implemented: false),
         P(47, PageKeys.PurchaseReport,   "Purchase Report",     "/reports/purchase",          904, 10, implemented: false),
@@ -150,6 +153,7 @@ public static class DefaultPermissions
         [PageKeys.AiChat] = "VR",
         [PageKeys.Messages] = "VRW",
         [PageKeys.MessagesSenior] = "W",
+        [PageKeys.SettingsUsers] = "U", // Manager inherits it: managers edit Users' accounts
         [PageKeys.MasterUsers] = "VRWUD",
         [PageKeys.MasterUserRights] = "VRU",
         [PageKeys.MasterPages] = "VR",
