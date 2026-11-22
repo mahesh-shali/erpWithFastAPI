@@ -54,9 +54,16 @@ export function resetLastPageForTests(): void {
 export function useLastPage(userId: string | undefined): boolean {
   const location = useLocation();
   const navigate = useNavigate();
-  const restoring = useRef(false);
+  /**
+   * Key of the location we are navigating away from while going back to the last page. Until the navigation lands
+   * (the location key changes), the layout keeps the loading line up: a re-render in between (e.g. the rights
+   * finishing loading) must not render the Dashboard for a moment and fetch its data.
+   */
+  const leaving = useRef<string | null>(null);
   const target = userId ? lastPage(userId) : null;
-  const pending = !!userId && !restored && location.pathname === '/' && !location.search && !!target && target !== '/';
+  const waiting = leaving.current !== null && leaving.current === location.key;
+  const pending = waiting
+    || (!!userId && !restored && location.pathname === '/' && !location.search && !!target && target !== '/');
 
   // Once per sign-in / launch: if we opened on the start page, go back to where this user was.
   // (Opening a deep link, e.g. a bookmark or the page that sent you to the login, wins over the remembered page.)
@@ -64,7 +71,7 @@ export function useLastPage(userId: string | undefined): boolean {
     if (!userId || restored) return;
     restored = true;
     if (pending && target) {
-      restoring.current = true;
+      leaving.current = location.key;
       navigate(target, { replace: true });
     }
     // Only on the first signed-in render.
@@ -74,10 +81,10 @@ export function useLastPage(userId: string | undefined): boolean {
   // Remember every page the user opens (skip the start page we are about to leave while restoring).
   useEffect(() => {
     if (!userId) return;
-    if (restoring.current && location.pathname === '/') return;
-    restoring.current = false;
+    if (leaving.current === location.key) return;
+    leaving.current = null;
     rememberPage(userId, location.pathname + location.search);
-  }, [userId, location.pathname, location.search]);
+  }, [userId, location.key, location.pathname, location.search]);
 
   return pending;
 }

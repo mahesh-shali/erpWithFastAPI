@@ -19,6 +19,9 @@ const EMPTY: Route[] = [
   ['POST', '/api/auth/logout', undefined],
   ['GET', '/api/uoms*', []],
   ['GET', '/api/stores*', []],
+  // Paged reports need the paged shape: a bare [] crashed the screen whenever the reply landed before the test ended.
+  ['GET', '/api/stock/position*', { items: [], page: 1, pageSize: 50, total: 0, totalQuantity: 0, totalValue: 0 }],
+  ['GET', '/api/stock/ledger*', { items: [], page: 1, pageSize: 50, total: 0 }],
   ['GET', '/api/stock/*', []],
   ['GET', '/api/stock-entries*', { items: [], page: 1, pageSize: 25, total: 0 }],
   ['GET', '/api/chat/keys/me', undefined],
