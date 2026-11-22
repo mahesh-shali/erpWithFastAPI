@@ -17,7 +17,7 @@ public interface IAuthService
 }
 
 public sealed class AuthService(ErpDbContext db, IPasswordHasher hasher, ITokenService tokens, ISessionService sessions,
-    TimeProvider clock) : IAuthService
+    ILoginAlertService loginAlerts, TimeProvider clock) : IAuthService
 {
     public async Task<AuthResult> RegisterAsync(RegisterRequest req, ClientInfo client, CancellationToken ct)
     {
@@ -55,7 +55,9 @@ public sealed class AuthService(ErpDbContext db, IPasswordHasher hasher, ITokenS
 
         user.LastLoginAt = clock.GetUtcNow().UtcDateTime;
         await db.SaveChangesAsync(ct);
-        return await StartSessionAsync(user, user.Role!.Name, client, ct);
+        var result = await StartSessionAsync(user, user.Role!.Name, client, ct);
+        await loginAlerts.NotifyIfNewDeviceAsync(user, result.Response.SessionId, client, ct); // email is queued, never blocks
+        return result;
     }
 
     public async Task<AuthResult?> RefreshAsync(string refreshToken, ClientInfo client, CancellationToken ct)
