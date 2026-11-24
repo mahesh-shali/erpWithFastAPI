@@ -18,7 +18,7 @@ export function signIn(user: UserDto = demoUser) {
 
 export function renderWithProviders(ui: ReactElement, route = '/') {
   return render(
-    <MemoryRouter initialEntries={[route]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <MemoryRouter initialEntries={[route]}>
       <AuthProvider>{ui}</AuthProvider>
     </MemoryRouter>,
   );

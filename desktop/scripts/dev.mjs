@@ -8,7 +8,7 @@ import { createServer } from 'vite';
 const require = createRequire(import.meta.url);
 const electronPath = require('electron');
 
-const server = await createServer({ configFile: 'vite.config.ts' });
+const server = await createServer({ configFile: 'vite.config.mts' });
 await server.listen();
 const url = server.resolvedUrls.local[0];
 
