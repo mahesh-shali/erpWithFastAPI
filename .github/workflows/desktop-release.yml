@@ -2,7 +2,8 @@ name: Desktop release
 
 # Publishes the Windows desktop app to GitHub Releases as a Squirrel.Windows installer: "ERP Platform Setup <v>.exe"
 # (per-user install into %LocalAppData%\erp-desktop), RELEASES and erp-desktop-<v>-full.nupkg. Installed apps read
-# RELEASES from the latest release and offer the update from the download symbol in the top bar.
+# RELEASES from the latest release and offer the update from the download symbol in the top bar. The release is
+# created as a draft, filled, checked, and only then published as latest.
 #
 # To release: bump "version" in desktop/package.json, commit, then push a tag with the same version:
 #   git tag v1.2.0 && git push origin v1.2.0
@@ -34,7 +35,39 @@ jobs:
 
       - run: npm ci
       - run: npm test
-      - name: Build and publish Setup.exe, RELEASES and the .nupkg to the release
+
+      # electron-builder uploads its files in parallel, and when no release exists each upload creates its own
+      # (v1.4.0 ended up as three releases with one file each). It reuses an existing *draft*, so create one first.
+      # Draft also means installed apps never see a half-uploaded release as "latest".
+      - name: Create the draft release
+        shell: bash
+        env: { GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
+        run: |
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq "[.[] | select(.tag_name == \"$GITHUB_REF_NAME\")] | length")
+          if [ "$existing" = 0 ]; then
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+              --title "ERP Platform ${GITHUB_REF_NAME#v}" --notes ""
+          elif [ "$existing" != 1 ]; then
+            echo "::error::$existing releases already exist for $GITHUB_REF_NAME; remove the extras first"; exit 1
+          fi
+
+      - name: Build and upload Setup.exe, RELEASES and the .nupkg to the draft
         run: npm run release:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check the files and publish the release as latest
+        shell: bash
+        env: { GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          sel="[.[] | select(.tag_name == \"$GITHUB_REF_NAME\")]"
+          [ "$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq "$sel | length")" = 1 ] \
+            || { echo "::error::expected one release for $GITHUB_REF_NAME"; exit 1; }
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq "$sel | .[0].id")
+          assets=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq "$sel | .[0].assets[].name" | sort)
+          echo "$assets"
+          for f in RELEASES "erp-desktop-$version-full.nupkg" "erp-desktop-Setup-$version.exe"; do
+            grep -qxF "$f" <<<"$assets" || { echo "::error::$f is missing from the release; it stays a draft"; exit 1; }
+          done
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$id" -F draft=false -f make_latest=true --jq '.html_url'
