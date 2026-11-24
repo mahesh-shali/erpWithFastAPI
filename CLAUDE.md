@@ -13,6 +13,7 @@ Multi-tenant ERP with an AI chatbot that answers business questions by generatin
 | `backend/` | ASP.NET Core 8, EF Core 8 (Npgsql, snake_case), JWT, Redis | Auth/sessions, CRUD, dashboard, page rights. **Owns the DB schema** via EF migrations. |
 | `ai-service/` | FastAPI, Groq (OpenAI-compatible tool calling), asyncpg, sqlglot | `/ai/chat`: question → `run_sql` tool loop → answer. Read-only DB role + RLS. |
 | `frontend/` | React 18, Vite, TypeScript, React Router 6 (no UI lib) | SPA; Vite dev server proxies `/api` → :8080 and `/ai` → :8000 |
+| `desktop/` | Electron 33, same React renderer (HashRouter), esbuild, electron-builder | Desktop client for the same API; own version/release cycle. See [desktop/README.md](desktop/README.md) |
 | `infra/` | nginx, PgBouncer, k8s, Prometheus/Grafana | Edge routing (`/` SPA, `/api/*`, `/ai/*`), observability for local load tests |
 | `load-tests/` | k6, Go (`conn-soak`) | Load profiles; results in `load-tests/results/` |
 
@@ -40,6 +41,9 @@ cd ai-service && pytest tests/test_sql_guard.py -k name    # single test
 cd ai-service && TEST_AI_DATABASE_URL=postgresql://erp_ai_ro:ai_readonly_dev@localhost:5432/erp pytest -m integration
 cd frontend && npm test                                    # vitest; `npx vitest run src/components/ChatPanel.test.tsx` for one file
 cd frontend && npx playwright test                         # e2e, needs the stack running
+cd desktop && npm test                                     # vitest: renderer screens + electron/main
+cd desktop && npm run test:e2e                             # builds, then Playwright drives real Electron vs e2e/mock-server.ts
+cd desktop && npm run dev | dev:prod                       # Vite + Electron against :8088 (local.sh) or the Render prod URL
 
 # All test cases in one HTML report (results + per-test re-run commands + manual checklist); see TESTING.md
 node scripts/test-report.mjs --open            # --e2e with the app running, --only frontend,ai for a subset
@@ -47,6 +51,7 @@ node scripts/test-report.mjs --open            # --e2e with the app running, --o
 # Lint / typecheck / build (what CI "static" runs)
 ruff check ai-service            # line-length 110, py312
 cd frontend && npm run typecheck
+cd desktop && npm run typecheck  # renderer + electron tsconfigs
 dotnet build backend/ErpPlatform.sln
 
 # Migrations (needs: dotnet tool install -g dotnet-ef)
@@ -55,8 +60,11 @@ dotnet ef migrations script --project backend/src/Erp.Api --idempotent    # revi
 dotnet run --project backend/src/Erp.Api -- --migrate [--seed]             # apply (+ demo data), then exit
 ```
 
-CI (`.github/workflows/ci.yml`) gates phases: static → unit → integration → Playwright e2e → k6 smoke (main only).
-`deploy.yml` runs migrations against prod, then triggers Render deploy hooks.
+CI (`.github/workflows/ci.yml`) gates phases: static → unit → integration → Playwright e2e → k6 smoke (main only),
+plus a separate `desktop` job (typecheck, vitest, build, Electron e2e).
+`deploy.yml` runs migrations against prod, then triggers Render deploy hooks. `desktop-release.yml` publishes the
+Windows installer to GitHub Releases on a `v<version>` tag that must equal `desktop/package.json` `version`
+(installed apps auto-update from the repo's *latest* release, so nothing else should publish a "latest" release).
 
 ## Architecture essentials
 
@@ -73,6 +81,15 @@ CI (`.github/workflows/ci.yml`) gates phases: static → unit → integration �
 claim; every request also checks the `user_sessions` row is active (Redis-cached ~30 s) — API via
 `JwtBearerEvents.OnTokenValidated` in `Program.cs`, AI via the SQL function `session_is_active()`. Refresh token
 is an HttpOnly cookie (`erp_refresh`, path `/api/auth`) with rotation + reuse detection (`Services/SessionService.cs`).
+Optional TOTP two-factor (`Services/TwoFactor.cs`: setup → enable with first code → recovery codes; a code is
+accepted once via `TwoFactorLastStep`) with a separate "remember this device" cookie (trusted devices).
+`/api/auth/sessions` and `/api/auth/logout-others` back the per-device sign-out screens.
+
+**Messages.** End-to-end encrypted chat between org members (`ChatController`, `Services/ChatService.cs`).
+Encryption is client-side only (`src/chat/crypto.ts`, identical in frontend and desktop); the server stores
+ciphertext and public keys. Live updates are SSE on `GET /api/chat/stream`, fanned out across API replicas through
+the Redis channel `erp:chat:events` (`Services/ChatEventBus.cs`, in-process without Redis). Events are content-free
+notices; clients re-fetch through normal authorized endpoints.
 
 **Rights.** Three-level menu `menu_modules > menu_groups > pages`, all defined in code in
 `Data/Configurations/DefaultPermissions.cs` and seeded with `HasData`. Six rights per page
@@ -83,6 +100,12 @@ API endpoints are protected with `[RequirePage(PageKeys.X, PageAction.Y)]` (`Ser
 Role hierarchy by `level` (SuperAdmin 100 > Admin 50 > Manager 30 > User 10): users only manage roles strictly below them
 and cannot grant rights they lack.
 
+**Internal gRPC.** Clients call `POST /api/ai/chat` on the API, which checks the `ai-chat` right and forwards to
+the AI service over gRPC (`backend/src/Erp.Api/Protos/ai_assistant.proto`, `Services/AiAssistantGateway.cs` →
+`ai-service/app/grpc_server.py`, port `GRPC_PORT` 50051) with the caller's own JWT as metadata, so the AI service
+re-checks everything. The REST `/ai/chat` and gRPC share `chat_flow.answer()`. After editing the .proto run
+`cd ai-service && python scripts/gen_proto.py` (committed stubs in `app/grpc_gen/`; a test fails when stale).
+
 **AI chat flow** (`ai-service/app/`): `auth.py` (JWT + session) → Redis rate limit and answer cache
 (`cache.py`, keyed by org + question + user's readable pages) → `agent.py` tool loop with schema prompt from
 `schema.py` → every SQL passes `sql_guard.py` (sqlglot AST: single SELECT, allow-listed tables, blocked
@@ -92,6 +115,13 @@ for a user depend on page rights (`PAGE_TABLES` in `sql_guard.py`).
 **Frontend.** `src/api/client.ts` handles 401 → single shared `/api/auth/refresh` → retry. `PermissionsContext`
 loads `GET /api/me/permissions` to build the menu and guard routes (UI-only; the API is the real check).
 Routes in `src/App.tsx` mirror each page's `route`; unbuilt pages fall through to `ComingSoonRoute`.
+
+**Desktop.** The renderer is sandboxed with CSP `connect-src 'none'` and never sees a token: it calls
+`window.erp.api.request(...)` (preload contextBridge, channel types in `electron/shared/contract.ts`), and the main
+process (`electron/main/api-client.ts`) owns the session — access token in memory, refresh token in OS-encrypted
+`safeStorage`, sent as a `Cookie` header; only relative `/api/…` and `/ai/…` paths are allowed. The SSE chat stream
+also runs in main (`chat-stream.ts`). Modes `ERP_ENV=local|production` (URLs in `electron/main/environment.ts`) use
+separate profiles. Don't relax the hardening in `security.ts`/`ipc.ts` or the Electron fuses in `package.json`.
 
 ## Rules when changing things
 
@@ -114,6 +144,10 @@ Routes in `src/App.tsx` mirror each page's `route`; unbuilt pages fall through t
 - New screen or endpoint: add a screen test (use `renderScreen`/`mockApi`/`perm` from `frontend/src/test/utils.tsx`),
   API integration tests, a route case in `App.test.tsx`, an e2e journey in `e2e/screens.spec.ts`, and a manual
   check in `scripts/manual-checks.json` (see TESTING.md).
+- **Keep `desktop/src` in sync with `frontend/src`.** The desktop renderer is a copy of the web app; when a screen
+  changes on the web, copy it to desktop. Only `api/client.ts`, `auth/AuthContext.tsx`, `auth/PrivateRoute.tsx`,
+  `main.tsx`, `pages/LoginPage.tsx` and `chat/events.ts` differ on purpose (plus desktop-only `pages/account/DevicesPage.tsx`).
+  Desktop uses HashRouter.
 - Running `dotnet test` rebuilds `Erp.Api` and stops a `dotnet watch` started by `dev.sh`; restart the API afterwards.
 - **Stock changes only through `IStockPosting.PostAsync`** (inside a transaction, after `EnsureDefaultStoreAsync`). Never
   update `products.stock_quantity` or `stock_balances` directly: the invariant is stock_quantity = sum of balances, and
