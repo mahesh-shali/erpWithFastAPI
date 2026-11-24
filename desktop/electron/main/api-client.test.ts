@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ApiClient, isAllowedPath, readCookie, type RefreshTokenStore } from './api-client';
+import { ApiClient, bindTrust, isAllowedPath, readCookie, unbindTrust, type RefreshTokenStore } from './api-client';
 
 const user = { id: 'u1', email: 'admin@demo.com', fullName: 'Admin', role: 'Admin' as const, organizationId: 'o1' };
 const BASE = 'https://erp.test';
@@ -98,9 +98,9 @@ describe('ApiClient', () => {
     const client = new ApiClient({ baseUrl: () => BASE, store: new MemoryStore(), trustStore: trust, fetch: fetchMock as unknown as typeof fetch });
 
     await client.login('admin@demo.com', 'Admin@123', '123456', true);
-    expect(trust.save).toHaveBeenCalledWith('t-1');
+    expect(trust.save).toHaveBeenCalledWith(`${BASE} t-1`); // stored together with the server it belongs to
     await client.logout();
-    expect(trust.token).toBe('t-1'); // sign-out keeps the device remembered
+    expect(trust.token).toBe(`${BASE} t-1`); // sign-out keeps the device remembered
 
     const res = await client.login('admin@demo.com', 'Admin@123'); // no code needed
     expect(res.body).toMatchObject({ user });
@@ -108,8 +108,24 @@ describe('ApiClient', () => {
     expect(lastCookie).toBe('erp_2fa_trust=t-1'); // never the refresh token on login
   });
 
+  it('never sends a trust token to a server other than the one that issued it', async () => {
+    let base = BASE;
+    const trust = new MemoryStore(bindTrust('t-1', BASE));
+    const fetchMock = vi.fn(async () => json({ twoFactorRequired: true }));
+    const client = new ApiClient({ baseUrl: () => base, store: new MemoryStore(), trustStore: trust, fetch: fetchMock as unknown as typeof fetch });
+
+    base = 'https://attacker.test'; // e.g. the server URL was changed in Settings
+    await client.login('a@b.c', 'p');
+    expect((fetchMock.mock.calls.at(-1) as unknown as [string, RequestInit])[1].headers).not.toHaveProperty('Cookie');
+    expect(trust.token).toBe(bindTrust('t-1', BASE)); // the real server's token is kept for when it is used again
+
+    // A token stored by an older version (no server bound) is not sent anywhere either
+    expect(unbindTrust('t-1', BASE)).toBeNull();
+    expect(unbindTrust(bindTrust('t-1', BASE), BASE)).toBe('t-1');
+  });
+
   it('forgets the stored trust token when the server deletes the cookie', async () => {
-    const trust = new MemoryStore('old');
+    const trust = new MemoryStore(bindTrust('old', BASE));
     const fetchMock = vi.fn(async () =>
       json({ twoFactorRequired: true }, 200, ['erp_2fa_trust=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/api/auth']));
     const client = new ApiClient({ baseUrl: () => BASE, store: new MemoryStore(), trustStore: trust, fetch: fetchMock as unknown as typeof fetch });

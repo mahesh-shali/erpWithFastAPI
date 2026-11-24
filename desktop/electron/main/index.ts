@@ -5,12 +5,23 @@ import { ApiClient } from './api-client';
 import { resolveEnvironment } from './environment';
 import { ChatStream } from './chat-stream';
 import { registerIpc } from './ipc';
-import { hardenSession, hardenWindow, isAppUrl } from './security';
+import { forbiddenSwitch, hardenSession, hardenWindow, isAppUrl } from './security';
 import { SettingsStore } from './settings';
 import { TokenVault } from './token-vault';
 import { showUpdateSplash } from './update-splash';
 import { fileLogger, UpdateService } from './updater';
 import { usableBounds, WindowStateStore } from './window-state';
+
+// The installed app never runs with debugging or security-bypass switches (e.g. --remote-debugging-port would let
+// another program drive the window and its window.erp bridge). Exit before anything starts. Dev runs and the
+// Playwright tests launch unpackaged and are unaffected.
+if (app.isPackaged) {
+  const bad = forbiddenSwitch(process.argv);
+  if (bad) {
+    console.error(`ERP Platform: refusing to start with --${bad}`);
+    process.exit(1);
+  }
+}
 
 // Bundled by scripts/build-electron.mjs into dist-electron/main.cjs; the UI is in dist/ (Vite).
 const RENDERER_DIR = path.join(__dirname, '..', 'dist');
@@ -114,6 +125,8 @@ function createWindow() {
       nodeIntegration: false,
       webSecurity: true,
       spellcheck: false,
+      // No DevTools in the installed app: they would expose the renderer and its window.erp bridge.
+      devTools: !app.isPackaged,
       additionalArguments: [`--erp-app-version=${app.getVersion()}`],
     },
   });

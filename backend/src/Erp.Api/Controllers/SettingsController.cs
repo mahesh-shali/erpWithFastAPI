@@ -21,7 +21,8 @@ public class AccountController(IAccountService account, ITwoFactorService twoFac
     [HttpGet]
     public Task<AccountDto> Get(CancellationToken ct) => account.GetAsync(ct);
 
-    [HttpPut("profile")]
+    /// <summary>Rate-limited like sign-in: changing the email checks the current password.</summary>
+    [HttpPut("profile"), EnableRateLimiting("auth")]
     public Task<AccountDto> UpdateProfile(UpdateProfileRequest req, CancellationToken ct) => account.UpdateProfileAsync(req, ct);
 
     /// <summary>Changes the password; other devices are signed out, this one stays signed in.</summary>
