@@ -22,6 +22,15 @@ describe('UpdateButton', () => {
     expect(screen.getByRole('button', { name: 'Downloading update: 64%' })).toBeInTheDocument();
   });
 
+  it('shows an indeterminate bar when the download reports no progress (Squirrel)', async () => {
+    render(<UpdateButton />);
+    act(() => emitUpdate({ state: 'downloading', version: '1.2.0', percent: null }));
+    const btn = screen.getByRole('button', { name: 'Downloading update' });
+    expect(btn).not.toHaveTextContent('%');
+    await userEvent.click(btn);
+    expect(screen.getByRole('progressbar', { name: 'Download progress' })).not.toHaveAttribute('value');
+  });
+
   it('offers Restart now once downloaded', async () => {
     render(<UpdateButton />);
     act(() => emitUpdate({ state: 'downloaded', version: '1.2.0' }));

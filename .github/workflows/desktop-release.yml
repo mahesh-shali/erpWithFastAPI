@@ -1,7 +1,8 @@
 name: Desktop release
 
-# Publishes the Windows desktop app to GitHub Releases. Installed apps check the latest release and offer
-# the update from the download symbol in the top bar (electron-updater reads latest.yml from the release).
+# Publishes the Windows desktop app to GitHub Releases as a Squirrel.Windows installer: "ERP Platform Setup <v>.exe"
+# (per-user install into %LocalAppData%\erp-desktop), RELEASES and erp-desktop-<v>-full.nupkg. Installed apps read
+# RELEASES from the latest release and offer the update from the download symbol in the top bar.
 #
 # To release: bump "version" in desktop/package.json, commit, then push a tag with the same version:
 #   git tag v1.2.0 && git push origin v1.2.0
@@ -33,7 +34,7 @@ jobs:
 
       - run: npm ci
       - run: npm test
-      - name: Build and publish the installer, latest.yml and blockmap to the release
+      - name: Build and publish Setup.exe, RELEASES and the .nupkg to the release
         run: npm run release:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

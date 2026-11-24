@@ -36,6 +36,7 @@ describe('UpdateService', () => {
 
     await svc.download();
     expect(updater.downloadUpdate).toHaveBeenCalledOnce();
+    expect(svc.get()).toEqual({ state: 'downloading', version: '1.2.0', percent: null }); // unknown until progress
     updater.emit('download-progress', { percent: 41.6 });
     expect(svc.get()).toEqual({ state: 'downloading', version: '1.2.0', percent: 42 });
 
