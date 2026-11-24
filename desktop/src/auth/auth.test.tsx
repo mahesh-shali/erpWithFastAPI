@@ -50,6 +50,24 @@ describe('LoginPage', () => {
     expect(fakeState.user).toEqual(demoUser);
   });
 
+  it('shows the password on request and hides it again', async () => {
+    renderWithProviders(<AppRoutes />, '/login');
+    const field = screen.getByLabelText('Password');
+    await userEvent.type(field, 'Admin@123');
+    expect(field).toHaveAttribute('type', 'password');
+
+    const toggle = screen.getByRole('button', { name: 'Show' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(toggle);
+    expect(field).toHaveAttribute('type', 'text');
+    expect(field).toHaveValue('Admin@123');
+    expect(screen.getByRole('button', { name: 'Hide' })).toHaveAttribute('aria-pressed', 'true');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Hide' }));
+    expect(field).toHaveAttribute('type', 'password');
+    expect(screen.getAllByLabelText(/password/i)).toEqual([field]); // the toggle never matches a password lookup
+  });
+
   it('shows server error on bad credentials', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ title: 'Invalid email or password.' }, 401));
     renderWithProviders(<AppRoutes />, '/login');

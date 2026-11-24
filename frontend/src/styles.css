@@ -28,6 +28,12 @@ label { display: grid; gap: .3rem; font-size: .9rem; color: var(--muted); }
 .login-badges { display: flex; flex-wrap: wrap; gap: .5rem; }
 .login-badges span { border: 1px solid rgba(255, 255, 255, .45); border-radius: 999px; padding: .2rem .7rem; font-size: .78rem; }
 .login > .login-card { place-self: center; margin: 2rem 1rem; }
+/* Show/Hide toggle drawn inside the right end of the password input. */
+.password-field { position: relative; }
+.password-field input { padding-right: 4rem; }
+.password-toggle { position: absolute; right: .35rem; bottom: .3rem; background: none; color: var(--accent);
+  padding: .3rem .5rem; border-radius: 6px; font-size: .85rem; font-weight: 600; }
+.password-toggle:hover { background: var(--accent-weak); }
 @media (max-width: 900px) {
   .login { grid-template-columns: 1fr; }
   .login-hero { padding: 2rem 1rem; }
