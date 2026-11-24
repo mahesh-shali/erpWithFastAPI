@@ -23,6 +23,7 @@ export function LoginPage() {
   const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   /** Step 2: the password was right and the account has two-factor sign-in on. */
@@ -56,6 +57,7 @@ export function LoginPage() {
     setNeedsCode(false);
     setCode('');
     setPassword('');
+    setShowPassword(false);
     setError(null);
   }
 
@@ -100,11 +102,20 @@ export function LoginPage() {
           Email
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" />
         </label>
-        <label>
-          Password
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
-                 autoComplete="current-password" />
-        </label>
+        {/* The toggle sits outside the <label> so the field's accessible name stays "Password", and its own name
+            ("Show"/"Hide") doesn't contain "password", so getByLabel('Password') still finds only the field. */}
+        <div className="password-field">
+          <label>
+            Password
+            <input id="login-password" type={showPassword ? 'text' : 'password'} value={password}
+                   onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password"
+                   autoCapitalize="none" spellCheck={false} />
+          </label>
+          <button type="button" className="password-toggle" aria-controls="login-password" aria-pressed={showPassword}
+                  title={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword((s) => !s)}>
+            {showPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
         {error && <p role="alert" className="error">{error}</p>}
         <button type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
         <ModeBadge />
