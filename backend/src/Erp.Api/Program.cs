@@ -85,6 +85,28 @@ builder.Services.AddSingleton<EmailDispatcher>();
 builder.Services.AddSingleton<IEmailQueue>(sp => sp.GetRequiredService<EmailDispatcher>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<EmailDispatcher>());
 builder.Services.AddScoped<ILoginAlertService, LoginAlertService>();
+// AI assistant: internal gRPC to the AI service (POST /api/ai/chat). Plaintext h2c on the private network.
+// dns:///host:port resolves every replica and round-robins calls (one HTTP/2 connection would pin one pod).
+builder.Services.Configure<AiServiceOptions>(cfg.GetSection("AiService"));
+var aiGrpcUrl = new Uri(cfg["AiService:GrpcUrl"] ?? new AiServiceOptions().GrpcUrl);
+builder.Services.AddGrpcClient<Erp.Api.Grpc.Ai.AiAssistant.AiAssistantClient>(o => o.Address = aiGrpcUrl)
+    .ConfigureChannel(c =>
+    {
+        c.MaxReceiveMessageSize = 8 * 1024 * 1024; // up to max_result_rows rows
+        c.ServiceConfig = new Grpc.Net.Client.Configuration.ServiceConfig
+        {
+            LoadBalancingConfigs = { new Grpc.Net.Client.Configuration.RoundRobinConfig() }
+        };
+        if (aiGrpcUrl.Scheme == "dns") c.Credentials = Grpc.Core.ChannelCredentials.Insecure;
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+    {
+        EnableMultipleHttp2Connections = true,
+        PooledConnectionIdleTimeout = Timeout.InfiniteTimeSpan,
+        KeepAlivePingDelay = TimeSpan.FromSeconds(60),
+        KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
+    });
+builder.Services.AddTransient<IAiAssistantGateway, GrpcAiAssistantGateway>();
 
 // ---------- Auth ----------
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

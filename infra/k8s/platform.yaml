@@ -19,6 +19,9 @@ spec:
           image: ghcr.io/your-org/erp-api:latest
           ports: [{ containerPort: 8080 }]
           envFrom: [{ secretRef: { name: erp-secrets } }]
+          env:
+            # Internal gRPC to the AI pods via the headless Service below (client-side round robin)
+            - { name: AiService__GrpcUrl, value: "dns:///erp-ai-grpc.erp.svc.cluster.local:50051" }
           resources:
             requests: { cpu: "500m", memory: "256Mi" }
             limits:   { cpu: "2",    memory: "1Gi" }
@@ -55,7 +58,7 @@ spec:
       containers:
         - name: ai
           image: ghcr.io/your-org/erp-ai:latest
-          ports: [{ containerPort: 8000 }]
+          ports: [{ containerPort: 8000 }, { containerPort: 50051, name: grpc }]
           envFrom: [{ secretRef: { name: erp-secrets } }]
           resources:
             requests: { cpu: "250m", memory: "256Mi" }
@@ -79,6 +82,16 @@ metadata: { name: erp-ai, namespace: erp }
 spec:
   selector: { app: erp-ai }
   ports: [{ port: 80, targetPort: 8000 }]
+---
+# Headless: DNS returns every AI pod, so the API's gRPC client spreads calls instead of pinning one
+# long-lived HTTP/2 connection to a single pod. Not in the Ingress: only the API calls it.
+apiVersion: v1
+kind: Service
+metadata: { name: erp-ai-grpc, namespace: erp }
+spec:
+  clusterIP: None
+  selector: { app: erp-ai }
+  ports: [{ name: grpc, port: 50051, targetPort: 50051 }]
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

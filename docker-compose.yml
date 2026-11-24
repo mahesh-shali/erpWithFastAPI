@@ -66,7 +66,8 @@ services:
       <<: [*common-env, *api-db]
       # Local container by default; set API_REDIS_CONNECTION to use a managed Redis (e.g. Upstash).
       ConnectionStrings__Redis: ${API_REDIS_CONNECTION:-redis:6379}
-      AiService__BaseUrl: http://ai-service:8000
+      # Internal gRPC to the AI service; dns:/// round-robins across its replicas (POST /api/ai/chat)
+      AiService__GrpcUrl: dns:///ai-service:50051
       ASPNETCORE_URLS: http://+:8080
       Cors__Origins__0: ${CORS_ORIGINS:-http://localhost}
       # New-device sign-in alerts (empty SMTP_HOST = log only)
@@ -99,6 +100,7 @@ services:
       UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN:-}
       GROQ_API_KEY: ${GROQ_API_KEY}
       GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+      GRPC_PORT: "50051"   # internal only: not published, nginx never routes it
     depends_on:
       migrator: { condition: service_completed_successfully }
       redis: { condition: service_healthy }

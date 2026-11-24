@@ -8,3 +8,5 @@ PyJWT==2.10.1
 redis==5.2.1
 pydantic-settings==2.7.0
 orjson==3.10.12
+grpcio==1.68.1
+protobuf==5.29.6

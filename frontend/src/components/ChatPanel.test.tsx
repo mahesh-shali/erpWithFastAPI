@@ -27,7 +27,7 @@ describe('ChatPanel', () => {
     expect(screen.queryByText(/LIMIT 500/)).not.toBeInTheDocument();
 
     const [url, init] = f.mock.calls[0];
-    expect(url).toBe('/ai/chat');
+    expect(url).toBe('/api/ai/chat');
     expect(JSON.parse(init!.body as string)).toEqual({ question: 'Which city has the most customers?', history: [] });
   });
 
