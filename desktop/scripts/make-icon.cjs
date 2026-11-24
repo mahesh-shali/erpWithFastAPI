@@ -1,9 +1,11 @@
 // Renders build/icon.svg to build/icon.png (1024x1024) with Electron's own Chromium, so no image library is
-// needed. electron-builder makes the .ico / .icns / Linux sizes from that PNG.
+// needed. electron-builder makes the .ico / .icns / Linux sizes from that PNG; build/icon.ico is also written for
+// Squirrel.Windows (see make-ico.cjs).
 // Run with: npm run icon
 const { app, BrowserWindow } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
+const { toIco } = require('./make-ico.cjs');
 
 const SIZE = 1024;
 const root = path.join(__dirname, '..');
@@ -23,5 +25,7 @@ app.whenReady().then(async () => {
   const image = (await win.webContents.capturePage({ x: 0, y: 0, width: SIZE, height: SIZE })).resize({ width: SIZE, height: SIZE });
   fs.writeFileSync(path.join(root, 'build', 'icon.png'), image.toPNG());
   console.log(`Wrote build/icon.png (${image.getSize().width}x${image.getSize().height})`);
+  fs.writeFileSync(path.join(root, 'build', 'icon.ico'), toIco(image)); // Squirrel's "Installed apps" icon
+  console.log('Wrote build/icon.ico');
   app.quit();
 }).catch((e) => { console.error(e); app.exit(1); });

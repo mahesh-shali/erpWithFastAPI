@@ -36,8 +36,8 @@ export interface ChatStreamEvent {
 }
 
 /**
- * App updates from GitHub Releases (electron-updater). The user starts the download; once downloaded, the
- * update installs on "Restart now" or the next time the app quits.
+ * App updates from GitHub Releases (Squirrel on Windows, electron-updater on macOS/Linux). The user starts the
+ * download; once downloaded, the update installs on "Restart now" or the next time the app quits.
  */
 export type UpdateStatus =
   | { state: 'unsupported'; reason: string }            // dev run, or not an installed build
@@ -45,7 +45,7 @@ export type UpdateStatus =
   | { state: 'checking' }
   | { state: 'up-to-date'; checkedAt: string }
   | { state: 'available'; version: string; releaseNotes: string | null }
-  | { state: 'downloading'; version: string; percent: number }
+  | { state: 'downloading'; version: string; percent: number | null }   // null: progress unknown (Squirrel)
   | { state: 'downloaded'; version: string }
   | { state: 'error'; message: string };
 

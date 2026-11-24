@@ -3,7 +3,10 @@ import type { EventEmitter } from 'node:events';
 import path from 'node:path';
 import type { UpdateStatus } from '../shared/contract';
 
-/** The part of electron-updater's AppUpdater this service uses (an interface, so tests can pass a fake). */
+/**
+ * The part of electron-updater's AppUpdater this service uses (an interface, so tests can pass a fake).
+ * On Windows, SquirrelUpdater (squirrel.ts) implements it over Electron's built-in autoUpdater.
+ */
 export interface Updater extends Pick<EventEmitter, 'on'> {
   autoDownload: boolean;
   autoInstallOnAppQuit: boolean;
@@ -93,7 +96,7 @@ export class UpdateService {
 
   async download(): Promise<UpdateStatus> {
     if (!this.updater || this.status.state !== 'available') return this.status;
-    this.set({ state: 'downloading', version: this.status.version, percent: 0 });
+    this.set({ state: 'downloading', version: this.status.version, percent: null }); // until a progress event
     try {
       await this.updater.downloadUpdate();
     } catch (err) {
@@ -113,8 +116,8 @@ export class UpdateService {
     } catch (err) {
       this.log?.warn(`Update splash failed: ${friendlyError(err)}`); // the update still goes ahead
     }
-    // Silent: without it the assisted (non one-click) NSIS installer shows its whole setup wizard again.
-    // The second flag starts the new version afterwards, which reopens where the user left off.
+    // electron-updater (macOS/Linux): install silently, then start the new version, which reopens where the user
+    // left off. SquirrelUpdater ignores the flags: Squirrel always restarts into the staged version.
     this.updater.quitAndInstall(true, true);
   }
 
@@ -141,7 +144,7 @@ export function notesToText(notes: ReleaseInfo['releaseNotes']): string | null {
 export function friendlyError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
   if (/ENOTFOUND|ECONNREFUSED|ETIMEDOUT|ECONNRESET|net::ERR_/i.test(msg)) return 'Could not reach the update server. Check your internet connection.';
-  if (/latest\.yml|404|Unable to find latest version|No published versions/i.test(msg)) return 'No published version was found yet.';
+  if (/latest\.yml|RELEASES|404|Unable to find latest version|No published versions/i.test(msg)) return 'No published version was found yet.';
   const line = msg.split('\n')[0].trim();
   return line.length > 200 ? `${line.slice(0, 197)}…` : line || 'Update failed.';
 }

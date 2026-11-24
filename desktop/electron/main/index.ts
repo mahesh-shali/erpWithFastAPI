@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, screen, shell } from 'electron';
+import { app, autoUpdater as squirrelAutoUpdater, BrowserWindow, Menu, net, screen, shell } from 'electron';
 import path from 'node:path';
 import { IPC } from '../shared/contract';
 import { ApiClient } from './api-client';
@@ -7,9 +7,10 @@ import { ChatStream } from './chat-stream';
 import { registerIpc } from './ipc';
 import { forbiddenSwitch, hardenSession, hardenWindow, isAppUrl } from './security';
 import { SettingsStore } from './settings';
+import { handleSquirrelEvent, isSquirrelInstall, SquirrelUpdater } from './squirrel';
 import { TokenVault } from './token-vault';
 import { showUpdateSplash } from './update-splash';
-import { fileLogger, UpdateService } from './updater';
+import { fileLogger, UpdateService, type Updater } from './updater';
 import { usableBounds, WindowStateStore } from './window-state';
 
 // The installed app never runs with debugging or security-bypass switches (e.g. --remote-debugging-port would let
@@ -22,6 +23,14 @@ if (app.isPackaged) {
     process.exit(1);
   }
 }
+
+// Squirrel.Windows starts the installed app with --squirrel-install/updated/uninstall/obsolete to create or remove
+// shortcuts; those runs do their job and quit without opening a window.
+const SQUIRREL_EVENT = app.isPackaged && process.platform === 'win32'
+  && handleSquirrelEvent(process.argv, process.execPath, () => app.quit());
+
+// Desktop releases on GitHub; Squirrel reads RELEASES and the .nupkg files from the latest one.
+const RELEASES_REPO = 'mahesh-shali/erpWithFastAPI';
 
 // Bundled by scripts/build-electron.mjs into dist-electron/main.cjs; the UI is in dist/ (Vite).
 const RENDERER_DIR = path.join(__dirname, '..', 'dist');
@@ -41,7 +50,9 @@ else if (ENVIRONMENT === 'local') app.setPath('userData', `${app.getPath('userDa
 
 // One instance per user: a second launch focuses the existing window (and avoids two refresh-token
 // owners racing each other, which the API would treat as token reuse).
-if (!app.requestSingleInstanceLock()) {
+if (SQUIRREL_EVENT) {
+  // handled above; the app quits once Update.exe is done
+} else if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on('second-instance', () => {
@@ -74,14 +85,35 @@ async function start() {
   // Messages live updates: the stream lives here; the renderer only receives validated notices.
   chat = new ChatStream(api, (event) => mainWindow?.webContents.send(IPC.chatEvent, event));
   // Updates from GitHub Releases, only in installed builds (a dev run has no release to update from).
-  const updater = app.isPackaged ? (await import('electron-updater')).autoUpdater : null;
+  // Windows: Squirrel (Electron's built-in autoUpdater), and only when installed by Setup.exe. macOS/Linux: electron-updater.
   const updateLog = fileLogger(path.join(app.getPath('userData'), 'logs', 'updater.log'));
-  if (updater) {
-    updater.logger = updateLog;
-    updateLog.info(`App ${app.getVersion()} started (${ENVIRONMENT} mode)`);
+  let updater: Updater | null = null;
+  let unsupportedReason: string | undefined;
+  if (app.isPackaged && process.platform === 'win32') {
+    if (isSquirrelInstall(process.execPath)) {
+      updater = new SquirrelUpdater(squirrelAutoUpdater, {
+        feedUrl: `https://github.com/${RELEASES_REPO}/releases/latest/download`,
+        releaseApiUrl: `https://api.github.com/repos/${RELEASES_REPO}/releases/latest`,
+        currentVersion: app.getVersion(),
+        fetchText: async (url) => {
+          const res = await net.fetch(url, { headers: { 'User-Agent': `ERP-Desktop/${app.getVersion()}` } });
+          if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
+          return res.text();
+        },
+        log: updateLog,
+      });
+    } else {
+      unsupportedReason = 'Updates are available in the app installed with Setup.exe.';
+    }
+  } else if (app.isPackaged) {
+    const electronUpdater = (await import('electron-updater')).autoUpdater;
+    electronUpdater.logger = updateLog;
+    updater = electronUpdater;
   }
+  if (updater) updateLog.info(`App ${app.getVersion()} started (${ENVIRONMENT} mode)`);
   const updates = new UpdateService(updater, (status) => mainWindow?.webContents.send(IPC.updatesStatus, status), {
     log: updateLog,
+    unsupportedReason,
     // Keep a loading screen over the app window while the installer runs (the app itself has quit by then).
     beforeInstall: async (version) => {
       if (!mainWindow || process.platform !== 'win32') return false;

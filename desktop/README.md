@@ -118,16 +118,37 @@ can be open at once. The sign-in screen shows a **Development** / **Production**
 
 ### Updates
 
-Installed apps update from **GitHub Releases** of `mahesh-shali/erpWithFastAPI` (electron-updater). The download
-symbol in the top bar shows a green dot when a newer version is out; its panel checks, downloads (with progress)
-and offers **Restart now**. The app checks 10 s after start and every 6 hours; it only downloads when the user
-asks, and a downloaded update installs silently (no setup wizard) on restart or the next time the app closes, then
-the app reopens on the page the user was on. Dev runs show
-"Updates are available in the installed app".
+Windows builds are **Squirrel.Windows** installers. `ERP Platform Setup <version>.exe` installs per user (no admin
+rights, no wizard) into `%LocalAppData%\erp-desktop\`:
+
+```
+Update.exe            Squirrel's updater (also runs the uninstall)
+ERP Platform.exe      stub that always starts the newest app-<version>
+app-1.4.0\            the app itself, one folder per installed version
+packages\             RELEASES + downloaded .nupkg files
+SquirrelSetup.log     install/update log
+```
+
+The app creates and removes its Start-menu/desktop shortcuts itself when Squirrel starts it with
+`--squirrel-install`, `--squirrel-updated` or `--squirrel-uninstall` (`electron/main/squirrel.ts`). Uninstall from
+Windows "Installed apps".
+
+Installed apps update from **GitHub Releases** of `mahesh-shali/erpWithFastAPI`: Windows through Electron's built-in
+Squirrel `autoUpdater` (feed `releases/latest/download`: `RELEASES` + `.nupkg`), macOS/Linux through electron-updater.
+The download symbol in the top bar shows a green dot when a newer version is out; its panel checks, downloads and
+offers **Restart now** (Squirrel reports no percentage, so Windows shows an indeterminate bar). The app checks 10 s
+after start and every 6 hours; it only downloads when the user asks. Squirrel stages the new version in a new
+`app-<version>` folder; **Restart now** (or simply the next start) runs it, reopening on the page the user was on.
+Dev runs show "Updates are available in the installed app"; `release/win-unpacked` (not installed by Setup.exe)
+shows "Updates are available in the app installed with Setup.exe". Logs: `<userData>/logs/updater.log` and
+`%LocalAppData%\erp-desktop\SquirrelSetup.log`.
+
+`build/icon.ico` (from `npm run icon` / `npm run icon:ico`) is the "Installed apps" icon; Squirrel downloads it from
+`squirrelWindows.iconUrl` (the file on `main` on GitHub), so it must be committed and pushed.
 
 To publish a version: bump `version` in `package.json`, commit, and push a matching tag
-(`git tag v1.2.0 && git push origin v1.2.0`). `.github/workflows/desktop-release.yml` builds the Windows
-installer and uploads it with `latest.yml` to that release. Locally, `GH_TOKEN=<token> npm run release:win`
+(`git tag v1.2.0 && git push origin v1.2.0`). `.github/workflows/desktop-release.yml` builds the Squirrel
+installer and uploads `ERP Platform Setup <v>.exe`, `RELEASES` and `erp-desktop-<v>-full.nupkg` to that release. Locally, `GH_TOKEN=<token> npm run release:win`
 does the same. The updater reads the repo's **latest** release, so other projects in the repo should not publish
 releases marked "latest". Release notes written on the GitHub release appear in the update panel (as plain text).
 

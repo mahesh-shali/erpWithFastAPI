@@ -37,7 +37,7 @@ export function UpdateButton() {
   const ready = status.state === 'available' || status.state === 'downloaded';
   const label = status.state === 'available' ? `Update available: version ${status.version}`
     : status.state === 'downloaded' ? `Update ready: version ${status.version}`
-    : status.state === 'downloading' ? `Downloading update: ${status.percent}%`
+    : status.state === 'downloading' ? (status.percent == null ? 'Downloading update' : `Downloading update: ${status.percent}%`)
     : 'Updates';
 
   const run = (fn: () => Promise<UpdateStatus>) => void fn().then(setStatus).catch(() => undefined);
@@ -65,7 +65,7 @@ export function UpdateButton() {
               aria-haspopup="dialog" onClick={() => setOpen((o) => !o)}>
         <Icon name="download" size={20} />
         {ready && <span className="update-dot" aria-hidden="true" />}
-        {status.state === 'downloading' && <span className="update-pct" aria-hidden="true">{status.percent}%</span>}
+        {status.state === 'downloading' && status.percent != null && <span className="update-pct" aria-hidden="true">{status.percent}%</span>}
       </button>
 
       {open && (
@@ -102,8 +102,11 @@ function Body({ status, onCheck, onDownload, onInstall, onLater }: {
       return (
         <>
           <p>Downloading version {status.version}…</p>
-          <progress className="update-progress" max={100} value={status.percent} aria-label="Download progress" />
-          <p className="hint">{status.percent}%</p>
+          {/* Squirrel (Windows) reports no progress: an indeterminate bar instead of a stuck 0%. */}
+          {status.percent == null
+            ? <progress className="update-progress" aria-label="Download progress" />
+            : <><progress className="update-progress" max={100} value={status.percent} aria-label="Download progress" />
+                <p className="hint">{status.percent}%</p></>}
         </>
       );
     case 'downloaded':
