@@ -107,7 +107,7 @@ API_ENV=(
   ConnectionStrings__Postgres="$PG_CONN"
   ConnectionStrings__Redis="$API_REDIS_CONNECTION"
   JWT_SECRET="$JWT_SECRET" JWT_ISSUER="${JWT_ISSUER:-erp-api}" JWT_AUDIENCE="${JWT_AUDIENCE:-erp-clients}"
-  AiService__BaseUrl="http://localhost:8000"
+  AiService__GrpcUrl="http://localhost:50051"
   Cors__Origins__0="$CORS"
   Database__MigrateOnStartup=false
   Database__SeedDemoData="$SEED_DEMO_DATA"

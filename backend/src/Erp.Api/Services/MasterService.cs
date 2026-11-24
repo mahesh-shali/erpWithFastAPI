@@ -105,6 +105,9 @@ public sealed class MasterService(
     {
         var actor = await ActorAsync(ct);
         var target = await ManageableUserAsync(actor, userId, ct);
+        // Revoke first: it also overwrites the cached "session active" flag, so the user's access tokens stop
+        // working now rather than when the cache entry expires (the cascade delete alone doesn't touch the cache).
+        await sessions.RevokeAllForUserAsync(target.Id, "user_deleted", ct);
         db.Users.Remove(target); // sessions and rights overrides cascade
         await db.SaveChangesAsync(ct);
         await permissions.InvalidateOrganizationAsync(Org, ct);

@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     answer_cache_ttl_seconds: int = 120
     session_check_ttl_seconds: int = 30    # how long a "session active?" answer is cached
 
+    # Internal gRPC endpoint (AiAssistant.Chat) for the API; 0 = off. Plaintext h2c: keep it on the private
+    # network only (never publish this port). Every gunicorn worker binds it with SO_REUSEPORT (Linux).
+    grpc_port: int = 50051
+
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() == "production"

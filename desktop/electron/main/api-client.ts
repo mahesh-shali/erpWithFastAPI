@@ -65,6 +65,16 @@ export function readCookie(setCookies: string[], name: string): string | null {
   return null;
 }
 
+/** Stored form of the trusted-device token: "<server origin> <token>" (origins and base64url tokens have no spaces). */
+export const bindTrust = (token: string, origin: string) => `${origin} ${token}`;
+
+/** The token if it was stored for `origin`, else null (another server, or the unbound format of older versions). */
+export function unbindTrust(stored: string | null | undefined, origin: string): string | null {
+  if (!stored) return null;
+  const space = stored.indexOf(' ');
+  return space > 0 && stored.slice(0, space) === origin ? stored.slice(space + 1) || null : null;
+}
+
 /**
  * HTTP client that runs in the Electron main process and owns the session.
  *
@@ -101,14 +111,17 @@ export class ApiClient {
     }
     await this.clearSession(false);
     const trustName = this.opts.trustCookieName ?? 'erp_2fa_trust';
-    const trust = await this.opts.trustStore?.load().catch(() => null);
+    // The trust token is bound to the server that issued it (like a browser cookie): it is never sent to another
+    // server URL, which could otherwise collect it together with the password and skip the real server's 2FA.
+    const origin = this.serverOrigin();
+    const trust = origin ? unbindTrust(await this.opts.trustStore?.load().catch(() => null), origin) : null;
     const res = await this.send('POST', '/api/auth/login',
       { email, password, code: code || undefined, rememberDevice: rememberDevice === true },
       false, trust ? `${trustName}=${trust}` : undefined);
     // A new trusted-device token (code + "remember this device") replaces the stored one; a deleted cookie clears it.
     const newTrust = readCookie(res.setCookies, trustName);
-    if (newTrust) await this.opts.trustStore?.save(newTrust).catch(() => undefined);
-    else if (newTrust === '') await this.opts.trustStore?.clear().catch(() => undefined);
+    if (newTrust && origin) await this.opts.trustStore?.save(bindTrust(newTrust, origin)).catch(() => undefined);
+    else if (newTrust === '' && trust) await this.opts.trustStore?.clear().catch(() => undefined);
     if (!res.ok) return { status: res.status, body: res.body as SessionInfo | null };
     // Two-factor: the password was right but there is no session yet; the UI asks for the code.
     if ((res.body as Partial<TwoFactorChallenge> | null)?.twoFactorRequired === true) {
@@ -185,6 +198,14 @@ export class ApiClient {
   }
 
   // ---------- internals ----------
+
+  private serverOrigin(): string | null {
+    try {
+      return new URL(this.opts.baseUrl()).origin;
+    } catch {
+      return null;
+    }
+  }
 
   private fetchStream(path: string, signal: AbortSignal) {
     const headers: Record<string, string> = { Accept: 'text/event-stream' };

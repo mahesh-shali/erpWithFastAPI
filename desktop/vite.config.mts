@@ -1,6 +1,9 @@
-/// <reference types="vitest" />
+/// <reference types="vitest/config" />
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+
+/** React and the router (plus their runtime deps) change rarely, so they get their own chunk. */
+const VENDOR = /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler|cookie|set-cookie-parser)[\\/]/;
 
 /**
  * Production Content-Security-Policy. The renderer talks to nobody: all HTTP goes through the main
@@ -33,14 +36,17 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    rollupOptions: {
-      output: { manualChunks: { vendor: ['react', 'react-dom', 'react-router-dom'] } },
+    rolldownOptions: {
+      output: { codeSplitting: { groups: [{ name: 'vendor', test: VENDOR }] } },
     },
   },
   test: {
     globals: true,
     setupFiles: './src/test/setup.ts',
-    include: ['src/**/*.test.{ts,tsx}', 'electron/**/*.test.ts'],
-    environmentMatchGlobs: [['src/**', 'jsdom'], ['electron/**', 'node']],
+    // The renderer runs in a DOM; the Electron main/preload code runs in Node.
+    projects: [
+      { extends: true, test: { name: 'renderer', include: ['src/**/*.test.{ts,tsx}'], environment: 'jsdom' } },
+      { extends: true, test: { name: 'electron', include: ['electron/**/*.test.ts'], environment: 'node' } },
+    ],
   },
 });

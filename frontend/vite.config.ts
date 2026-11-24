@@ -1,6 +1,9 @@
-/// <reference types="vitest" />
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+
+/** React and the router (plus their runtime deps) change rarely, so they get their own long-cached chunk. */
+const VENDOR = /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler|cookie|set-cookie-parser)[\\/]/;
 
 export default defineConfig({
   plugins: [react()],
@@ -12,8 +15,8 @@ export default defineConfig({
     },
   },
   build: {
-    rollupOptions: {
-      output: { manualChunks: { vendor: ['react', 'react-dom', 'react-router-dom'] } },
+    rolldownOptions: {
+      output: { codeSplitting: { groups: [{ name: 'vendor', test: VENDOR }] } },
     },
   },
   test: {

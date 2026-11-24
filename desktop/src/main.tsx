@@ -8,7 +8,7 @@ import './styles.css';
 // HashRouter: the packaged app is loaded from file://, where path-based URLs can't be resolved.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <HashRouter>
       <AuthProvider>
         <App />
       </AuthProvider>

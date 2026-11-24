@@ -11,8 +11,9 @@ defined in C# (EF Core entities + migrations). No hand-written schema SQL to run
              ┌──────────── nginx / k8s Ingress (rate limit, gzip, LB) ────────────┐
  Browser ──▶ │  /           → React SPA (static, CDN-cacheable)                     │
              │  /api/*      → ASP.NET Core 8 Web API  (auth, CRUD, dashboard)      │
-             │  /ai/*       → FastAPI AI service      (LLM NL→SQL agent)           │
+             │  /ai/*       → FastAPI AI service      (legacy REST /ai/chat)       │
              └─────────────────────────────────────────────────────────────────────┘
+   ASP.NET Core ── gRPC :50051 (internal, /api/ai/chat) ──▶ FastAPI AI service
    ASP.NET Core ──▶ PostgreSQL (Aiven / local) ◀── FastAPI (read-only role + RLS)
         └──────────── Redis (cache, rate limits, answer cache) ───────────┘
                                                       FastAPI ──▶ Groq API  
@@ -316,6 +317,9 @@ ever committed. The migrator then sets up `AI_DB_USER`:
 | `GROQ_API_KEY` / `GROQ_MODEL` | ai-service | Groq API key and model (default `openai/gpt-oss-120b`; must support tool calling) |
 | `LLM_MAX_TOKENS` / `LLM_MAX_CONCURRENCY` | ai-service | Completion token cap incl. reasoning (default 4096); concurrent LLM calls per pod (default 64) |
 | `REDIS_URL` | ai-service | Rate limits + answer cache |
+| `GRPC_PORT` | ai-service | Internal gRPC port for the API (default `50051`, `0` = off). Private network only, never published |
+| `AiService__GrpcUrl` | api | AI service gRPC address: `http://host:50051`, or `dns:///host:50051` to round-robin across replicas |
+| `AiService__TimeoutSeconds` | api | Deadline for one AI question (default 90) |
 | `Database__MigrateOnStartup` / `Database__SeedDemoData` | api | Migrate/seed when the API boots (dev/tests only) |
 | `Jwt__AccessTokenMinutes` | api | Access-token lifetime (default 15) |
 | `Auth__SessionDays` | api | Login session lifetime (default 14) |

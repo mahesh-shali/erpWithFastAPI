@@ -5,13 +5,13 @@ namespace Erp.Api.Contracts;
 // ---------- Auth ----------
 public record RegisterRequest(
     [Required, MaxLength(200)] string OrganizationName,
-    [Required, EmailAddress] string Email,
-    [Required, MinLength(8)] string Password,
+    [Required, EmailAddress, MaxLength(320)] string Email,
+    [Required, MinLength(8), MaxLength(200)] string Password,
     [Required, MaxLength(200)] string FullName);
 
 /// <param name="Code">Authenticator or recovery code; only needed when the account has two-factor sign-in on.</param>
 /// <param name="RememberDevice">With a code: don't ask for a code on this browser/app for Auth:TwoFactorRememberDays (30).</param>
-public record LoginRequest([Required, EmailAddress] string Email, [Required] string Password, [MaxLength(32)] string? Code = null,
+public record LoginRequest([Required, EmailAddress, MaxLength(320)] string Email, [Required, MaxLength(200)] string Password, [MaxLength(32)] string? Code = null,
     bool RememberDevice = false);
 
 /// <summary>Login answer when the password was right but a two-factor code is still needed (send it with the login again).</summary>
@@ -66,9 +66,9 @@ public record RoleRightsRowDto(int PageId, string PageKey, string PageName, Menu
 public record RoleRightsDto(int RoleId, string Role, bool CanEdit, IReadOnlyList<RoleRightsRowDto> Pages);
 
 public record CreateUserRequest(
-    [Required, EmailAddress] string Email,
+    [Required, EmailAddress, MaxLength(320)] string Email,
     [Required, MaxLength(200)] string FullName,
-    [Required, MinLength(8)] string Password,
+    [Required, MinLength(8), MaxLength(200)] string Password,
     [Required] string Role);
 
 public record UpdateUserRoleRequest([Required] string Role);
@@ -82,14 +82,14 @@ public record AccountDto(Guid Id, string Email, string FullName, string Role, bo
 public record UpdateProfileRequest(
     [Required, MaxLength(200)] string FullName,
     [Required, EmailAddress, MaxLength(320)] string Email,
-    string? CurrentPassword);
+    [MaxLength(200)] string? CurrentPassword);
 
-public record ChangePasswordRequest([Required] string CurrentPassword, [Required, MinLength(8), MaxLength(200)] string NewPassword);
+public record ChangePasswordRequest([Required, MaxLength(200)] string CurrentPassword, [Required, MinLength(8), MaxLength(200)] string NewPassword);
 
 /// <param name="Secret">Base32 key for manual entry; <paramref name="OtpAuthUri"/> goes into the QR code.</param>
 public record TwoFactorSetupResponse(string Secret, string OtpAuthUri);
 public record TwoFactorCodeRequest([Required, MaxLength(32)] string Code);
-public record DisableTwoFactorRequest([Required] string Password, [Required, MaxLength(32)] string Code);
+public record DisableTwoFactorRequest([Required, MaxLength(200)] string Password, [Required, MaxLength(32)] string Code);
 public record RecoveryCodesResponse(IReadOnlyList<string> RecoveryCodes);
 
 // ---------- Settings: users (edit lower roles) ----------

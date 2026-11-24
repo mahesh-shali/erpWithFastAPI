@@ -12,7 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MailKit" Version="4.8.0" />
+    <PackageReference Include="MailKit" Version="4.18.2" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
     <PackageReference Include="EFCore.NamingConventions" Version="8.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11">
@@ -26,6 +26,17 @@
     <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="8.0.1" />
     <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
+    <!-- Internal gRPC client for the AI service (contract: Protos/ai_assistant.proto) -->
+    <PackageReference Include="Grpc.Net.ClientFactory" Version="2.66.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.28.3" />
+    <PackageReference Include="Grpc.Tools" Version="2.71.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="Protos/ai_assistant.proto" GrpcServices="Client" />
   </ItemGroup>
 
   <ItemGroup>

@@ -69,7 +69,22 @@ as the session's user agent, which the Devices screen shows.
 - All permission requests (camera, mic, notifications…) denied
 - Single instance lock, so two processes never race to rotate the same refresh token
 - Server URL must be `https://` (plain `http://` only for localhost, or with `ERP_ALLOW_INSECURE_HTTP=1`)
-- DevTools menu entry only in development builds
+- DevTools only in development builds (disabled in the window itself, not just hidden from the menu)
+
+### Protection against tampering and reverse engineering
+
+The app holds **no secrets**: every permission, tenant and data check happens on the API, and the session
+token is encrypted with the OS key store. Reading the app's code therefore gives nobody extra access. On top
+of that the installed app is made hard to inspect or modify:
+
+- Release bundles are minified and ship **no source maps** (`scripts/build-electron.mjs`, `"!**/*.map"`)
+- Electron fuses (`build.electronFuses` in `package.json`): `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS` and
+  `--inspect` are ignored; code loads **only** from `app.asar`, whose hash is embedded in the executable and
+  checked at start, so an edited or repacked app refuses to run; the cookie store is encrypted
+- The installed app exits if started with debugging or security-bypass switches such as
+  `--remote-debugging-port`, `--ignore-certificate-errors` or `--no-sandbox` (`forbiddenSwitch` in `security.ts`)
+- Not yet done: **code signing**. Without it someone can still patch the `.exe` itself; sign releases
+  (`CSC_LINK`/`CSC_KEY_PASSWORD`, or Azure Trusted Signing) to close that and to avoid SmartScreen warnings
 
 ## Run it
 
@@ -146,7 +161,7 @@ desktop/
 │   └── pages/account/DevicesPage.tsx   desktop-only screen
 ├── e2e/                 # Playwright-on-Electron tests + mock API with the real API's auth semantics
 ├── scripts/             # build-electron.mjs (esbuild), dev.mjs
-└── vite.config.ts       # renderer build, CSP injection, Vitest config
+└── vite.config.mts       # renderer build, CSP injection, Vitest config
 ```
 
 The renderer started as a copy of `frontend/src`. When a screen changes in the web app, copy it here;

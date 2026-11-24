@@ -1,44 +1,18 @@
-import logging
 from contextlib import asynccontextmanager
-from typing import Literal
 
 import groq
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 from redis.asyncio import Redis
 
 from .agent import NL2SQLAgent
 from .auth import Principal, current_principal
 from .cache import AccessGuard, AnswerCache, RateLimiter
+from .chat_flow import ChatError, answer
 from .config import get_settings
 from .db import PostgresExecutor
-from .sql_guard import tables_for_pages
-
-log = logging.getLogger("ai-service")
-
-AI_PAGE = "ai-chat"  # Pages master key of the AI Assistant
-
-
-# ---------- Schemas ----------
-class HistoryTurn(BaseModel):
-    role: Literal["user", "assistant"]
-    content: str = Field(max_length=4000)
-
-
-class ChatRequest(BaseModel):
-    question: str = Field(min_length=1, max_length=1000)
-    history: list[HistoryTurn] = Field(default_factory=list, max_length=10)
-
-
-class ChatResponse(BaseModel):
-    answer: str
-    sql: list[str]
-    columns: list[str]
-    rows: list[list]
-    cached: bool = False
-    latency_ms: int = 0
-
+from .grpc_server import start_grpc_server
+from .models import ChatRequest, ChatResponse
 
 # ---------- Lifespan: one pool / client per worker ----------
 @asynccontextmanager
@@ -59,9 +33,13 @@ async def lifespan(app: FastAPI):
     app.state.cache = AnswerCache(redis, s.answer_cache_ttl_seconds)
     app.state.limiter = RateLimiter(redis, s.rate_limit_per_minute)
     app.state.access = AccessGuard(redis, executor, s.session_check_ttl_seconds)
+    # Internal gRPC endpoint for the API (same process and state as REST; GRPC_PORT=0 turns it off)
+    grpc_server = await start_grpc_server(app.state, s.grpc_port) if s.grpc_port else None
     try:
         yield
     finally:
+        if grpc_server is not None:
+            await grpc_server.stop(grace=5)
         await executor.close()
         await redis.aclose()
         await client.close()
@@ -84,41 +62,10 @@ async def health() -> dict:
 @app.post("/ai/chat", response_model=ChatResponse)
 async def chat(body: ChatRequest, request: Request, background: BackgroundTasks,
                user: Principal = Depends(current_principal)) -> ChatResponse:
-    st = request.app.state
-
-    access = await st.access.get(user.session_id, user.user_id)
-    if not access.session_active:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session is no longer active")
-    if AI_PAGE not in access.readable_pages:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "You don't have access to the AI assistant.")
-    allowed_tables = tables_for_pages(access.readable_pages)
-    scope = ",".join(sorted(allowed_tables))
-
-    allowed, _remaining = await st.limiter.hit(user.user_id)
-    if not allowed:
-        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Rate limit exceeded. Try again in a minute.")
-
-    # Only stand-alone questions are cacheable (follow-ups depend on history)
-    cacheable = not body.history
-    if cacheable and (hit := await st.cache.get(user.org_id, body.question, scope)):
-        return ChatResponse(**hit, cached=True)
-
     try:
-        result = await st.agent.ask(body.question, user.org_id,
-                                    [t.model_dump() for t in body.history], allowed_tables)
-    except groq.RateLimitError as e:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "AI is busy, please retry shortly.") from e
-    except groq.APIError as e:
-        log.exception("Groq API error")
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "AI provider error.") from e
-
-    payload = {"answer": result.answer, "sql": result.sql, "columns": result.columns,
-               "rows": result.rows, "latency_ms": result.latency_ms}
-    if cacheable:
-        await st.cache.set(user.org_id, body.question, payload, scope)
-
-    executor = getattr(st, "executor", None)
-    if executor is not None:
-        background.add_task(executor.audit, user.org_id, user.user_id, body.question,
-                            "\n;\n".join(result.sql) or None, len(result.rows), result.latency_ms)
-    return ChatResponse(**payload)
+        outcome = await answer(request.app.state, user, body.question, [t.model_dump() for t in body.history])
+    except ChatError as e:
+        raise HTTPException(e.status_code, e.message) from e
+    if outcome.audit is not None:
+        background.add_task(request.app.state.executor.audit, *outcome.audit)
+    return ChatResponse(**outcome.payload, cached=outcome.cached)

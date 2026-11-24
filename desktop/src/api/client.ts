@@ -150,7 +150,7 @@ export const api = {
   stats: () => request<DashboardStats>('/api/dashboard/stats'),
   analytics: (days: AnalyticsRange) => request<AnalyticsReport>(`/api/analytics?days=${days}`),
   chat: (question: string, history: ChatTurn[]) =>
-    request<ChatResponse>('/ai/chat', { method: 'POST', body: json({ question, history }) }),
+    request<ChatResponse>('/api/ai/chat', { method: 'POST', body: json({ question, history }) }),
 
   myPermissions: () => request<MyPermissions>('/api/me/permissions'),
 

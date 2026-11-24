@@ -1,0 +1,43 @@
+// Internal contract between the ASP.NET Core API (client) and the FastAPI AI service (server).
+// Not exposed to browsers or the desktop app: they call POST /api/ai/chat on the API, which forwards here.
+//
+// This file is the single source of truth. The C# client is generated at build time (Grpc.Tools, see
+// Erp.Api.csproj); the Python stubs in ai-service/app/grpc_gen/ are generated and committed:
+//   cd ai-service && python scripts/gen_proto.py
+// (tests/test_grpc.py fails if the committed stubs are out of date).
+//
+// Auth: the caller forwards the user's access token as `authorization: Bearer <jwt>` metadata. The AI service
+// validates it exactly like the REST endpoint (signature, session still active, AI page right, RLS by org).
+syntax = "proto3";
+
+package erp.ai.v1;
+
+option csharp_namespace = "Erp.Api.Grpc.Ai";
+
+service AiAssistant {
+  // Question -> SQL tool loop -> answer. Errors use gRPC status codes:
+  // UNAUTHENTICATED (bad token / ended session), PERMISSION_DENIED (no AI page right),
+  // INVALID_ARGUMENT, RESOURCE_EXHAUSTED (per-user rate limit), UNAVAILABLE (LLM busy), INTERNAL (LLM error).
+  rpc Chat(ChatRequest) returns (ChatReply);
+}
+
+message HistoryTurn {
+  string role = 1;     // "user" | "assistant"
+  string content = 2;  // <= 4000 chars
+}
+
+message ChatRequest {
+  string question = 1;              // 1..1000 chars
+  repeated HistoryTurn history = 2; // <= 10 turns
+}
+
+message ChatReply {
+  string answer = 1;
+  repeated string sql = 2;
+  repeated string columns = 3;
+  // Result rows as a JSON array of arrays, encoded exactly like the REST response (decimals as numbers,
+  // dates as ISO strings). JSON keeps mixed-type cells lossless without a Value/Struct round trip.
+  string rows_json = 4;
+  bool cached = 5;
+  int32 latency_ms = 6;
+}
