@@ -148,7 +148,8 @@ shows "Updates are available in the app installed with Setup.exe". Logs: `<userD
 
 To publish a version: bump `version` in `package.json`, commit, and push a matching tag
 (`git tag v1.2.0 && git push origin v1.2.0`). `.github/workflows/desktop-release.yml` builds the Squirrel
-installer and uploads `ERP Platform Setup <v>.exe`, `RELEASES` and `erp-desktop-<v>-full.nupkg` to that release. Locally, `GH_TOKEN=<token> npm run release:win`
+installer and uploads `ERP Platform Setup <v>.exe`, `RELEASES` and `erp-desktop-<v>-full.nupkg` to a **draft**
+release, checks all three are there, then publishes it as latest (so apps never see a half-uploaded release). Locally, `GH_TOKEN=<token> npm run release:win`
 does the same. The updater reads the repo's **latest** release, so other projects in the repo should not publish
 releases marked "latest". Release notes written on the GitHub release appear in the update panel (as plain text).
 
