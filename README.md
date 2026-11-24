@@ -318,7 +318,9 @@ ever committed. The migrator then sets up `AI_DB_USER`:
 | `LLM_MAX_TOKENS` / `LLM_MAX_CONCURRENCY` | ai-service | Completion token cap incl. reasoning (default 4096); concurrent LLM calls per pod (default 64) |
 | `REDIS_URL` | ai-service | Rate limits + answer cache |
 | `GRPC_PORT` | ai-service | Internal gRPC port for the API (default `50051`, `0` = off). Private network only, never published |
-| `AiService__GrpcUrl` | api | AI service gRPC address: `http://host:50051`, or `dns:///host:50051` to round-robin across replicas |
+| `AiService__Transport` | api | How the API reaches the AI service: `grpc` (default, private network) or `http` (REST `/ai/chat`, e.g. its public HTTPS URL when the private network can't reach it, as on Render's free plan) |
+| `AiService__GrpcUrl` | api | AI service gRPC address (`Transport=grpc`): `http://host:50051`, or `dns:///host:50051` to round-robin across replicas |
+| `AiService__BaseUrl` | api | AI service origin (`Transport=http`), e.g. `https://erpwithfastapi-ai.onrender.com`. Must be `https://` in Production |
 | `AiService__TimeoutSeconds` | api | Deadline for one AI question (default 90) |
 | `Database__MigrateOnStartup` / `Database__SeedDemoData` | api | Migrate/seed when the API boots (dev/tests only) |
 | `Jwt__AccessTokenMinutes` | api | Access-token lifetime (default 15) |

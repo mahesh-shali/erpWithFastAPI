@@ -105,6 +105,8 @@ the AI service over gRPC (`backend/src/Erp.Api/Protos/ai_assistant.proto`, `Serv
 `ai-service/app/grpc_server.py`, port `GRPC_PORT` 50051) with the caller's own JWT as metadata, so the AI service
 re-checks everything. The REST `/ai/chat` and gRPC share `chat_flow.answer()`. After editing the .proto run
 `cd ai-service && python scripts/gen_proto.py` (committed stubs in `app/grpc_gen/`; a test fails when stale).
+`AiService:Transport=http` swaps in `HttpAiAssistantGateway` (REST `POST {AiService:BaseUrl}/ai/chat`, same error
+mapping). Production on Render uses it: the AI service is on the free plan, which can't receive private-network traffic.
 
 **AI chat flow** (`ai-service/app/`): `auth.py` (JWT + session) → Redis rate limit and answer cache
 (`cache.py`, keyed by org + question + user's readable pages) → `agent.py` tool loop with schema prompt from

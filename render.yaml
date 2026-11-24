@@ -96,11 +96,15 @@ services:
         value: erp-clients
       - key: Cors__Origins__0
         value: https://erpwithfastapi.onrender.com
-      # Internal gRPC to the AI service for POST /api/ai/chat, over Render's private network (internal
-      # hostname, never the public URL: Render's public proxy doesn't carry gRPC to the container). Render only
-      # delivers private-network traffic TO paid instances, so erpwithfastapi-ai must be off the free plan.
-      - key: AiService__GrpcUrl
-        value: http://erpwithfastapi-ai:50051
+      # POST /api/ai/chat reaches the AI service over REST on its public HTTPS URL. Internal gRPC
+      # (AiService__Transport=grpc + AiService__GrpcUrl=http://erpwithfastapi-ai:50051) needs Render's private
+      # network, which only delivers traffic TO paid instances; erpwithfastapi-ai is on the free plan.
+      - key: AiService__Transport
+        value: http
+      - key: AiService__BaseUrl
+        value: https://erpwithfastapi-ai.onrender.com
+      - key: AiService__TimeoutSeconds  # a free AI instance may be waking from sleep (~1 min)
+        value: "120"
       # New-device sign-in alerts. Without SMTP_USERNAME/SMTP_PASSWORD the API only logs them.
       - key: SMTP_HOST
         value: smtp.gmail.com
@@ -127,8 +131,8 @@ services:
         value: "8000"
       - key: WEB_CONCURRENCY     # one worker fits in 512 MB and keeps DB connections low
         value: "1"
-      - key: GRPC_PORT           # internal gRPC for the API (private network only)
-        value: "50051"
+      - key: GRPC_PORT           # 0 = off: the API uses REST (free plan has no private network)
+        value: "0"
       - key: DB_POOL_MIN
         value: "1"
       - key: DB_POOL_MAX
