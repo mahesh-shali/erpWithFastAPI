@@ -85,28 +85,51 @@ builder.Services.AddSingleton<EmailDispatcher>();
 builder.Services.AddSingleton<IEmailQueue>(sp => sp.GetRequiredService<EmailDispatcher>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<EmailDispatcher>());
 builder.Services.AddScoped<ILoginAlertService, LoginAlertService>();
-// AI assistant: internal gRPC to the AI service (POST /api/ai/chat). Plaintext h2c on the private network.
-// dns:///host:port resolves every replica and round-robins calls (one HTTP/2 connection would pin one pod).
+// AI assistant (POST /api/ai/chat). AiService:Transport picks how the API reaches the AI service:
+//  grpc (default): internal gRPC, plaintext h2c on the private network. dns:///host:port resolves every replica
+//                  and round-robins calls (one HTTP/2 connection would pin one pod).
+//  http:           REST POST {BaseUrl}/ai/chat, e.g. over the AI service's public HTTPS URL when the private
+//                  network can't reach it (Render free instances only receive public traffic).
 builder.Services.Configure<AiServiceOptions>(cfg.GetSection("AiService"));
-var aiGrpcUrl = new Uri(cfg["AiService:GrpcUrl"] ?? new AiServiceOptions().GrpcUrl);
-builder.Services.AddGrpcClient<Erp.Api.Grpc.Ai.AiAssistant.AiAssistantClient>(o => o.Address = aiGrpcUrl)
-    .ConfigureChannel(c =>
+var aiOptions = cfg.GetSection("AiService").Get<AiServiceOptions>() ?? new AiServiceOptions();
+var aiTransport = aiOptions.Transport.Trim().ToLowerInvariant();
+if (aiTransport == AiServiceOptions.Http)
+{
+    var aiBaseUrl = new Uri(aiOptions.BaseUrl.TrimEnd('/') + "/");
+    if (builder.Environment.IsProduction() && aiBaseUrl.Scheme != Uri.UriSchemeHttps)
+        throw new InvalidOperationException("AiService:BaseUrl must be https:// in Production (it carries users' tokens).");
+    builder.Services.AddHttpClient<IAiAssistantGateway, HttpAiAssistantGateway>(c =>
     {
-        c.MaxReceiveMessageSize = 8 * 1024 * 1024; // up to max_result_rows rows
-        c.ServiceConfig = new Grpc.Net.Client.Configuration.ServiceConfig
-        {
-            LoadBalancingConfigs = { new Grpc.Net.Client.Configuration.RoundRobinConfig() }
-        };
-        if (aiGrpcUrl.Scheme == "dns") c.Credentials = Grpc.Core.ChannelCredentials.Insecure;
-    })
-    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-    {
-        EnableMultipleHttp2Connections = true,
-        PooledConnectionIdleTimeout = Timeout.InfiniteTimeSpan,
-        KeepAlivePingDelay = TimeSpan.FromSeconds(60),
-        KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
+        c.BaseAddress = aiBaseUrl;
+        c.Timeout = Timeout.InfiniteTimeSpan; // the gateway applies AiService:TimeoutSeconds itself
     });
-builder.Services.AddTransient<IAiAssistantGateway, GrpcAiAssistantGateway>();
+}
+else if (aiTransport != AiServiceOptions.Grpc)
+{
+    throw new InvalidOperationException($"AiService:Transport must be '{AiServiceOptions.Grpc}' or '{AiServiceOptions.Http}'.");
+}
+else
+{
+    var aiGrpcUrl = new Uri(aiOptions.GrpcUrl);
+    builder.Services.AddGrpcClient<Erp.Api.Grpc.Ai.AiAssistant.AiAssistantClient>(o => o.Address = aiGrpcUrl)
+        .ConfigureChannel(c =>
+        {
+            c.MaxReceiveMessageSize = 8 * 1024 * 1024; // up to max_result_rows rows
+            c.ServiceConfig = new Grpc.Net.Client.Configuration.ServiceConfig
+            {
+                LoadBalancingConfigs = { new Grpc.Net.Client.Configuration.RoundRobinConfig() }
+            };
+            if (aiGrpcUrl.Scheme == "dns") c.Credentials = Grpc.Core.ChannelCredentials.Insecure;
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            EnableMultipleHttp2Connections = true,
+            PooledConnectionIdleTimeout = Timeout.InfiniteTimeSpan,
+            KeepAlivePingDelay = TimeSpan.FromSeconds(60),
+            KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
+        });
+    builder.Services.AddTransient<IAiAssistantGateway, GrpcAiAssistantGateway>();
+}
 
 // ---------- Auth ----------
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

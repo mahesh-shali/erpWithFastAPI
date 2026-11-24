@@ -106,4 +106,62 @@ public class AiChatTests(ApiFactory factory)
         var problem = JsonDocument.Parse(await res.Content.ReadAsStringAsync()).RootElement;
         problem.GetProperty("title").GetString().Should().Be("Rate limit exceeded. Try again in a minute.");
     }
+
+    /// <summary>Stands in for the AI service's REST /ai/chat: records the request, answers with a fixed body.</summary>
+    private sealed class StubAiService : HttpMessageHandler
+    {
+        public Uri? Url;
+        public string? Authorization;
+        public string? Body;
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            (Url, Authorization) = (request.RequestUri, request.Headers.Authorization?.ToString());
+            Body = await request.Content!.ReadAsStringAsync(ct);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    """{"answer":"Pune has the most.","sql":["SELECT city"],"columns":["city"],"rows":[["Pune"]],"cached":false,"latency_ms":9}""",
+                    System.Text.Encoding.UTF8, "application/json"),
+            };
+        }
+    }
+
+    [Fact]
+    public async Task Http_transport_posts_to_the_ai_service_rest_endpoint_with_the_callers_token()
+    {
+        var stub = new StubAiService();
+        using var app = factory.WithWebHostBuilder(b => b
+            .UseSetting("AiService:Transport", "http")
+            .UseSetting("AiService:BaseUrl", "https://ai.example.test")
+            .ConfigureTestServices(s => s.AddHttpClient<IAiAssistantGateway, HttpAiAssistantGateway>()
+                .ConfigurePrimaryHttpMessageHandler(() => stub)));
+        var c = app.CreateClient();
+        var reg = await c.PostAsJsonAsync("/api/auth/register",
+            new RegisterRequest("AI Http " + Guid.NewGuid().ToString("N")[..6], $"owner{Guid.NewGuid():N}@x.com", Pw, "Owner"));
+        reg.EnsureSuccessStatusCode();
+        var token = (await reg.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
+        c.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var res = await c.PostAsJsonAsync("/api/ai/chat", new { question = "Top city?" });
+
+        res.StatusCode.Should().Be(HttpStatusCode.OK, await res.Content.ReadAsStringAsync());
+        stub.Url.Should().Be(new Uri("https://ai.example.test/ai/chat"));
+        stub.Authorization.Should().Be($"Bearer {token}");
+        JsonDocument.Parse(stub.Body!).RootElement.GetProperty("question").GetString().Should().Be("Top city?");
+        var body = JsonDocument.Parse(await res.Content.ReadAsStringAsync()).RootElement;
+        body.GetProperty("answer").GetString().Should().Be("Pune has the most.");
+        body.GetProperty("rows").GetRawText().Should().Be("""[["Pune"]]""");
+        body.GetProperty("latency_ms").GetInt32().Should().Be(9);
+    }
+
+    [Fact]
+    public void Unknown_transport_refuses_to_start()
+    {
+        using var app = factory.WithWebHostBuilder(b => b.UseSetting("AiService:Transport", "carrier-pigeon"));
+
+        var act = () => app.CreateClient();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*AiService:Transport*");
+    }
 }
