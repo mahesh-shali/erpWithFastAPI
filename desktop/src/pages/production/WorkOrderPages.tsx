@@ -146,6 +146,7 @@ export function WorkOrderPage() {
         <h1>{isNew ? 'New work order' : wo?.number ?? 'Work order'} {wo && <DocPill status={wo.status} label={statusLabel(wo.status)} />}</h1>
         {wo && (
           <div className="row-actions">
+            <Link className="button" to={`${WO_ROUTE}/${wo.id}/print`}>Print</Link>
             {wo.status === 'Draft' && can(PAGE, 'update') && (
               <button disabled={busy} onClick={() => act('Production completed. Stock has been updated.', () => api.submitWorkOrder(wo.id), fill)}>Complete production</button>
             )}

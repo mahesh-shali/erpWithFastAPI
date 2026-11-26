@@ -1981,12 +1981,6 @@ namespace Erp.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by_user_id");
 
-                    b.Property<string>("DocumentType")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("document_type");
-
                     b.Property<Guid>("FamilyId")
                         .HasColumnType("uuid")
                         .HasColumnName("family_id");
@@ -2009,6 +2003,12 @@ namespace Erp.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
+                    b.Property<string>("PageKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("page_key");
+
                     b.Property<int>("Version")
                         .HasColumnType("integer")
                         .HasColumnName("version");
@@ -2016,7 +2016,7 @@ namespace Erp.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_print_templates");
 
-                    b.HasIndex("OrganizationId", "DocumentType")
+                    b.HasIndex("OrganizationId", "PageKey")
                         .IsUnique()
                         .HasDatabaseName("ux_print_templates_org_default")
                         .HasFilter("is_default");
@@ -2029,7 +2029,7 @@ namespace Erp.Api.Data.Migrations
                         {
                             t.HasCheckConstraint("ck_print_templates_default_current", "NOT (is_default AND is_archived)");
 
-                            t.HasCheckConstraint("ck_print_templates_document_type", "document_type IN ('sales-invoice')");
+                            t.HasCheckConstraint("ck_print_templates_page_key", "page_key IN ('customer-pos','sales-invoices','work-orders')");
 
                             t.HasCheckConstraint("ck_print_templates_version", "version >= 1");
                         });
@@ -4959,6 +4959,10 @@ namespace Erp.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("full_name");
+
+                    b.Property<bool>("IsPlatformAdmin")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_platform_admin");
 
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone")

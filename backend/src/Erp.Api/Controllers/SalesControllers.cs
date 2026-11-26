@@ -38,6 +38,11 @@ public class CustomerPosController(ICustomerPoService pos) : ControllerBase
     [HttpDelete("{id:guid}"), RequirePage(PageKeys.CustomerPos, PageAction.Delete)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct) { await pos.DeleteAsync(id, ct); return NoContent(); }
 
+    /// <summary>The P.O. rendered with a print format. format = "built-in" or a print template id (null = the page's default).</summary>
+    [HttpGet("{id:guid}/print"), RequirePage(PageKeys.CustomerPos)]
+    public Task<DocumentPrintDto> Print(Guid id, [FromQuery] string? format, [FromServices] IDocumentPrintService printing,
+        CancellationToken ct) => printing.CustomerPoAsync(id, format, ct);
+
     [HttpPost("{id:guid}/confirm"), RequirePage(PageKeys.CustomerPos, PageAction.Update)]
     public Task<CustomerPoDto> Confirm(Guid id, CancellationToken ct) => pos.ConfirmAsync(id, ct);
 
@@ -56,6 +61,11 @@ public class WorkOrdersController(IWorkOrderService wos) : ControllerBase
 
     [HttpGet("{id:guid}"), RequirePage(PageKeys.WorkOrders)]
     public Task<WorkOrderDto> Get(Guid id, CancellationToken ct) => wos.GetAsync(id, ct);
+
+    /// <summary>The work order (job sheet) rendered with a print format. format = "built-in" or a print template id.</summary>
+    [HttpGet("{id:guid}/print"), RequirePage(PageKeys.WorkOrders)]
+    public Task<DocumentPrintDto> Print(Guid id, [FromQuery] string? format, [FromServices] IDocumentPrintService printing,
+        CancellationToken ct) => printing.WorkOrderAsync(id, format, ct);
 
     [HttpPost, RequirePage(PageKeys.WorkOrders, PageAction.Write)]
     public async Task<ActionResult<WorkOrderDto>> Create(UpsertWorkOrderRequest req, CancellationToken ct)
@@ -91,9 +101,9 @@ public class SalesInvoicesController(ISalesInvoiceService invoices) : Controller
     [HttpGet("{id:guid}"), RequirePage(PageKeys.SalesInvoices)]
     public Task<SalesInvoiceDto> Get(Guid id, CancellationToken ct) => invoices.GetAsync(id, ct);
 
-    /// <summary>Company + invoice, for the print layout.</summary>
+    /// <summary>Company + invoice, for the print layout. format = "built-in" or a print template id (null = the usual one).</summary>
     [HttpGet("{id:guid}/print"), RequirePage(PageKeys.SalesInvoices)]
-    public Task<InvoicePrintDto> Print(Guid id, CancellationToken ct) => invoices.PrintAsync(id, ct);
+    public Task<InvoicePrintDto> Print(Guid id, [FromQuery] string? format, CancellationToken ct) => invoices.PrintAsync(id, format, ct);
 
     [HttpPost, RequirePage(PageKeys.SalesInvoices, PageAction.Write)]
     public async Task<ActionResult<SalesInvoiceDto>> Create(UpsertSalesInvoiceRequest req, CancellationToken ct)

@@ -76,6 +76,8 @@ builder.Services.AddScoped<IWorkOrderService, WorkOrderService>();
 builder.Services.AddScoped<ISalesInvoiceService, SalesInvoiceService>();
 builder.Services.AddScoped<IStockDetailsService, StockDetailsService>();
 builder.Services.AddScoped<IPrintTemplateService, PrintTemplateService>();
+builder.Services.AddScoped<IPrintTemplateScope, PrintTemplateScope>();
+builder.Services.AddScoped<IDocumentPrintService, DocumentPrintService>();
 // End-to-end encrypted chat: ciphertext store + live event fan-out (Redis pub/sub across API replicas)
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddSingleton<ChatEventBus>();
@@ -232,10 +234,17 @@ if (!emailOptions.IsConfigured)
 var migrateOnly = args.Contains("--migrate");
 var seed = args.Contains("--seed") || cfg.GetValue("Database:SeedDemoData", false);
 if (migrateOnly || cfg.GetValue("Database:MigrateOnStartup", false))
-{
     await DatabaseInitializer.RunAsync(app.Services, seed);
-    if (migrateOnly) return;
+// `--platform-admin <email>` / `--revoke-platform-admin <email>` (after --migrate if both are given), then exits.
+foreach (var (flag, grant) in new[] { ("--platform-admin", true), ("--revoke-platform-admin", false) })
+{
+    var i = Array.IndexOf(args, flag);
+    if (i < 0) continue;
+    if (i + 1 >= args.Length) throw new InvalidOperationException($"{flag} needs an email address.");
+    await DatabaseInitializer.SetPlatformAdminAsync(app.Services, args[i + 1], grant);
+    return;
 }
+if (migrateOnly) return;
 
 var forwarded = new ForwardedHeadersOptions
 {

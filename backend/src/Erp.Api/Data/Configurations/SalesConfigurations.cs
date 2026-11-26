@@ -146,18 +146,18 @@ public sealed class PrintTemplateConfiguration : IEntityTypeConfiguration<PrintT
     {
         e.ToTable(t =>
         {
-            t.HasCheckConstraint("ck_print_templates_document_type", In("document_type", PrintDocumentType.All));
+            t.HasCheckConstraint("ck_print_templates_page_key", In("page_key", PrintablePages.All));
             t.HasCheckConstraint("ck_print_templates_version", "version >= 1");
             t.HasCheckConstraint("ck_print_templates_default_current", "NOT (is_default AND is_archived)");
         });
         e.Property(x => x.Id).HasDefaultValueSql(Sql.NewUuid);
-        e.Property(x => x.DocumentType).HasMaxLength(30);
+        e.Property(x => x.PageKey).HasMaxLength(64);
         e.Property(x => x.Name).HasMaxLength(100);
         e.Property(x => x.Body).HasMaxLength(Erp.Api.Services.PrintTemplateRules.MaxBodyLength);
         e.Property(x => x.CreatedAt).HasDefaultValueSql(Sql.Now);
         e.HasIndex(x => new { x.OrganizationId, x.FamilyId, x.Version }).IsUnique().HasDatabaseName("ux_print_templates_family_version");
-        // One default per organization and document type (also stops two concurrent "set default" calls).
-        e.HasIndex(x => new { x.OrganizationId, x.DocumentType }).IsUnique().HasFilter("is_default")
+        // One default per organization and page (also stops two concurrent "set default" calls).
+        e.HasIndex(x => new { x.OrganizationId, x.PageKey }).IsUnique().HasFilter("is_default")
             .HasDatabaseName("ux_print_templates_org_default");
         e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Cascade);
     }

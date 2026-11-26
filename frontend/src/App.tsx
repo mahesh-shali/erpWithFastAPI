@@ -12,6 +12,7 @@ import { WorkOrderPage, WorkOrdersPage } from './pages/production/WorkOrderPages
 import { CustomerPoPage, CustomerPosPage } from './pages/sales/CustomerPoPages';
 import { InvoicePrintPage, SalesInvoicePage, SalesInvoicesPage } from './pages/sales/InvoicePages';
 import { DashboardPage } from './pages/DashboardPage';
+import { DocumentPrintPage } from './pages/DocumentPrintPage';
 import { AssistantPage, CustomersPage, OrdersPage, ProductsPage } from './pages/DataPages';
 import { LoginPage } from './pages/LoginPage';
 import { MessagesPage } from './pages/MessagesPage';
@@ -45,9 +46,15 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      {/* Print layout: no menu or top bar, so the page prints as a clean A4 invoice. */}
+      {/* Print layouts: no menu or top bar, so the page prints as a clean A4 document. */}
       <Route path="/sales/invoices/:id/print" element={
         <PrivateRoute><PermissionsProvider><RequirePage page="sales-invoices"><InvoicePrintPage /></RequirePage></PermissionsProvider></PrivateRoute>
+      } />
+      <Route path="/sales/customer-po/:id/print" element={
+        <PrivateRoute><PermissionsProvider><RequirePage page="customer-pos"><DocumentPrintPage kind="customer-pos" /></RequirePage></PermissionsProvider></PrivateRoute>
+      } />
+      <Route path="/production/work-orders/:id/print" element={
+        <PrivateRoute><PermissionsProvider><RequirePage page="work-orders"><DocumentPrintPage kind="work-orders" /></RequirePage></PermissionsProvider></PrivateRoute>
       } />
       <Route element={<PrivateRoute><PermissionsProvider><Layout /></PermissionsProvider></PrivateRoute>}>
         <Route index element={<RequirePage page="dashboard"><DashboardPage /></RequirePage>} />

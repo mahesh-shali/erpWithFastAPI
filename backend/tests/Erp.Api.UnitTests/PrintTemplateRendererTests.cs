@@ -113,6 +113,39 @@ public class PrintTemplateRendererTests
         r.Css.Should().Contain(".invoice");
     }
 
+    [Fact]
+    public void The_customer_po_starter_renders_the_sample_po_with_escaped_values()
+    {
+        var (co, party, po) = PrintTemplateRenderer.SampleCustomerPo(Company);
+        var r = PrintTemplateRenderer.Render(PrintTemplateStarter.CustomerPo, PrintTemplateRenderer.CustomerPoModel(co, party, po));
+        r.Html.Should().Contain("Order Acknowledgement").And.Contain("CPO-00017").And.Contain("PO/2026/0815")
+            .And.Contain("₹29,854.00").And.Contain("Pune 411019<br>Maharashtra");
+        var evil = PrintTemplateRenderer.Render("<p>{{ customer.name }}</p>",
+            PrintTemplateRenderer.CustomerPoModel(co, party with { Name = "<img src=x onerror=alert(1)>" }, po));
+        evil.Html.Should().Contain("&lt;img").And.NotContain("<img");
+    }
+
+    [Fact]
+    public void The_work_order_starter_renders_the_sample_job_sheet()
+    {
+        var (co, wo) = PrintTemplateRenderer.SampleWorkOrder(Company);
+        var r = PrintTemplateRenderer.Render(PrintTemplateStarter.WorkOrder, PrintTemplateRenderer.WorkOrderModel(co, wo));
+        r.Html.Should().Contain("WO-00008").And.Contain("Brass bar 50 mm").And.Contain("₹11,560.00").And.Contain("Pressure-test");
+        PrintTemplateRenderer.Render("<p>{{ work_order.status }}</p>", PrintTemplateRenderer.WorkOrderModel(co, wo with { Status = "Submitted" }))
+            .Html.Should().Contain("Completed");
+    }
+
+    [Theory]
+    [InlineData("customer-pos")]
+    [InlineData("sales-invoices")]
+    [InlineData("work-orders")]
+    public void Every_printable_page_has_a_starter(string pageKey) =>
+        PrintTemplateStarter.For(pageKey).Should().NotBeNullOrWhiteSpace();
+
+    [Fact]
+    public void Pages_without_print_formats_have_no_starter() =>
+        FluentActions.Invoking(() => PrintTemplateStarter.For("purchase-orders")).Should().Throw<DomainException>();
+
     [Theory]
     [InlineData(0, 2, "0.00")]
     [InlineData(999, 0, "999")]
