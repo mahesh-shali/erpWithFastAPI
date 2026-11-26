@@ -114,6 +114,20 @@ mapping). Production on Render uses it: the AI service is on the free plan, whic
 functions, forced LIMIT) → `db.py` executes under RLS → audited via `log_chat()`. Tables the AI may touch
 for a user depend on page rights (`PAGE_TABLES` in `sql_guard.py`).
 
+**Sales flow** (make-to-order; README § Sales flow). Master › Inventory › **Items** (page key still `products`,
+route `/master/items`; `/master/products` redirects) carries the item details (type, HSN, GST %, standard cost, reorder
+level, drawing no., `IsActive`). **Customer P.O.** (`CustomerPoService`, `CPO-`): Draft → Confirmed → Completed / Cancelled.
+**Work Order** (`WorkOrderService`, `WO-`, page `work-orders`) produces a P.O. line or stock: submit issues materials and
+receives the item at (materials + other cost) / qty via `StockMovement.RateFromConsumed`. **Sales Invoice**
+(`SalesInvoiceService`, `SI-`): submit issues stock and raises `customer_po_lines.invoiced_qty`; the P.O. completes when
+all lines are invoiced; print layout at `/sales/invoices/:id/print` (outside `Layout`, `@media print` in `styles.css`),
+company details from Settings › Company (`organizations` columns, `api/company`). **Stock Details** (`StockDetailsService`):
+on hand − committed (confirmed P.O.s not yet invoiced) = available. Domain in `Domain/Sales.cs`, mapping in
+`Data/Configurations/SalesConfigurations.cs`, helpers (`Tx.InTransactionAsync`, `Tx.LockAsync`, `Money`,
+`AmountInWords`) in `Services/SalesSupport.cs`. The AI may query the six sales tables (migration
+`ExposeSalesFlowToAi`: RLS + grant; `PAGE_TABLES` keys `customer-pos`, `work-orders`, `sales-invoices`). Screens in `frontend/src/pages/sales/`, `pages/production/`,
+`pages/inventory/StockDetailsPages.tsx`.
+
 **Frontend.** `src/api/client.ts` handles 401 → single shared `/api/auth/refresh` → retry. `PermissionsContext`
 loads `GET /api/me/permissions` to build the menu and guard routes (UI-only; the API is the real check).
 Routes in `src/App.tsx` mirror each page's `route`; unbuilt pages fall through to `ComingSoonRoute`.
@@ -149,17 +163,31 @@ separate profiles. Don't relax the hardening in `security.ts`/`ipc.ts` or the El
 - **Keep `desktop/src` in sync with `frontend/src`.** The desktop renderer is a copy of the web app; when a screen
   changes on the web, copy it to desktop. Only `api/client.ts`, `auth/AuthContext.tsx`, `auth/PrivateRoute.tsx`,
   `main.tsx`, `pages/LoginPage.tsx` and `chat/events.ts` differ on purpose (plus desktop-only `pages/account/DevicesPage.tsx`).
-  Desktop uses HashRouter.
+  Desktop uses HashRouter. `styles.css` = the web file + the desktop-only block at the end ("Desktop app"); `App.tsx` =
+  the web routes + `account/devices`; `api/client.ts` keeps its bridge header and session calls, the data types and
+  calls below "Business data" are the web ones. Electron refuses pop-ups, so never use `target="_blank"` for in-app links.
 - Running `dotnet test` rebuilds `Erp.Api` and stops a `dotnet watch` started by `dev.sh`; restart the API afterwards.
+- **P.O. quantities only change under the P.O. row lock.** Work orders and invoices call `db.LockAsync<CustomerPo>("customer_pos", …)`
+  inside their transaction *before* posting stock (always P.O. first, then balances), then adjust `produced_qty` /
+  `invoiced_qty`. Keep that order in any new document that consumes a P.O. (e.g. delivery challans), and recompute the
+  P.O. status (Completed ⇄ Confirmed) in the same transaction.
+- **Replacing document lines on edit:** don't set `Id = Guid.NewGuid()` on new line entities added to a tracked
+  parent's collection; EF then treats them as existing rows and the UPDATE fails. Let the DB default generate it.
+- Invoice money maths lives in `Money.Line` / `Money.RoundToRupee` (API) and `lineMaths` (`InvoicePages.tsx`); change both
+  together. Customer billing fields are snapshotted onto the invoice on save and on submit; never re-read them for print.
+- `products.is_active` has no EF default on purpose (EF skips an explicit `false` on insert when a bool has a default);
+  inactive items are filtered out of `/api/stock/items`, not out of `/api/products`.
 - **Stock changes only through `IStockPosting.PostAsync`** (inside a transaction, after `EnsureDefaultStoreAsync`). Never
   update `products.stock_quantity` or `stock_balances` directly: the invariant is stock_quantity = sum of balances, and
   every movement needs a ledger row. New stock documents (GRN, delivery challan…) follow the Stock Entry pattern:
   Draft → Submitted (post) → Cancelled (reverse the voucher's ledger rows), numbers from `NextNumberAsync(prefix)`.
+  Work orders (`VoucherType.WorkOrder`) and sales invoices (`VoucherType.SalesInvoice`) follow it too.
 - Vite's watcher can miss files written by scripts on Windows; if the dev app shows old code, `touch` the files.
 - `ai-service/.env` is used only by `dev.sh`; `run-local.sh` sets `AI_SERVICE_ENV_FILE=none` so the root env file wins.
 
 ## Demo data
 
-`--seed` (dev only) creates *Demo Corp* and *Other Tenant Ltd* (used by tests to prove isolation).
+`--seed` (dev only) creates *Demo Corp* and *Other Tenant Ltd* (used by tests to prove isolation). The seed has no
+customer P.O.s, work orders or invoices; `e2e/sales.spec.ts` creates its own and cancels them.
 Logins: `admin@demo.com` / `Admin@123` (SuperAdmin), `manager@demo.com` / `Manager@123` (Admin),
 `lead@demo.com` / `Lead@12345` (Manager), `staff@demo.com` / `Staff@1234` (User).

@@ -54,6 +54,14 @@ public class ErpDbContext(DbContextOptions<ErpDbContext> options, ITenantContext
     public DbSet<StockLedgerEntry> StockLedger => Set<StockLedgerEntry>();
     public DbSet<DocumentSeries> DocumentSeries => Set<DocumentSeries>();
 
+    // Sales flow: Customer P.O. -> Work Order (production) -> Sales Invoice
+    public DbSet<CustomerPo> CustomerPos => Set<CustomerPo>();
+    public DbSet<CustomerPoLine> CustomerPoLines => Set<CustomerPoLine>();
+    public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
+    public DbSet<WorkOrderMaterial> WorkOrderMaterials => Set<WorkOrderMaterial>();
+    public DbSet<SalesInvoice> SalesInvoices => Set<SalesInvoice>();
+    public DbSet<SalesInvoiceLine> SalesInvoiceLines => Set<SalesInvoiceLine>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         // All table/column/index/constraint mapping lives in Data/Configurations/*.

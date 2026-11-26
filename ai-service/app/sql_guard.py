@@ -11,7 +11,12 @@ import sqlglot
 from sqlglot import exp
 
 # org_users is a tenant-filtered view of login users without password hashes; the users table stays blocked.
-ALLOWED_TABLES = frozenset({"customers", "products", "orders", "order_items", "org_users"})
+ALLOWED_TABLES = frozenset({
+    "customers", "products", "orders", "order_items", "org_users",
+    # sales flow: Customer P.O. -> Work Order -> Sales Invoice
+    "customer_pos", "customer_po_lines", "work_orders", "work_order_materials",
+    "sales_invoices", "sales_invoice_lines",
+})
 
 # Page rights (Master module) -> tables the AI may query for that user. A user who can't read the
 # Customers page can't ask the AI about customers either.
@@ -20,6 +25,9 @@ PAGE_TABLES: dict[str, frozenset[str]] = {
     "products": frozenset({"products"}),
     "orders": frozenset({"orders", "order_items"}),
     "master-users": frozenset({"org_users"}),
+    "customer-pos": frozenset({"customer_pos", "customer_po_lines"}),
+    "work-orders": frozenset({"work_orders", "work_order_materials"}),
+    "sales-invoices": frozenset({"sales_invoices", "sales_invoice_lines"}),
 }
 
 

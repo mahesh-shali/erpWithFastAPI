@@ -59,6 +59,8 @@ public static class VoucherType
     public const string StockEntry = "Stock Entry";
     public const string SalesOrder = "Sales Order";
     public const string ProductAdjustment = "Product Adjustment";
+    public const string WorkOrder = "Work Order";
+    public const string SalesInvoice = "Sales Invoice";
 }
 
 public class StockEntry : ITenantOwned

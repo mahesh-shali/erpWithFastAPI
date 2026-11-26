@@ -133,6 +133,8 @@ export function StockLedgerPage() {
                 <td>
                   {r.voucherType}{' '}
                   {r.voucherType === 'Stock Entry' && r.voucherId ? <Link to={`${ENTRY_ROUTE}/${r.voucherId}`}>{r.voucherNo}</Link>
+                    : r.voucherType === 'Work Order' && r.voucherId ? <Link to={`/production/work-orders/${r.voucherId}`}>{r.voucherNo}</Link>
+                    : r.voucherType === 'Sales Invoice' && r.voucherId ? <Link to={`/sales/invoices/${r.voucherId}`}>{r.voucherNo}</Link>
                     : r.voucherType === 'Opening' && r.voucherNo === 'OPENING' ? null : r.voucherNo}
                   {r.isReversal && <span className="tag">Reversal</span>}
                 </td>

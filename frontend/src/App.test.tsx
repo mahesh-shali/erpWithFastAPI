@@ -22,7 +22,12 @@ const EMPTY: Route[] = [
   // Paged reports need the paged shape: a bare [] crashed the screen whenever the reply landed before the test ended.
   ['GET', '/api/stock/position*', { items: [], page: 1, pageSize: 50, total: 0, totalQuantity: 0, totalValue: 0 }],
   ['GET', '/api/stock/ledger*', { items: [], page: 1, pageSize: 50, total: 0 }],
+  ['GET', '/api/stock/details*', { items: [], page: 1, pageSize: 50, total: 0 }],
   ['GET', '/api/stock/*', []],
+  ['GET', '/api/customer-pos*', { items: [], page: 1, pageSize: 25, total: 0 }],
+  ['GET', '/api/work-orders*', { items: [], page: 1, pageSize: 25, total: 0 }],
+  ['GET', '/api/sales-invoices*', { items: [], page: 1, pageSize: 25, total: 0 }],
+  ['GET', '/api/sales/lookups/*', []],
   ['GET', '/api/stock-entries*', { items: [], page: 1, pageSize: 25, total: 0 }],
   ['GET', '/api/chat/keys/me', undefined],
 ];
@@ -33,7 +38,11 @@ const ALL_PAGES = [
   perm('ai-chat', 'VR', { name: 'AI Assistant', route: '/assistant' }),
   perm('messages', 'VRW', { name: 'Messages', route: '/messages' }),
   perm('customers', 'VR', { name: 'Customers', route: '/master/customers' }),
-  perm('products', 'VR', { name: 'Products', route: '/master/products' }),
+  perm('products', 'VR', { name: 'Items', route: '/master/items' }),
+  perm('customer-pos', 'VRW', { name: 'Customer P.O.', route: '/sales/customer-po' }),
+  perm('work-orders', 'VRW', { name: 'Work Orders', route: '/production/work-orders' }),
+  perm('sales-invoices', 'VRW', { name: 'Sales Invoices', route: '/sales/invoices' }),
+  perm('stock-details', 'VR', { name: 'Stock Details', route: '/inventory/stock-details' }),
   perm('orders', 'VR', { name: 'Sales Orders', route: '/sales/orders' }),
   perm('master-users', 'VR', { name: 'Users', route: '/master/users' }),
   perm('master-user-rights', 'VR', { name: 'User Rights', route: '/master/user-rights' }),
@@ -61,7 +70,15 @@ describe('App routing', () => {
     ['/assistant', 'AI Assistant'],
     ['/messages', 'Messages'],
     ['/master/customers', 'Customers'],
-    ['/master/products', 'Products'],
+    ['/master/items', 'Items'],
+    ['/master/products', 'Items'], // old link: Products became Items
+    ['/sales/customer-po', 'Customer P.O.'],
+    ['/sales/customer-po/new', 'New customer P.O.'],
+    ['/production/work-orders', 'Work orders'],
+    ['/production/work-orders/new', 'New work order'],
+    ['/sales/invoices', 'Sales invoices'],
+    ['/sales/invoices/new', 'New invoice'],
+    ['/inventory/stock-details', 'Stock details'],
     ['/sales/orders', 'Orders'],
     ['/master/users', 'Users'],
     ['/master/user-rights', 'User rights'],
@@ -149,13 +166,13 @@ describe('Reopens where the user left off', () => {
   });
 
   it('also reopens after sign out and sign in again in the same tab', async () => {
-    renderApp('/master/products');
-    expect(await screen.findByRole('heading', { level: 1, name: 'Products' })).toBeInTheDocument();
+    renderApp('/master/items');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Items' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Sign out' }));
     mockApi([['POST', '/api/auth/login', AUTH], ['POST', '/api/auth/logout', undefined],
       ['GET', '/api/me/permissions', { role: 'Admin', pages: ALL_PAGES }], ...EMPTY]);
     await signInThroughTheForm();
-    expect(await screen.findByRole('heading', { level: 1, name: 'Products' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Items' })).toBeInTheDocument();
   });
 
   it('a page load on the start page reopens the last page; the Dashboard stays reachable', async () => {
@@ -168,8 +185,8 @@ describe('Reopens where the user left off', () => {
 
   it("a direct link wins, and another user's page or a bad value is ignored", async () => {
     localStorage.setItem(KEY, JSON.stringify({ u1: '/master/customers' }));
-    renderApp('/master/products');
-    expect(await screen.findByRole('heading', { level: 1, name: 'Products' })).toBeInTheDocument();
+    renderApp('/master/items');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Items' })).toBeInTheDocument();
   });
 
   it.each([[{ someoneElse: '/master/customers' }], [{ u1: '//evil.example/x' }]])('ignores %j', async (saved) => {

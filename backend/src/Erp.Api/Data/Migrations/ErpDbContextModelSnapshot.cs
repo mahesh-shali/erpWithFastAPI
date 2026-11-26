@@ -346,9 +346,19 @@ namespace Erp.Api.Data.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("address");
+
                     b.Property<string>("City")
                         .HasColumnType("text")
                         .HasColumnName("city");
+
+                    b.Property<string>("ContactPerson")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("contact_person");
 
                     b.Property<string>("Country")
                         .HasColumnType("text")
@@ -373,13 +383,231 @@ namespace Erp.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
+                    b.Property<int>("PaymentTermsDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("payment_terms_days");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("PostalCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("postal_code");
+
+                    b.Property<string>("State")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("state");
+
+                    b.Property<string>("TaxId")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tax_id");
+
                     b.HasKey("Id")
                         .HasName("pk_customers");
 
                     b.HasIndex("OrganizationId")
                         .HasDatabaseName("ix_customers_org");
 
-                    b.ToTable("customers", (string)null);
+                    b.ToTable("customers", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_customers_payment_terms", "payment_terms_days >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.CustomerPo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<string>("CustomerPoNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("customer_po_no");
+
+                    b.Property<DateOnly?>("DeliveryDate")
+                        .HasColumnType("date")
+                        .HasColumnName("delivery_date");
+
+                    b.Property<decimal>("GrandTotal")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("grand_total");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("number");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateOnly>("PoDate")
+                        .HasColumnType("date")
+                        .HasColumnName("po_date");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("remarks");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Draft")
+                        .HasColumnName("status");
+
+                    b.Property<decimal>("SubTotal")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("sub_total");
+
+                    b.Property<decimal>("TaxTotal")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("tax_total");
+
+                    b.HasKey("Id")
+                        .HasName("pk_customer_pos");
+
+                    b.HasIndex("CustomerId")
+                        .HasDatabaseName("ix_customer_pos_customer_id");
+
+                    b.HasIndex("OrganizationId", "CreatedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_customer_pos_org_created");
+
+                    b.HasIndex("OrganizationId", "CustomerId")
+                        .HasDatabaseName("ix_customer_pos_org_customer");
+
+                    b.HasIndex("OrganizationId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("ux_customer_pos_org_number");
+
+                    b.ToTable("customer_pos", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_customer_pos_status", "status IN ('Draft','Confirmed','Completed','Cancelled')");
+                        });
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.CustomerPoLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<Guid>("CustomerPoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_po_id");
+
+                    b.Property<int>("InvoicedQty")
+                        .HasColumnType("integer")
+                        .HasColumnName("invoiced_qty");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_no");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<int>("ProducedQty")
+                        .HasColumnType("integer")
+                        .HasColumnName("produced_qty");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<decimal>("Rate")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)")
+                        .HasColumnName("rate");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("tax_amount");
+
+                    b.Property<decimal>("TaxRate")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("tax_rate");
+
+                    b.HasKey("Id")
+                        .HasName("pk_customer_po_lines");
+
+                    b.HasIndex("CustomerPoId")
+                        .HasDatabaseName("ix_customer_po_lines_po");
+
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("ix_customer_po_lines_product_id");
+
+                    b.HasIndex("OrganizationId", "ProductId")
+                        .HasDatabaseName("ix_customer_po_lines_org_prod");
+
+                    b.ToTable("customer_po_lines", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_customer_po_lines_invoiced", "invoiced_qty >= 0 AND invoiced_qty <= quantity");
+
+                            t.HasCheckConstraint("ck_customer_po_lines_produced", "produced_qty >= 0");
+
+                            t.HasCheckConstraint("ck_customer_po_lines_quantity", "quantity > 0");
+
+                            t.HasCheckConstraint("ck_customer_po_lines_rate", "rate >= 0 AND tax_rate >= 0 AND tax_rate <= 100");
+                        });
                 });
 
             modelBuilder.Entity("Erp.Api.Domain.DocumentSeries", b =>
@@ -522,7 +750,7 @@ namespace Erp.Api.Data.Migrations
                             Id = 106,
                             Key = "master-inventory-setup",
                             ModuleId = 1,
-                            Name = "Inventory Setup",
+                            Name = "Inventory",
                             SortOrder = 45
                         },
                         new
@@ -1050,16 +1278,41 @@ namespace Erp.Api.Data.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("address");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("now()");
 
+                    b.Property<string>("Email")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("name");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("State")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("state");
+
+                    b.Property<string>("TaxId")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tax_id");
 
                     b.HasKey("Id")
                         .HasName("pk_organizations");
@@ -1232,13 +1485,13 @@ namespace Erp.Api.Data.Migrations
                         new
                         {
                             Id = 3,
-                            GroupId = 104,
+                            GroupId = 106,
                             IsActive = true,
                             IsImplemented = true,
                             Key = "products",
-                            Name = "Products",
-                            Route = "/master/products",
-                            SortOrder = 10
+                            Name = "Items",
+                            Route = "/master/items",
+                            SortOrder = 5
                         },
                         new
                         {
@@ -1275,6 +1528,17 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 53,
+                            GroupId = 301,
+                            IsActive = true,
+                            IsImplemented = true,
+                            Key = "customer-pos",
+                            Name = "Customer P.O.",
+                            Route = "/sales/customer-po",
+                            SortOrder = 5
+                        },
+                        new
+                        {
                             Id = 4,
                             GroupId = 301,
                             IsActive = true,
@@ -1289,7 +1553,7 @@ namespace Erp.Api.Data.Migrations
                             Id = 13,
                             GroupId = 302,
                             IsActive = true,
-                            IsImplemented = false,
+                            IsImplemented = true,
                             Key = "sales-invoices",
                             Name = "Sales Invoices",
                             Route = "/sales/invoices",
@@ -1410,7 +1674,7 @@ namespace Erp.Api.Data.Migrations
                             Id = 17,
                             GroupId = 502,
                             IsActive = true,
-                            IsImplemented = false,
+                            IsImplemented = true,
                             Key = "work-orders",
                             Name = "Work Orders",
                             Route = "/production/work-orders",
@@ -1448,6 +1712,17 @@ namespace Erp.Api.Data.Migrations
                             Name = "Stock Position",
                             Route = "/inventory/stock-position",
                             SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 52,
+                            GroupId = 201,
+                            IsActive = true,
+                            IsImplemented = true,
+                            Key = "stock-details",
+                            Name = "Stock Details",
+                            Route = "/inventory/stock-details",
+                            SortOrder = 20
                         },
                         new
                         {
@@ -1700,6 +1975,39 @@ namespace Erp.Api.Data.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("now()");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("DrawingNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("drawing_no");
+
+                    b.Property<string>("HsnCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("hsn_code");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("ItemType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Finished Good")
+                        .HasColumnName("item_type");
+
+                    b.Property<int>("LeadTimeDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("lead_time_days");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1709,16 +2017,36 @@ namespace Erp.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
+                    b.Property<int>("ReorderLevel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("reorder_level");
+
                     b.Property<string>("Sku")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("sku");
+
+                    b.Property<decimal>("StandardCost")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("standard_cost");
 
                     b.Property<int>("StockQuantity")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("stock_quantity");
+
+                    b.Property<decimal>("TaxRate")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("tax_rate");
 
                     b.Property<decimal>("UnitPrice")
                         .HasPrecision(12, 2)
@@ -1744,7 +2072,15 @@ namespace Erp.Api.Data.Migrations
 
                     b.ToTable("products", null, t =>
                         {
+                            t.HasCheckConstraint("ck_products_item_type", "item_type IN ('Finished Good','Semi-Finished','Raw Material','Consumable')");
+
+                            t.HasCheckConstraint("ck_products_reorder_level", "reorder_level >= 0 AND lead_time_days >= 0");
+
+                            t.HasCheckConstraint("ck_products_standard_cost", "standard_cost >= 0");
+
                             t.HasCheckConstraint("ck_products_stock_quantity", "stock_quantity >= 0");
+
+                            t.HasCheckConstraint("ck_products_tax_rate", "tax_rate >= 0 AND tax_rate <= 100");
 
                             t.HasCheckConstraint("ck_products_unit_price", "unit_price >= 0");
                         });
@@ -2052,6 +2388,18 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 153,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 53,
+                            RoleId = 1
+                        },
+                        new
+                        {
                             Id = 104,
                             CanDelete = true,
                             CanRead = true,
@@ -2240,6 +2588,18 @@ namespace Erp.Api.Data.Migrations
                             IsRestricted = false,
                             IsVisible = true,
                             PageId = 11,
+                            RoleId = 1
+                        },
+                        new
+                        {
+                            Id = 152,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 52,
                             RoleId = 1
                         },
                         new
@@ -2664,6 +3024,18 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 453,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 53,
+                            RoleId = 4
+                        },
+                        new
+                        {
                             Id = 404,
                             CanDelete = false,
                             CanRead = true,
@@ -2852,6 +3224,18 @@ namespace Erp.Api.Data.Migrations
                             IsRestricted = false,
                             IsVisible = true,
                             PageId = 11,
+                            RoleId = 4
+                        },
+                        new
+                        {
+                            Id = 452,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 52,
                             RoleId = 4
                         },
                         new
@@ -3276,6 +3660,18 @@ namespace Erp.Api.Data.Migrations
                         },
                         new
                         {
+                            Id = 253,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = true,
+                            CanWrite = true,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 53,
+                            RoleId = 2
+                        },
+                        new
+                        {
                             Id = 204,
                             CanDelete = false,
                             CanRead = true,
@@ -3464,6 +3860,18 @@ namespace Erp.Api.Data.Migrations
                             IsRestricted = false,
                             IsVisible = true,
                             PageId = 11,
+                            RoleId = 2
+                        },
+                        new
+                        {
+                            Id = 252,
+                            CanDelete = false,
+                            CanRead = true,
+                            CanUpdate = false,
+                            CanWrite = false,
+                            IsRestricted = false,
+                            IsVisible = true,
+                            PageId = 52,
                             RoleId = 2
                         },
                         new
@@ -3717,6 +4125,257 @@ namespace Erp.Api.Data.Migrations
                             IsVisible = false,
                             PageId = 47,
                             RoleId = 2
+                        });
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.SalesInvoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("BillingAddress")
+                        .HasMaxLength(800)
+                        .HasColumnType("character varying(800)")
+                        .HasColumnName("billing_address");
+
+                    b.Property<string>("BillingName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("billing_name");
+
+                    b.Property<string>("BillingState")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("billing_state");
+
+                    b.Property<string>("BillingTaxId")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("billing_tax_id");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<decimal>("CostOfGoods")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("cost_of_goods");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<Guid?>("CustomerPoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_po_id");
+
+                    b.Property<decimal>("DiscountTotal")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("discount_total");
+
+                    b.Property<DateOnly>("DueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("due_date");
+
+                    b.Property<decimal>("GrandTotal")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("grand_total");
+
+                    b.Property<DateOnly>("InvoiceDate")
+                        .HasColumnType("date")
+                        .HasColumnName("invoice_date");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("number");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("remarks");
+
+                    b.Property<decimal>("RoundOff")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("round_off");
+
+                    b.Property<string>("ShippingAddress")
+                        .HasMaxLength(800)
+                        .HasColumnType("character varying(800)")
+                        .HasColumnName("shipping_address");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Draft")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
+                    b.Property<decimal>("SubTotal")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("sub_total");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<decimal>("TaxTotal")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("tax_total");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sales_invoices");
+
+                    b.HasIndex("CustomerId")
+                        .HasDatabaseName("ix_sales_invoices_customer_id");
+
+                    b.HasIndex("CustomerPoId")
+                        .HasDatabaseName("ix_sales_invoices_po");
+
+                    b.HasIndex("StoreId")
+                        .HasDatabaseName("ix_sales_invoices_store_id");
+
+                    b.HasIndex("OrganizationId", "CreatedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_sales_invoices_org_created");
+
+                    b.HasIndex("OrganizationId", "CustomerId")
+                        .HasDatabaseName("ix_sales_invoices_org_customer");
+
+                    b.HasIndex("OrganizationId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("ux_sales_invoices_org_number");
+
+                    b.ToTable("sales_invoices", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_sales_invoices_due_date", "due_date >= invoice_date");
+
+                            t.HasCheckConstraint("ck_sales_invoices_status", "status IN ('Draft','Submitted','Cancelled')");
+                        });
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.SalesInvoiceLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<decimal>("CostRate")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("numeric(14,4)")
+                        .HasColumnName("cost_rate");
+
+                    b.Property<Guid?>("CustomerPoLineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_po_line_id");
+
+                    b.Property<decimal>("DiscountPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("discount_percent");
+
+                    b.Property<string>("HsnCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("hsn_code");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_no");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<decimal>("Rate")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)")
+                        .HasColumnName("rate");
+
+                    b.Property<Guid>("SalesInvoiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sales_invoice_id");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("tax_amount");
+
+                    b.Property<decimal>("TaxRate")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("tax_rate");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("total");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sales_invoice_lines");
+
+                    b.HasIndex("CustomerPoLineId")
+                        .HasDatabaseName("ix_sales_invoice_lines_po_line");
+
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("ix_sales_invoice_lines_product_id");
+
+                    b.HasIndex("SalesInvoiceId")
+                        .HasDatabaseName("ix_sales_invoice_lines_invoice");
+
+                    b.HasIndex("OrganizationId", "ProductId")
+                        .HasDatabaseName("ix_sales_invoice_lines_org_prod");
+
+                    b.ToTable("sales_invoice_lines", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_sales_invoice_lines_quantity", "quantity > 0");
+
+                            t.HasCheckConstraint("ck_sales_invoice_lines_rates", "rate >= 0 AND discount_percent >= 0 AND discount_percent <= 100 AND tax_rate >= 0 AND tax_rate <= 100");
                         });
                 });
 
@@ -4415,6 +5074,195 @@ namespace Erp.Api.Data.Migrations
                     b.ToTable("user_sessions", (string)null);
                 });
 
+            modelBuilder.Entity("Erp.Api.Domain.WorkOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<Guid?>("CustomerPoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_po_id");
+
+                    b.Property<Guid?>("CustomerPoLineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_po_line_id");
+
+                    b.Property<decimal>("MaterialCost")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("material_cost");
+
+                    b.Property<Guid>("MaterialStoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("material_store_id");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("number");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<decimal>("OtherCost")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("other_cost");
+
+                    b.Property<DateOnly>("PostingDate")
+                        .HasColumnType("date")
+                        .HasColumnName("posting_date");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("remarks");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Draft")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_id");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<decimal>("TotalCost")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("total_cost");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("numeric(14,4)")
+                        .HasColumnName("unit_cost");
+
+                    b.HasKey("Id")
+                        .HasName("pk_work_orders");
+
+                    b.HasIndex("CustomerPoId")
+                        .HasDatabaseName("ix_work_orders_po");
+
+                    b.HasIndex("CustomerPoLineId")
+                        .HasDatabaseName("ix_work_orders_po_line");
+
+                    b.HasIndex("MaterialStoreId")
+                        .HasDatabaseName("ix_work_orders_material_store_id");
+
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("ix_work_orders_product_id");
+
+                    b.HasIndex("StoreId")
+                        .HasDatabaseName("ix_work_orders_store_id");
+
+                    b.HasIndex("OrganizationId", "CreatedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_work_orders_org_created");
+
+                    b.HasIndex("OrganizationId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("ux_work_orders_org_number");
+
+                    b.ToTable("work_orders", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_work_orders_cost", "other_cost >= 0");
+
+                            t.HasCheckConstraint("ck_work_orders_quantity", "quantity > 0");
+
+                            t.HasCheckConstraint("ck_work_orders_status", "status IN ('Draft','Submitted','Cancelled')");
+                        });
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.WorkOrderMaterial", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(16, 2)
+                        .HasColumnType("numeric(16,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_no");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<decimal>("Rate")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("numeric(14,4)")
+                        .HasColumnName("rate");
+
+                    b.Property<Guid>("WorkOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("work_order_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_work_order_materials");
+
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("ix_work_order_materials_product_id");
+
+                    b.HasIndex("WorkOrderId")
+                        .HasDatabaseName("ix_work_order_materials_wo");
+
+                    b.HasIndex("OrganizationId", "ProductId")
+                        .HasDatabaseName("ix_work_order_materials_org_prod");
+
+                    b.ToTable("work_order_materials", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_work_order_materials_quantity", "quantity > 0");
+                        });
+                });
+
             modelBuilder.Entity("Erp.Api.Domain.ChatConversation", b =>
                 {
                     b.HasOne("Erp.Api.Domain.User", null)
@@ -4518,6 +5366,51 @@ namespace Erp.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_customers_organizations_organization_id");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.CustomerPo", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_customer_pos_customers_customer_id");
+
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_customer_pos_organizations_organization_id");
+
+                    b.Navigation("Customer");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.CustomerPoLine", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.CustomerPo", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("CustomerPoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_customer_po_lines_customer_pos_customer_po_id");
+
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_customer_po_lines_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_customer_po_lines_products_product_id");
+
+                    b.Navigation("Product");
                 });
 
             modelBuilder.Entity("Erp.Api.Domain.DocumentSeries", b =>
@@ -4635,6 +5528,74 @@ namespace Erp.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_role_page_permissions_roles_role_id");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.SalesInvoice", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sales_invoices_customers_customer_id");
+
+                    b.HasOne("Erp.Api.Domain.CustomerPo", "CustomerPo")
+                        .WithMany()
+                        .HasForeignKey("CustomerPoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_sales_invoices_customer_pos_customer_po_id");
+
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sales_invoices_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.Store", "Store")
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sales_invoices_stores_store_id");
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("CustomerPo");
+
+                    b.Navigation("Store");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.SalesInvoiceLine", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.CustomerPoLine", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerPoLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_sales_invoice_lines_customer_po_lines_customer_po_line_id");
+
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sales_invoice_lines_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sales_invoice_lines_products_product_id");
+
+                    b.HasOne("Erp.Api.Domain.SalesInvoice", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("SalesInvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sales_invoice_lines_sales_invoices_sales_invoice_id");
+
+                    b.Navigation("Product");
                 });
 
             modelBuilder.Entity("Erp.Api.Domain.StockBalance", b =>
@@ -4839,6 +5800,83 @@ namespace Erp.Api.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Erp.Api.Domain.WorkOrder", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.CustomerPo", "CustomerPo")
+                        .WithMany()
+                        .HasForeignKey("CustomerPoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_work_orders_customer_pos_customer_po_id");
+
+                    b.HasOne("Erp.Api.Domain.CustomerPoLine", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerPoLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_work_orders_customer_po_lines_customer_po_line_id");
+
+                    b.HasOne("Erp.Api.Domain.Store", "MaterialStore")
+                        .WithMany()
+                        .HasForeignKey("MaterialStoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_orders_stores_material_store_id");
+
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_orders_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_orders_products_product_id");
+
+                    b.HasOne("Erp.Api.Domain.Store", "Store")
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_orders_stores_store_id");
+
+                    b.Navigation("CustomerPo");
+
+                    b.Navigation("MaterialStore");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Store");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.WorkOrderMaterial", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_order_materials_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_order_materials_products_product_id");
+
+                    b.HasOne("Erp.Api.Domain.WorkOrder", null)
+                        .WithMany("Materials")
+                        .HasForeignKey("WorkOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_order_materials_work_orders_work_order_id");
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("Erp.Api.Domain.ChatConversation", b =>
                 {
                     b.Navigation("Participants");
@@ -4849,14 +5887,29 @@ namespace Erp.Api.Data.Migrations
                     b.Navigation("Keys");
                 });
 
+            modelBuilder.Entity("Erp.Api.Domain.CustomerPo", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
             modelBuilder.Entity("Erp.Api.Domain.Order", b =>
                 {
                     b.Navigation("Items");
                 });
 
+            modelBuilder.Entity("Erp.Api.Domain.SalesInvoice", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
             modelBuilder.Entity("Erp.Api.Domain.StockEntry", b =>
                 {
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("Erp.Api.Domain.WorkOrder", b =>
+                {
+                    b.Navigation("Materials");
                 });
 #pragma warning restore 612, 618
         }

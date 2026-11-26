@@ -91,3 +91,9 @@ async def test_ai_user_access_reports_session_and_readable_pages(ex):
     import uuid
     active, pages = await ex.user_access(uuid.uuid4(), uuid.uuid4())
     assert active is False and pages == []
+
+
+async def test_sales_flow_tables_are_tenant_scoped_for_the_ai_role(ex):
+    for t in ["customer_pos", "customer_po_lines", "work_orders", "work_order_materials", "sales_invoices", "sales_invoice_lines"]:
+        rows = await ex.run(validate_sql(f"SELECT count(*) AS n FROM {t} WHERE organization_id <> '{ORG_A}'"), ORG_A)
+        assert rows.rows[0][0] == 0

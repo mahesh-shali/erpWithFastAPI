@@ -51,9 +51,10 @@ test.describe('screens (SuperAdmin)', () => {
     await expect(page.getByRole('table', { name: 'Customers' }).locator('tbody tr')).toHaveCount(25);
   });
 
-  test('Products: seeded list with prices', async ({ page }) => {
+  test('Items: seeded list with prices; the old Products link still works', async ({ page }) => {
     await page.goto('/master/products');
-    await expect(page.getByRole('table', { name: 'Products' })).toContainText('₹');
+    await expect(page).toHaveURL(/\/master\/items$/);
+    await expect(page.getByRole('table', { name: 'Items' })).toContainText('₹');
   });
 
   test('Sales Orders: latest orders', async ({ page }) => {
