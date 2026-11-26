@@ -710,7 +710,7 @@ tables; `ai-service/app/schema.py` describes them and `sql_guard.py` maps them t
 `customer_pos`, `customer_po_lines`; `work-orders` → `work_orders`, `work_order_materials`; `sales-invoices` →
 `sales_invoices`, `sales_invoice_lines`), so people only get answers about documents they can open.
 
-The desktop app (1.5.0) has the same screens; the invoice print uses the system print dialog.
+The desktop app (1.6.0) has the same screens; invoices, Customer P.O.s and work orders print through the system print dialog.
 
 ### Print formats (custom print templates)
 
