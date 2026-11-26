@@ -1957,6 +1957,84 @@ namespace Erp.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Erp.Api.Domain.PrintTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(200000)
+                        .HasColumnType("character varying(200000)")
+                        .HasColumnName("body");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("document_type");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_id");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_archived");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_default");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_print_templates");
+
+                    b.HasIndex("OrganizationId", "DocumentType")
+                        .IsUnique()
+                        .HasDatabaseName("ux_print_templates_org_default")
+                        .HasFilter("is_default");
+
+                    b.HasIndex("OrganizationId", "FamilyId", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("ux_print_templates_family_version");
+
+                    b.ToTable("print_templates", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_print_templates_default_current", "NOT (is_default AND is_archived)");
+
+                            t.HasCheckConstraint("ck_print_templates_document_type", "document_type IN ('sales-invoice')");
+
+                            t.HasCheckConstraint("ck_print_templates_version", "version >= 1");
+                        });
+                });
+
             modelBuilder.Entity("Erp.Api.Domain.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4212,6 +4290,10 @@ namespace Erp.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
+                    b.Property<Guid?>("PrintTemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("print_template_id");
+
                     b.Property<string>("Remarks")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
@@ -4261,6 +4343,9 @@ namespace Erp.Api.Data.Migrations
 
                     b.HasIndex("CustomerPoId")
                         .HasDatabaseName("ix_sales_invoices_po");
+
+                    b.HasIndex("PrintTemplateId")
+                        .HasDatabaseName("ix_sales_invoices_print_template_id");
 
                     b.HasIndex("StoreId")
                         .HasDatabaseName("ix_sales_invoices_store_id");
@@ -5489,6 +5574,16 @@ namespace Erp.Api.Data.Migrations
                     b.Navigation("Group");
                 });
 
+            modelBuilder.Entity("Erp.Api.Domain.PrintTemplate", b =>
+                {
+                    b.HasOne("Erp.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_print_templates_organizations_organization_id");
+                });
+
             modelBuilder.Entity("Erp.Api.Domain.Product", b =>
                 {
                     b.HasOne("Erp.Api.Domain.Organization", null)
@@ -5551,6 +5646,12 @@ namespace Erp.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_sales_invoices_organizations_organization_id");
+
+                    b.HasOne("Erp.Api.Domain.PrintTemplate", null)
+                        .WithMany()
+                        .HasForeignKey("PrintTemplateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_sales_invoices_print_templates_print_template_id");
 
                     b.HasOne("Erp.Api.Domain.Store", "Store")
                         .WithMany()

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  api, ITEM_TYPES, type Customer, type ItemType, type Order, type Product, type Uom, type UpsertCustomer, type UpsertProduct,
+  api, ITEM_TYPES, type Customer, type ItemType, type Order, type PagedResult, type Product, type Uom, type UpsertCustomer,
+  type UpsertProduct,
 } from '../api/client';
+import { Pager } from './sales/shared';
 import { usePermissions } from '../auth/PermissionsContext';
 import { ChatPanel } from '../components/ChatPanel';
 
@@ -23,12 +25,52 @@ function useList<T>(fetcher: () => Promise<T[]>) {
   return { items, error, setError, load };
 }
 
-const fetchCustomers = async () => (await api.customers()).items;
+/** One page of a server-paged list (search/filters live in the fetcher's closure); reloads when the fetcher changes. */
+function usePagedList<T>(fetcher: (page: number) => Promise<PagedResult<T>>) {
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<PagedResult<T> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { setPage(1); }, [fetcher]);
+  const load = useCallback(async () => {
+    try {
+      setData(await fetcher(page));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load');
+    }
+  }, [fetcher, page]);
+  useEffect(() => { void load(); }, [load]);
+  return { items: data?.items ?? [], data, page, setPage, error, setError, load };
+}
+
+/** Search text that settles 300 ms after the last keystroke. */
+function useDebounced(value: string) {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => { const t = setTimeout(() => setSettled(value), 300); return () => clearTimeout(t); }, [value]);
+  return settled;
+}
+
+function ListFooter({ data, page, onPage, what }: {
+  data: PagedResult<unknown> | null; page: number; onPage: (p: number) => void; what: string;
+}) {
+  if (!data) return null;
+  const from = data.total === 0 ? 0 : (page - 1) * data.pageSize + 1;
+  const to = Math.min(page * data.pageSize, data.total);
+  return (
+    <>
+      <p className="hint">{data.total === 0 ? `No ${what} found.` : `Showing ${from}–${to} of ${data.total} ${what}.`}</p>
+      <Pager page={page} total={data.total} pageSize={data.pageSize} onPage={onPage} />
+    </>
+  );
+}
 
 /** Master › Customers: billing details used on P.O.s and printed on invoices. Buttons follow the page rights. */
 export function CustomersPage() {
   const { can } = usePermissions();
-  const { items, error, setError, load } = useList<Customer>(fetchCustomers);
+  const [search, setSearch] = useState('');
+  const term = useDebounced(search.trim());
+  const fetcher = useCallback((page: number) => api.customers(page, term), [term]);
+  const { items, data, page, setPage, error, setError, load } = usePagedList<Customer>(fetcher);
   const [editing, setEditing] = useState<Customer | 'new' | null>(null);
   const remove = async (c: Customer) => {
     if (!confirm(`Delete ${c.name}?`)) return;
@@ -44,8 +86,16 @@ export function CustomersPage() {
       {error && <p role="alert" className="error">{error}</p>}
       {editing !== null && (
         <CustomerForm customer={editing === 'new' ? null : editing}
-          onDone={async (saved) => { setEditing(null); if (saved) await load(); }} />
+          onDone={async (saved, name) => {
+            setEditing(null);
+            // A new customer may sort beyond the first page: search for it so it shows straight away.
+            if (saved && name && name !== search) setSearch(name); else if (saved) await load();
+          }} />
       )}
+      <div className="card toolbar">
+        <label className="grow">Search<input type="search" placeholder="Customer name" value={search}
+          onChange={(e) => setSearch(e.target.value)} /></label>
+      </div>
       <div className="card table-wrap">
         <table aria-label="Customers">
           <thead>
@@ -67,7 +117,7 @@ export function CustomersPage() {
             ))}
           </tbody>
         </table>
-        <p className="hint">Showing the first 25.</p>
+        <ListFooter data={data} page={page} onPage={setPage} what="customers" />
       </div>
     </>
   );
@@ -75,7 +125,7 @@ export function CustomersPage() {
 
 const blank = (v: string) => (v.trim() ? v.trim() : null);
 
-function CustomerForm({ customer, onDone }: { customer: Customer | null; onDone: (saved: boolean) => Promise<void> }) {
+function CustomerForm({ customer, onDone }: { customer: Customer | null; onDone: (saved: boolean, name?: string) => Promise<void> }) {
   const [form, setForm] = useState({
     name: customer?.name ?? '', contactPerson: customer?.contactPerson ?? '', email: customer?.email ?? '', phone: customer?.phone ?? '',
     taxId: customer?.taxId ?? '', address: customer?.address ?? '', city: customer?.city ?? '', state: customer?.state ?? '',
@@ -94,8 +144,8 @@ function CustomerForm({ customer, onDone }: { customer: Customer | null; onDone:
       postalCode: blank(form.postalCode), country: blank(form.country), paymentTermsDays: Number(form.paymentTermsDays) || 0,
     };
     try {
-      await api.saveCustomer(body, customer?.id);
-      await onDone(true);
+      const saved = await api.saveCustomer(body, customer?.id);
+      await onDone(true, customer ? undefined : saved.name);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save');
       setBusy(false);
@@ -129,12 +179,12 @@ function CustomerForm({ customer, onDone }: { customer: Customer | null; onDone:
 /** Master › Inventory › Items: every detail of an item (type, HSN, GST, costs, reorder level, drawing). Page key "products". */
 export function ProductsPage() {
   const { can } = usePermissions();
-  const [filter, setFilter] = useState({ search: '', itemType: '' });
+  const [itemType, setItemType] = useState('');
   const [search, setSearch] = useState('');
-  const fetcher = useCallback(async () => (await api.products(1, filter)).items, [filter]);
-  const { items, error, setError, load } = useList<Product>(fetcher);
+  const term = useDebounced(search.trim());
+  const fetcher = useCallback((page: number) => api.products(page, { search: term, itemType }), [term, itemType]);
+  const { items, data, page, setPage, error, setError, load } = usePagedList<Product>(fetcher);
   const [editing, setEditing] = useState<Product | 'new' | null>(null);
-  useEffect(() => { const t = setTimeout(() => setFilter((f) => (f.search === search ? f : { ...f, search })), 300); return () => clearTimeout(t); }, [search]);
   const remove = async (p: Product) => {
     if (!confirm(`Delete ${p.name}?`)) return;
     try { await api.deleteProduct(p.id); await load(); } catch (e) { setError((e as Error).message); }
@@ -155,7 +205,7 @@ export function ProductsPage() {
         <label className="grow">Search<input type="search" placeholder="Name, SKU, HSN or drawing no." value={search}
           onChange={(e) => setSearch(e.target.value)} /></label>
         <label>Item type
-          <select aria-label="Item type filter" value={filter.itemType} onChange={(e) => setFilter({ ...filter, itemType: e.target.value })}>
+          <select aria-label="Item type filter" value={itemType} onChange={(e) => setItemType(e.target.value)}>
             <option value="">All types</option>{ITEM_TYPES.map((t) => <option key={t}>{t}</option>)}
           </select>
         </label>
@@ -187,7 +237,8 @@ export function ProductsPage() {
             ))}
           </tbody>
         </table>
-        <p className="hint">Showing the first 25. Stock is the total over all stores; see Inventory › Stock Position per store.</p>
+        <ListFooter data={data} page={page} onPage={setPage} what="items" />
+        <p className="hint">Stock is the total over all stores; see Inventory › Stock Position per store.</p>
       </div>
     </>
   );

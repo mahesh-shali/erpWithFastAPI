@@ -219,7 +219,18 @@ export interface UpsertSalesInvoice {
   shippingAddress: string | null; remarks: string | null;
   lines: { customerPoLineId: string | null; productId: string | null; quantity: number; rate: number; discountPercent: number; taxRate: number | null }[];
 }
-export interface InvoicePrint { company: Company; invoice: SalesInvoice }
+/** template = the organization's own layout, rendered and sanitized on the server (null = built-in layout). */
+export interface InvoicePrint { company: Company; invoice: SalesInvoice; template?: RenderedTemplate | null; templateWarning?: string | null }
+
+// ---------- Print templates (Settings › Print templates) ----------
+export type PrintDocumentType = 'sales-invoice';
+/** html goes into a shadow root, css into a constructed stylesheet (both already sanitized by the API). */
+export interface RenderedTemplate { templateId: string | null; name: string; version: number; html: string; css: string }
+export interface PrintTemplateSummary {
+  id: string; familyId: string; documentType: PrintDocumentType; name: string; version: number; isDefault: boolean;
+  isArchived: boolean; createdAt: string;
+}
+export interface PrintTemplate extends PrintTemplateSummary { body: string }
 export type StockStatus = 'OK' | 'Reorder' | 'Short';
 export interface StockDetailsRow {
   productId: string; sku: string; name: string; itemType: string; category: string | null; uom: string | null;
@@ -296,7 +307,8 @@ export const api = {
 
   myPermissions: () => request<MyPermissions>('/api/me/permissions'),
 
-  customers: (page = 1) => request<PagedResult<Customer>>(`/api/customers?page=${page}&pageSize=25`),
+  customers: (page = 1, search = '') =>
+    request<PagedResult<Customer>>(`/api/customers?page=${page}&pageSize=25${qs({ search }).replace('?', '&')}`),
   deleteCustomer: (id: string) => request<void>(`/api/customers/${id}`, { method: 'DELETE' }),
   saveCustomer: (c: UpsertCustomer, id?: string) =>
     request<Customer>(id ? `/api/customers/${id}` : '/api/customers', { method: id ? 'PUT' : 'POST', body: json(c) }),
@@ -370,6 +382,23 @@ export const api = {
   deleteSalesInvoice: (id: string) => request<void>(`/api/sales-invoices/${id}`, { method: 'DELETE' }),
   submitSalesInvoice: (id: string) => request<SalesInvoice>(`/api/sales-invoices/${id}/submit`, { method: 'POST' }),
   cancelSalesInvoice: (id: string) => request<SalesInvoice>(`/api/sales-invoices/${id}/cancel`, { method: 'POST' }),
+
+  printTemplates: (documentType: PrintDocumentType = 'sales-invoice') =>
+    request<PrintTemplateSummary[]>(`/api/print-templates${qs({ documentType })}`),
+  printTemplate: (id: string) => request<PrintTemplate>(`/api/print-templates/${id}`),
+  printTemplateStarter: (documentType: PrintDocumentType = 'sales-invoice') =>
+    request<{ documentType: PrintDocumentType; body: string }>(`/api/print-templates/starter${qs({ documentType })}`),
+  createPrintTemplate: (t: { documentType: PrintDocumentType; name: string; body: string; makeDefault: boolean }) =>
+    request<PrintTemplate>('/api/print-templates', { method: 'POST', body: json(t) }),
+  /** Saves a new version (the result has a new id). */
+  updatePrintTemplate: (id: string, t: { name: string; body: string }) =>
+    request<PrintTemplate>(`/api/print-templates/${id}`, { method: 'PUT', body: json(t) }),
+  setDefaultPrintTemplate: (id: string) => request<PrintTemplate>(`/api/print-templates/${id}/default`, { method: 'POST' }),
+  useBuiltInPrint: (documentType: PrintDocumentType = 'sales-invoice') =>
+    request<void>(`/api/print-templates/use-built-in${qs({ documentType })}`, { method: 'POST' }),
+  archivePrintTemplate: (id: string) => request<void>(`/api/print-templates/${id}`, { method: 'DELETE' }),
+  previewPrintTemplate: (p: { documentType: PrintDocumentType; body: string; invoiceId: string | null }) =>
+    request<RenderedTemplate>('/api/print-templates/preview', { method: 'POST', body: json(p) }),
 
   stockDetails: (f: { search?: string; itemType?: string; attention?: boolean; page?: number } = {}) =>
     request<PagedResult<StockDetailsRow>>(`/api/stock/details${qs({ ...f, pageSize: 50 })}`),

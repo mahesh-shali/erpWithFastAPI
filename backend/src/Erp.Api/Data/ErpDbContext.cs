@@ -61,6 +61,7 @@ public class ErpDbContext(DbContextOptions<ErpDbContext> options, ITenantContext
     public DbSet<WorkOrderMaterial> WorkOrderMaterials => Set<WorkOrderMaterial>();
     public DbSet<SalesInvoice> SalesInvoices => Set<SalesInvoice>();
     public DbSet<SalesInvoiceLine> SalesInvoiceLines => Set<SalesInvoiceLine>();
+    public DbSet<PrintTemplate> PrintTemplates => Set<PrintTemplate>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {

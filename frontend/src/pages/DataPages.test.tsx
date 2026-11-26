@@ -22,7 +22,7 @@ describe('Customers screen', () => {
     expect(await within(table).findByText('Acme Traders')).toBeInTheDocument();
     const row = within(table).getByText('No Contact Ltd').closest('tr')!;
     expect(within(row).getAllByText('—')).toHaveLength(7); // contact, email, phone, city, state, GSTIN, country
-    expect(screen.getByText('Showing the first 25.')).toBeInTheDocument();
+    expect(screen.getByText('Showing 1–2 of 2 customers.')).toBeInTheDocument();
   });
 
   it('hides Delete without the delete right', async () => {
@@ -119,5 +119,46 @@ describe('AI Assistant screen', () => {
     renderScreen(<AssistantPage />, [perm('ai-chat', 'VR')]);
     expect(screen.getByRole('heading', { name: 'AI Assistant' })).toBeInTheDocument();
     expect(screen.getByLabelText('question')).toBeInTheDocument();
+  });
+});
+
+describe('Customers and Items: search and pages', () => {
+  it('searches customers on the server and pages through them', async () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({ id: `c${i}`, name: `Customer ${i}`, email: null, city: null, country: null }));
+    const { fetch } = renderScreen(<CustomersPage />, [perm('customers', 'VR')], [
+      ['GET', '/api/customers?page=1&pageSize=25', { items: many, page: 1, pageSize: 25, total: 30 }],
+      ['GET', '/api/customers?page=2&pageSize=25', { items: [customers[0]], page: 2, pageSize: 25, total: 30 }],
+      ['GET', '/api/customers?page=1&pageSize=25&search=Acme', paged([customers[0]])],
+    ]);
+    expect(await screen.findByText('Showing 1–25 of 30 customers.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Next ›' }));
+    expect(await screen.findByText('Showing 26–30 of 30 customers.')).toBeInTheDocument();
+    await userEvent.type(screen.getByRole('searchbox'), 'Acme');
+    await waitFor(() => expect(calls(fetch)).toContain('GET /api/customers?page=1&pageSize=25&search=Acme'));
+    expect(await screen.findByText('Showing 1–1 of 1 customers.')).toBeInTheDocument();
+  });
+
+  it('a new customer is searched for after saving, so it shows even beyond the first page', async () => {
+    const { fetch } = renderScreen(<CustomersPage />, [perm('customers', 'VRW')], [
+      ['GET', '/api/customers?page=1&pageSize=25', { items: [], page: 1, pageSize: 25, total: 300 }],
+      ['GET', '/api/customers?page=1&pageSize=25&search=Zeta+Pumps', paged([{ id: 'z', name: 'Zeta Pumps', email: null, city: null, country: null }])],
+      ['POST', '/api/customers', (b: unknown) => ({ id: 'z', ...(b as object) })],
+    ]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Add customer' }));
+    await userEvent.type(within(screen.getByRole('form', { name: 'Add customer' })).getByLabelText('Name'), 'Zeta Pumps');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByRole('cell', { name: 'Zeta Pumps' })).toBeInTheDocument();
+    expect(screen.getByRole('searchbox')).toHaveValue('Zeta Pumps');
+    expect(calls(fetch)).toContain('GET /api/customers?page=1&pageSize=25&search=Zeta+Pumps');
+  });
+
+  it('items page through the server list', async () => {
+    const { fetch } = renderScreen(<ProductsPage />, [perm('products', 'VR')], [
+      ['GET', '/api/products?page=1&pageSize=25', { items: products, page: 1, pageSize: 25, total: 40 }],
+      ['GET', '/api/products?page=2&pageSize=25', { items: products, page: 2, pageSize: 25, total: 40 }],
+    ]);
+    expect(await screen.findByText('Showing 1–25 of 40 items.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Next ›' }));
+    await waitFor(() => expect(calls(fetch)).toContain('GET /api/products?page=2&pageSize=25'));
   });
 });

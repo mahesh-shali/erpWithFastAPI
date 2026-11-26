@@ -28,6 +28,8 @@ const EMPTY: Route[] = [
   ['GET', '/api/work-orders*', { items: [], page: 1, pageSize: 25, total: 0 }],
   ['GET', '/api/sales-invoices*', { items: [], page: 1, pageSize: 25, total: 0 }],
   ['GET', '/api/sales/lookups/*', []],
+  ['GET', '/api/account', { id: 'u1', email: 'admin@demo.com', fullName: 'Demo Admin', role: 'SuperAdmin', twoFactorEnabled: false, recoveryCodesLeft: 0 }],
+  ['GET', '/api/print-templates*', []],
   ['POST', '/api/auth/logout', undefined],
 ];
 
@@ -91,6 +93,7 @@ describe('App routing', () => {
     ['/master/pages', 'Settings'], // the Pages master moved to Settings › Pages
     ['/settings', 'Settings'],
     ['/settings/security', 'Settings'],
+    ['/settings/print-templates', 'Settings'],
   ])('%s opens the %s screen', async (route, heading) => {
     renderApp(route);
     expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeInTheDocument();

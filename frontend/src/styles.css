@@ -139,7 +139,7 @@ select { padding: .55rem .6rem; border: 1px solid var(--border); border-radius: 
 .form-grid .actions { grid-column: 1 / -1; }
 .actions { display: flex; gap: .75rem; align-items: center; margin-top: .75rem; }
 .row-actions { display: flex; gap: .75rem; align-items: center; }
-button.link.danger { color: var(--danger); }
+button.link.danger { color: var(--danger); background: none; } /* beats "button.danger" below: link-style stays text-only */
 button.link.small { font-size: .8rem; margin-left: .5rem; }
 .ok { color: #1b7f3b; }
 .center { text-align: center; }
@@ -410,8 +410,37 @@ section.card, div.card + div.card, .card + section.card { margin-top: 1rem; }
   .invoice-title { text-align: left; }
   .invoice-parties { grid-template-columns: 1fr; }
 }
+/* Custom layouts (Settings › Print templates) bring their own look: no frame or padding from the app. */
+.invoice.invoice-custom { padding: 8mm; }
+.print-warning { max-width: 210mm; margin: 0 auto 1rem; }
+.print-toolbar .hint { margin: 0 auto 0 1rem; }
+.settings-card.wide { max-width: none; }
+tr.selected td { background: var(--accent-weak); }
+/* Print template editor: template on the left, live A4 preview on the right (stacked on narrow screens). */
+.template-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 1rem; margin-top: 1rem; align-items: start; }
+.template-editor { display: grid; gap: .75rem; }
+.template-editor h2 { margin: 0; font-size: 1.05rem; }
+.template-editor textarea { font-family: ui-monospace, Consolas, monospace; font-size: .8rem; line-height: 1.45; min-height: 34rem; }
+.template-preview-pane { position: sticky; top: 1rem; display: grid; gap: .5rem; }
+.preview-bar { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; }
+.preview-bar h3 { margin: 0; font-size: 1rem; margin-right: auto; }
+.preview-bar label { display: flex; align-items: center; gap: .4rem; }
+.preview-problem { margin: 0; }
+.paper-scroll { background: #e5e7eb; border-radius: 8px; padding: 1rem; overflow: auto; max-height: 78vh; }
+.paper { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; padding: 10mm; box-shadow: 0 2px 10px rgba(15, 23, 42, .15); }
+.paper.zoom-50 { zoom: .5; }
+.paper.zoom-75 { zoom: .75; }
+@media (max-width: 1100px) {
+  .template-workspace { grid-template-columns: minmax(0, 1fr); }
+  .template-preview-pane { position: static; }
+}
+.template-vars code { font-size: .8rem; }
+.template-vars dl { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 1rem; margin: .5rem 0 0; }
+.template-vars dd { margin: 0; color: var(--muted); font-size: .85rem; }
+.template-vars dl > div { display: contents; }
 @media print {
   @page { size: A4; margin: 10mm; }
+  .invoice.invoice-custom { padding: 0; }
   body, .print-page { background: #fff; padding: 0; }
   .no-print { display: none !important; }
   .invoice { border: 0; padding: 0; max-width: none; }

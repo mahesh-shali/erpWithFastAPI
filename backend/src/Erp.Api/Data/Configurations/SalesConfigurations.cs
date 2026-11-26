@@ -136,6 +136,30 @@ public sealed class SalesInvoiceConfiguration : IEntityTypeConfiguration<SalesIn
         e.HasOne(x => x.CustomerPo).WithMany().HasForeignKey(x => x.CustomerPoId).OnDelete(DeleteBehavior.Restrict);
         e.HasOne(x => x.Store).WithMany().HasForeignKey(x => x.StoreId).OnDelete(DeleteBehavior.Restrict);
         e.HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.SalesInvoiceId).OnDelete(DeleteBehavior.Cascade);
+        e.HasOne<PrintTemplate>().WithMany().HasForeignKey(x => x.PrintTemplateId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class PrintTemplateConfiguration : IEntityTypeConfiguration<PrintTemplate>
+{
+    public void Configure(EntityTypeBuilder<PrintTemplate> e)
+    {
+        e.ToTable(t =>
+        {
+            t.HasCheckConstraint("ck_print_templates_document_type", In("document_type", PrintDocumentType.All));
+            t.HasCheckConstraint("ck_print_templates_version", "version >= 1");
+            t.HasCheckConstraint("ck_print_templates_default_current", "NOT (is_default AND is_archived)");
+        });
+        e.Property(x => x.Id).HasDefaultValueSql(Sql.NewUuid);
+        e.Property(x => x.DocumentType).HasMaxLength(30);
+        e.Property(x => x.Name).HasMaxLength(100);
+        e.Property(x => x.Body).HasMaxLength(Erp.Api.Services.PrintTemplateRules.MaxBodyLength);
+        e.Property(x => x.CreatedAt).HasDefaultValueSql(Sql.Now);
+        e.HasIndex(x => new { x.OrganizationId, x.FamilyId, x.Version }).IsUnique().HasDatabaseName("ux_print_templates_family_version");
+        // One default per organization and document type (also stops two concurrent "set default" calls).
+        e.HasIndex(x => new { x.OrganizationId, x.DocumentType }).IsUnique().HasFilter("is_default")
+            .HasDatabaseName("ux_print_templates_org_default");
+        e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

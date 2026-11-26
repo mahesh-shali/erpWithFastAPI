@@ -6,6 +6,7 @@ import { settingsApi, type AccountInfo, type TwoFactorSetup } from '../../api/se
 import { useAuth } from '../../auth/AuthContext';
 import { usePermissions } from '../../auth/PermissionsContext';
 import { PagesPage } from '../master/PagesPage';
+import { PrintTemplatesTab } from './PrintTemplatesTab';
 
 const message = (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback);
 
@@ -25,6 +26,8 @@ export function SettingsPage() {
 
   // Company details (printed on invoices) are changed by administrators only; the API checks the role too.
   const canEditCompany = account?.role === 'SuperAdmin' || account?.role === 'Admin';
+  // The invoice layout is printed on everything the organization issues: the SuperAdmin alone owns it (the API checks too).
+  const canEditPrintTemplates = account?.role === 'SuperAdmin';
 
   const reload = useCallback(async () => {
     try {
@@ -41,10 +44,11 @@ export function SettingsPage() {
     ...(canEditUsers ? [['users', 'Users'] as [string, string]] : []),
     ...(canSeePages ? [['pages', 'Pages'] as [string, string]] : []),
     ...(canEditCompany ? [['company', 'Company'] as [string, string]] : []),
+    ...(canEditPrintTemplates ? [['print-templates', 'Print templates'] as [string, string]] : []),
   ];
   const rightsTab = tab === 'users' || tab === 'pages';
   // Wait for the rights (or, for Company, the account's role) before deciding that a tab is not allowed.
-  if (!tabs.some(([k]) => k === tab) && !(rightsTab && loading) && !(tab === 'company' && !account && !error))
+  if (!tabs.some(([k]) => k === tab) && !(rightsTab && loading) && !((tab === 'company' || tab === 'print-templates') && !account && !error))
     return <Navigate to="/settings" replace />;
 
   return (
@@ -64,6 +68,7 @@ export function SettingsPage() {
           {tab === 'password' && <PasswordTab />}
           {tab === 'security' && <TwoFactorTab account={account} onChanged={reload} />}
           {tab === 'company' && canEditCompany && <CompanyTab />}
+          {tab === 'print-templates' && canEditPrintTemplates && <PrintTemplatesTab />}
         </>
       )}
     </>
