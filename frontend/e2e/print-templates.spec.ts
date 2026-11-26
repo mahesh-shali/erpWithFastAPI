@@ -18,7 +18,7 @@ const accept = (page: Page) => page.once('dialog', (d) => d.accept());
 /** Settings › Print templates at Sales & Labour Work › <submodule> (Orders = Customer P.O., Invoices = Sales Invoices). */
 async function openPrintPage(page: Page, submodule: 'Orders' | 'Invoices') {
   await page.goto('/settings/print-templates');
-  await page.getByRole('combobox', { name: 'Module' }).selectOption({ label: 'Sales & Labour Work' });
+  await page.getByRole('combobox', { name: 'Module', exact: true }).selectOption({ label: 'Sales & Labour Work' });
   await page.getByRole('combobox', { name: 'Submodule' }).selectOption({ label: submodule });
   await expect(page.getByLabel('Selected page')).toContainText(`Sales & Labour Work › ${submodule} ›`);
 }
@@ -69,7 +69,7 @@ test('own invoice layout: starter → preview → default → print → back to 
   await page.getByRole('button', { name: 'Use built-in layout' }).click();
   await expect(page.locator('strong', { hasText: 'the built-in layout' })).toBeVisible();
   await page.goto(`${invoiceUrl}/print`);
-  await expect(page.getByText('Built-in layout')).toBeVisible();
+  await expect(page.getByText('Built-in layout', { exact: true })).toBeVisible();
   await expect(page.getByRole('table', { name: 'Invoice lines' })).toBeVisible();
 
   await openPrintPage(page, 'Invoices');
