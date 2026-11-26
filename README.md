@@ -250,6 +250,8 @@ Current migrations:
    and company fields on `organizations`. Pages: **Customer P.O.** (53), **Stock Details** (52); Sales Invoices and Work
    Orders become implemented; Products is renamed **Items** and moves to Master › Inventory (`/master/items`).
 11. `ExposeSalesFlowToAi`: row-level security + `GRANT SELECT … TO erp_ai_ro` on those six tables.
+12. `AddPrintTemplates`: `print_templates` (versioned, one default per organization and document type) and
+   `sales_invoices.print_template_id` (the version frozen when an invoice is issued; null = built-in layout).
 
 ### Changing the schema
 
@@ -709,6 +711,31 @@ tables; `ai-service/app/schema.py` describes them and `sql_guard.py` maps them t
 `sales_invoices`, `sales_invoice_lines`), so people only get answers about documents they can open.
 
 The desktop app (1.5.0) has the same screens; the invoice print uses the system print dialog.
+
+### Custom print templates
+
+Organizations whose invoice must follow their own format write it in **Settings › Print templates** (SuperAdmin only;
+Admins keep Settings › Company):
+HTML and CSS with [Scriban](https://github.com/scriban/scriban) placeholders, starting from a copy of the built-in
+layout (`{{ invoice.number }}`, `{{ for line in lines }}…{{ end }}`, `{{ invoice.grand_total | fmt.money }}`; the tab
+lists every variable). A **live preview** next to the editor re-renders a moment after you stop typing, with sample data
+or a real invoice and a zoom control; if the template breaks, the last good preview stays and the error is shown. One
+template per organization is the default (none = built-in layout).
+
+- **Versions.** Saving creates version n+1 and archives the previous one. Issuing an invoice records the version in use,
+  so a reprint never changes; drafts print with the current default. A template that fails to render falls back to the
+  built-in layout with a warning on screen.
+- **Safety.** Rendering happens on the server: values are HTML-escaped first, Scriban runs without file access and with
+  loop, recursion, size and time limits, and the output is sanitized (no scripts, event handlers, frames, forms, links or
+  outside URLs; logos as embedded `data:image/…` only). The browser shows it in a shadow root with a constructed
+  stylesheet, which works under the strict CSP of both the web app and the desktop app without loosening either.
+
+| Method & path | Who |
+|---|---|
+| `GET /api/print-templates?documentType&includeArchived`, `GET /{id}`, `GET /starter` | SuperAdmin |
+| `POST /api/print-templates` · `PUT /{id}` (new version) · `POST /{id}/default` · `POST /use-built-in` · `DELETE /{id}` (archive) | SuperAdmin |
+| `POST /api/print-templates/preview` (sample data or `invoiceId`) | SuperAdmin |
+| `GET /api/sales-invoices/{id}/print` → `template` (rendered) or `templateWarning` | sales-invoices read |
 
 ## Messages: end-to-end encrypted chat
 

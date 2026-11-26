@@ -146,6 +146,8 @@ public class SalesInvoice : ITenantOwned
     public decimal GrandTotal { get; set; }
     /// <summary>Cost of the goods sold (valuation they left the store at), set on submit.</summary>
     public decimal CostOfGoods { get; set; }
+    /// <summary>The print template version frozen when the invoice was issued (null = the built-in layout).</summary>
+    public Guid? PrintTemplateId { get; set; }
     public Guid CreatedByUserId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? SubmittedAt { get; set; }

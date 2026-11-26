@@ -595,5 +595,36 @@
         "auto": "e2e sales.spec.ts › User role; SalesFlowTests › Users raise pos"
       }
     ]
+  },
+  {
+    "screen": "Settings › Print templates",
+    "login": "admin@demo.com",
+    "url": "http://localhost:5173/settings/print-templates",
+    "checks": [
+      {
+        "title": "Own layout from the starter",
+        "steps": ["Sign in as the SuperAdmin; open Settings (gear) › Print templates", "New template: change the heading, add a logo as data:image/png;base64,…", "Watch the live preview on the right, then Save and use for invoices"],
+        "expect": "The live preview updates about half a second after you stop typing; a broken template keeps the last good preview and shows the error. After saving, invoices print with it (version 1).",
+        "auto": "PrintTemplatesTab.test.tsx; PrintTemplatesTests; e2e print-templates.spec.ts"
+      },
+      {
+        "title": "Unsafe content is removed",
+        "steps": ["Add <script>alert(1)</script>, an onclick attribute and an image from https://… to the template", "Preview"],
+        "expect": "No alert; the script, the handler and the outside image are gone from the preview and the print.",
+        "auto": "PrintTemplateRendererTests; e2e print-templates.spec.ts"
+      },
+      {
+        "title": "Issued invoices keep their version",
+        "steps": ["Issue an invoice and print it", "Edit the template (Save new version)", "Print the same invoice again, and a new draft"],
+        "expect": "The issued invoice still prints with the old version; the draft uses the new one. Use built-in layout switches drafts back.",
+        "auto": "PrintTemplatesTests › Invoices print with the default template"
+      },
+      {
+        "title": "SuperAdmin only",
+        "steps": ["Sign in as manager@demo.com (Admin), lead@demo.com (Manager) or staff@demo.com", "Open Settings"],
+        "expect": "No Print templates tab (Admins still have Company); invoices they may read still print with the organization's layout.",
+        "auto": "PrintTemplatesTests › Only the superadmin manages templates; e2e print-templates.spec.ts › Admin role"
+      }
+    ]
   }
 ]

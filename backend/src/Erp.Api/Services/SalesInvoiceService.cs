@@ -23,8 +23,8 @@ public interface ISalesInvoiceService
 /// Sales invoice: Draft → Submitted (the items leave the store at the moving-average rate and the P.O. lines'
 /// invoiced quantity goes up; the P.O. completes when everything is invoiced) → Cancelled (reversed).
 /// </summary>
-public sealed class SalesInvoiceService(ErpDbContext db, IStockPosting posting, ITenantContext tenant, TimeProvider clock)
-    : ISalesInvoiceService
+public sealed class SalesInvoiceService(ErpDbContext db, IStockPosting posting, ITenantContext tenant, TimeProvider clock,
+    IPrintTemplateService templates) : ISalesInvoiceService
 {
     private DateOnly Today => DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
 
@@ -54,10 +54,28 @@ public sealed class SalesInvoiceService(ErpDbContext db, IStockPosting posting, 
         return ToDto(await LoadAsync(id, ct), company.State);
     }
 
+    /// <summary>
+    /// Issued and cancelled invoices print with the template version frozen when they were issued (none = built-in);
+    /// drafts with the organization's current default. A template that fails to render falls back to the built-in layout.
+    /// </summary>
     public async Task<InvoicePrintDto> PrintAsync(Guid id, CancellationToken ct)
     {
         var company = await CompanyAsync(ct);
-        return new InvoicePrintDto(company, ToDto(await LoadAsync(id, ct), company.State));
+        var entity = await LoadAsync(id, ct);
+        var dto = ToDto(entity, company.State);
+        var template = entity.Status == DocStatus.Draft ? await templates.DefaultAsync(PrintDocumentType.SalesInvoice, ct)
+            : entity.PrintTemplateId is { } frozen ? await templates.FindAsync(frozen, ct) : null;
+        if (template is null) return new InvoicePrintDto(company, dto);
+        try
+        {
+            var r = PrintTemplateRenderer.Render(template.Body, PrintTemplateRenderer.InvoiceModel(company, dto));
+            return new InvoicePrintDto(company, dto, new RenderedTemplateDto(template.Id, template.Name, template.Version, r.Html, r.Css));
+        }
+        catch (DomainException e)
+        {
+            return new InvoicePrintDto(company, dto, null,
+                $"Template \"{template.Name}\" (version {template.Version}) could not be used: {e.Message} Printed with the built-in layout.");
+        }
     }
 
     public async Task<SalesInvoiceDto> CreateAsync(UpsertSalesInvoiceRequest req, CancellationToken ct)
@@ -142,6 +160,8 @@ public sealed class SalesInvoiceService(ErpDbContext db, IStockPosting posting, 
                 new Voucher(VoucherType.SalesInvoice, inv.Id, inv.Number, inv.InvoiceDate), ct);
             for (var i = 0; i < lines.Count; i++) lines[i].CostRate = posted[i].Rate;
             inv.CostOfGoods = posted.Sum(p => Math.Abs(p.ValueChange));
+            // Freeze the print layout: later template edits never change how an issued invoice reprints.
+            inv.PrintTemplateId = (await templates.DefaultAsync(PrintDocumentType.SalesInvoice, ct))?.Id;
             inv.Status = DocStatus.Submitted;
             inv.SubmittedAt = clock.GetUtcNow().UtcDateTime;
             await db.SaveChangesAsync(ct);

@@ -5,6 +5,7 @@ import {
   type UpsertSalesInvoice,
 } from '../../api/client';
 import { usePermissions } from '../../auth/PermissionsContext';
+import { TemplateView } from '../../components/TemplateView';
 import { errorText, fmtDate, inr, num, today } from '../inventory/format';
 import { DocPill, INVOICE_ROUTE, PO_ROUTE, Pager, useDocAction, useSalesLookups } from './shared';
 
@@ -301,14 +302,31 @@ export function InvoicePrintPage() {
 
   if (error) return <p role="alert" className="error">{error}</p>;
   if (!data) return <p className="hint">Loading…</p>;
-  const { company: co, invoice: inv } = data;
+  const { company: co, invoice: inv, template } = data;
   const half = (n: number) => r2(n / 2);
+  const toolbar = (
+    <div className="print-toolbar no-print">
+      <Link to={`${INVOICE_ROUTE}/${inv.id}`}>‹ Back to {inv.number}</Link>
+      <span className="hint">{template ? `Layout: ${template.name} (version ${template.version})` : 'Built-in layout'}</span>
+      <button onClick={() => window.print()}>Print</button>
+    </div>
+  );
+  const warning = data.templateWarning && <p role="alert" className="error no-print print-warning">{data.templateWarning}</p>;
+  if (template) {
+    // The organization's own layout (Settings › Print templates), rendered and sanitized by the API.
+    return (
+      <div className="print-page">
+        {toolbar}
+        <article className="invoice invoice-custom" aria-label="Tax invoice">
+          <TemplateView html={template.html} css={template.css} label={`${inv.number} (${template.name})`} />
+        </article>
+      </div>
+    );
+  }
   return (
     <div className="print-page">
-      <div className="print-toolbar no-print">
-        <Link to={`${INVOICE_ROUTE}/${inv.id}`}>‹ Back to {inv.number}</Link>
-        <button onClick={() => window.print()}>Print</button>
-      </div>
+      {toolbar}
+      {warning}
       <article className="invoice" aria-label="Tax invoice">
         {inv.status !== 'Submitted' && <div className="watermark" aria-hidden>{inv.status === 'Draft' ? 'DRAFT' : 'CANCELLED'}</div>}
         <header className="invoice-head">

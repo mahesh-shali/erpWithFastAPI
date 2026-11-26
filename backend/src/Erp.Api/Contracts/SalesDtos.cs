@@ -97,8 +97,30 @@ public record SalesInvoiceDto(Guid Id, string Number, string Status, DateOnly In
     DateTime CreatedAt, DateTime? SubmittedAt, DateTime? CancelledAt, IReadOnlyList<SalesInvoiceLineDto> Lines);
 public record SalesInvoiceSummaryDto(Guid Id, string Number, string Status, DateOnly InvoiceDate, DateOnly DueDate,
     string CustomerName, string? CustomerPoNumber, int LineCount, decimal GrandTotal, DateTime CreatedAt);
-/// <summary>Everything the print layout needs in one call.</summary>
-public record InvoicePrintDto(CompanyDto Company, SalesInvoiceDto Invoice);
+/// <summary>
+/// Everything the print layout needs in one call. Template = the organization's custom layout, already rendered and
+/// sanitized (null = use the built-in layout). TemplateWarning explains a fall-back to the built-in layout.
+/// </summary>
+public record InvoicePrintDto(CompanyDto Company, SalesInvoiceDto Invoice, RenderedTemplateDto? Template = null,
+    string? TemplateWarning = null);
+
+// ---------- Print templates (Settings > Print templates) ----------
+/// <param name="Html">Sanitized HTML for a shadow root; <paramref name="Css"/> goes into a constructed stylesheet.</param>
+public record RenderedTemplateDto(Guid? TemplateId, string Name, int Version, string Html, string Css);
+public record PrintTemplateSummaryDto(Guid Id, Guid FamilyId, string DocumentType, string Name, int Version, bool IsDefault,
+    bool IsArchived, DateTime CreatedAt);
+public record PrintTemplateDto(Guid Id, Guid FamilyId, string DocumentType, string Name, int Version, bool IsDefault,
+    bool IsArchived, DateTime CreatedAt, string Body);
+public record CreatePrintTemplateRequest(
+    [Required, MaxLength(30)] string DocumentType,
+    [Required, MaxLength(100)] string Name,
+    [Required, MaxLength(200_000)] string Body,
+    bool MakeDefault = false);
+public record UpdatePrintTemplateRequest([Required, MaxLength(100)] string Name, [Required, MaxLength(200_000)] string Body);
+/// <param name="InvoiceId">Preview with this invoice's data; null = sample data.</param>
+public record PreviewPrintTemplateRequest([Required, MaxLength(30)] string DocumentType, [Required, MaxLength(200_000)] string Body,
+    Guid? InvoiceId = null);
+public record PrintTemplateStarterDto(string DocumentType, string Body);
 
 // ---------- Stock details (Inventory > Stock Position > Stock Details) ----------
 /// <param name="Committed">Still to be invoiced on confirmed customer P.O.s.</param>
