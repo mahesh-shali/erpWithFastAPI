@@ -71,6 +71,10 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IStockPosting, StockPosting>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<ICustomerPoService, CustomerPoService>();
+builder.Services.AddScoped<IWorkOrderService, WorkOrderService>();
+builder.Services.AddScoped<ISalesInvoiceService, SalesInvoiceService>();
+builder.Services.AddScoped<IStockDetailsService, StockDetailsService>();
 // End-to-end encrypted chat: ciphertext store + live event fan-out (Redis pub/sub across API replicas)
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddSingleton<ChatEventBus>();

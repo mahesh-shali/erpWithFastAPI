@@ -15,7 +15,12 @@ namespace Erp.Api.Services;
 /// or an explicit rate (used when reversing a receipt, so exactly the value that came in goes out).
 /// </param>
 /// <param name="RateFromPrevious">Incoming at the rate of the previous movement in the batch (transfers).</param>
-public sealed record StockMovement(Guid ProductId, Guid StoreId, int Quantity, decimal? Rate = null, bool RateFromPrevious = false);
+/// <param name="RateFromConsumed">
+/// Incoming at (value of every outgoing movement before it in the batch + <paramref name="AddedCost"/>) / quantity:
+/// a work order's finished item, valued at the raw materials it consumed plus labour/overhead.
+/// </param>
+public sealed record StockMovement(Guid ProductId, Guid StoreId, int Quantity, decimal? Rate = null, bool RateFromPrevious = false,
+    bool RateFromConsumed = false, decimal AddedCost = 0);
 
 /// <summary>The result of applying one movement: what it was valued at and the balance afterwards.</summary>
 public sealed record PostedMovement(StockMovement Movement, decimal Rate, decimal ValueChange, int QtyAfter, decimal ValuationRate, decimal ValueAfter);
@@ -52,6 +57,14 @@ public static class Valuation
             var newRate = qtyAfter == 0 ? valuationRate : rate is null ? valuationRate : Math.Round(valueAfter / qtyAfter, 4);
             return (r, valueChange, qtyAfter, newRate, valueAfter);
         }
+    }
+
+    /// <summary>Per-unit cost of produced goods: (consumed material value + added cost) / quantity, 4 decimals.</summary>
+    public static decimal ProducedRate(decimal consumedValue, decimal addedCost, int quantity)
+    {
+        if (quantity <= 0) throw new ArgumentOutOfRangeException(nameof(quantity));
+        if (consumedValue < 0 || addedCost < 0) throw new ArgumentException("Costs can't be negative.");
+        return Math.Round((consumedValue + addedCost) / quantity, 4);
     }
 }
 
@@ -145,7 +158,9 @@ public sealed class StockPosting(ErpDbContext db, ITenantContext tenant, TimePro
         foreach (var m in movements)
         {
             var b = balances[(m.ProductId, m.StoreId)];
-            var rate = m.RateFromPrevious ? posted[^1].Rate : m.Rate;
+            var rate = m.RateFromPrevious ? posted[^1].Rate
+                : m.RateFromConsumed ? Valuation.ProducedRate(-posted.Where(p => p.ValueChange < 0).Sum(p => p.ValueChange), m.AddedCost, m.Quantity)
+                : m.Rate;
             (decimal Rate, decimal ValueChange, int QtyAfter, decimal ValuationRate, decimal ValueAfter) v;
             try { v = Valuation.Apply(b.Quantity, b.ValuationRate, b.StockValue, m.Quantity, rate); }
             catch (DomainException)

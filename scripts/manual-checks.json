@@ -161,21 +161,27 @@
     ]
   },
   {
-    "screen": "Products",
+    "screen": "Items",
     "login": "admin@demo.com",
-    "url": "http://localhost:5173/master/products",
+    "url": "http://localhost:5173/master/items",
     "checks": [
       {
         "title": "List with prices and stock",
-        "steps": ["Open Master › Products › Products"],
-        "expect": "SKU, Name, Category, Price in ₹ and Stock for 25 products.",
-        "auto": "DataPages.test.tsx › Products screen"
+        "steps": ["Open Master › Inventory › Items"],
+        "expect": "SKU, Name, Type, HSN, Unit, Price in ₹, GST %, Stock and Reorder level for 25 items. /master/products redirects here.",
+        "auto": "DataPages.test.tsx › Products screen; e2e screens.spec.ts › Items"
       },
       {
-        "title": "Delete",
-        "steps": ["Delete a test product and confirm"],
-        "expect": "The row disappears and the list reloads.",
-        "auto": "BusinessApiTests › Products create update list by category and delete"
+        "title": "All item details",
+        "steps": ["Add item: SKU, Name, Type Raw Material, HSN 7407, GST 18, Standard cost 50, Reorder level 20, Lead time 7, Drawing no.", "Save, then Edit it"],
+        "expect": "Every field comes back as entered; search by HSN or drawing no. finds it; the Type filter narrows the list.",
+        "auto": "SalesFlowTests › Items keep every detail"
+      },
+      {
+        "title": "Deactivate instead of delete",
+        "steps": ["Delete an item that is on a P.O. or invoice", "Edit it and untick Active"],
+        "expect": "Delete is refused (\"Deactivate it instead\"); an inactive item is greyed out and no longer offered on new documents.",
+        "auto": "SalesFlowTests › inactive items leave the pickers"
       }
     ]
   },
@@ -205,7 +211,7 @@
     "checks": [
       {
         "title": "Main Store exists",
-        "steps": ["Open Master › Inventory Setup › Stores"],
+        "steps": ["Open Master › Inventory › Stores"],
         "expect": "Main Store (code MAIN) is listed with a Default tag and no Delete button.",
         "auto": "InventoryTests › Every organization gets a Main Store"
       },
@@ -217,7 +223,7 @@
       },
       {
         "title": "Units of measure",
-        "steps": ["Open Master › Inventory Setup › Units of Measure", "Add NOS / Numbers", "Edit a product (Master › Products) and set Unit = NOS"],
+        "steps": ["Open Master › Inventory › Units of Measure", "Add NOS / Numbers", "Edit a product (Master › Inventory › Items) and set Unit = NOS"],
         "expect": "The product list shows NOS in the Unit column; deleting NOS is refused while a product uses it.",
         "auto": "InventoryTests › Units of measure crud"
       }
@@ -505,6 +511,88 @@
         "steps": ["Turn on 2FA for staff@demo.com", "As admin@demo.com: Settings › Users › Reset 2FA on Demo Staff"],
         "expect": "Staff is signed out and can sign in with the password only.",
         "auto": "TwoFactorAndSettingsTests › A_password_reset_signs_the_user_out_and_a_2FA_reset"
+      }
+    ]
+  },
+  {
+    "screen": "Sales flow › Customer P.O.",
+    "login": "admin@demo.com",
+    "url": "http://localhost:5173/sales/customer-po",
+    "checks": [
+      {
+        "title": "Raise and confirm a P.O.",
+        "steps": ["Open Sales & Labour Work › Orders › Customer P.O.", "New P.O.: customer, their P.O. no., item × 10", "Check rate and GST come from the item", "Save draft, then Confirm P.O."],
+        "expect": "Number CPO-00001…; totals include GST; after Confirm the lines show Produced / Invoiced / In stock and a Produce link.",
+        "auto": "SalesPages.test.tsx › Customer P.O. screens; SalesFlowTests › Po to production to invoice"
+      },
+      {
+        "title": "Guards",
+        "steps": ["Enter the same customer P.O. no. again for that customer", "Try Cancel P.O. after a work order is completed"],
+        "expect": "Duplicate is refused; Cancel is refused while it has work orders or invoices.",
+        "auto": "SalesFlowTests › Cancelling a work order…"
+      }
+    ]
+  },
+  {
+    "screen": "Sales flow › Work orders (production)",
+    "login": "admin@demo.com",
+    "url": "http://localhost:5173/production/work-orders",
+    "checks": [
+      {
+        "title": "Produce for a P.O. line",
+        "steps": ["On a confirmed P.O. click Produce on a line", "Add a raw material and a labour & overhead cost", "Save draft, Complete production"],
+        "expect": "Quantity defaults to what is still to produce; after completing, Materials + Labour = Total and Cost per unit are shown; the item's stock goes up, the material's down.",
+        "auto": "SalesPages.test.tsx › Work order screens; SalesFlowTests › Production for stock…"
+      },
+      {
+        "title": "No over-production, cancel reverses",
+        "steps": ["Try to complete more than is left on the line", "Cancel a completed work order"],
+        "expect": "Refused with \"Only N more can be produced\"; cancel returns the materials and removes the produced stock (refused once it has been invoiced).",
+        "auto": "SalesFlowTests › Cancelling a work order returns materials"
+      }
+    ]
+  },
+  {
+    "screen": "Sales flow › Sales invoices & print",
+    "login": "admin@demo.com",
+    "url": "http://localhost:5173/sales/invoices",
+    "checks": [
+      {
+        "title": "Invoice a P.O.",
+        "steps": ["On a confirmed P.O. click Create invoice", "Save draft, Issue invoice"],
+        "expect": "Lines still to invoice are filled in; due date = date + customer's payment terms; issuing takes the stock out; when all lines are invoiced the P.O. shows Completed.",
+        "auto": "SalesPages.test.tsx › Sales invoice screens; e2e sales.spec.ts"
+      },
+      {
+        "title": "Print",
+        "steps": ["Set Settings › Company (name, address, state, GSTIN)", "Open an invoice and click Print", "Use the browser's Print / Save as PDF"],
+        "expect": "A4 tax invoice: company and GSTIN, bill-to/ship-to, HSN, GST per line, CGST+SGST (same state) or IGST (other state), round off, amount in words; drafts show a DRAFT watermark; no menu on paper.",
+        "auto": "SalesPages.test.tsx › prints a tax invoice"
+      },
+      {
+        "title": "Cancel",
+        "steps": ["Cancel an issued invoice"],
+        "expect": "The stock comes back and a completed P.O. re-opens (Confirmed).",
+        "auto": "SalesFlowTests › Po to production to invoice"
+      }
+    ]
+  },
+  {
+    "screen": "Inventory › Stock details",
+    "login": "admin@demo.com",
+    "url": "http://localhost:5173/inventory/stock-details",
+    "checks": [
+      {
+        "title": "On hand vs committed",
+        "steps": ["Open Inventory › Stock Position › Stock Details", "Tick Needs attention only", "Open an item"],
+        "expect": "Available = On hand − Committed (confirmed P.O.s not yet invoiced); status OK / Reorder / Short; the item page shows stores, P.O.s, planned work orders and recent movements with links.",
+        "auto": "SalesPages.test.tsx › Stock details screens; SalesFlowTests"
+      },
+      {
+        "title": "User role",
+        "steps": ["Sign in as staff@demo.com"],
+        "expect": "Customer P.O. and Stock Details open; Sales Invoices and Work Orders say No access.",
+        "auto": "e2e sales.spec.ts › User role; SalesFlowTests › Users raise pos"
       }
     ]
   }

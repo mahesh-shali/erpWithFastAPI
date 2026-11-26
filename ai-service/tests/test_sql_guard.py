@@ -81,3 +81,15 @@ def test_allowed_tables_narrow_per_user():
 def test_internal_security_functions_cannot_be_called(fn):
     with pytest.raises(SqlRejected):
         validate_sql(f"SELECT {fn}('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000000')")
+
+
+def test_sales_flow_tables_follow_their_pages():
+    from app.sql_guard import tables_for_pages
+    assert tables_for_pages({"customer-pos"}) == {"customer_pos", "customer_po_lines"}
+    assert tables_for_pages({"work-orders"}) == {"work_orders", "work_order_materials"}
+    assert tables_for_pages({"sales-invoices"}) == {"sales_invoices", "sales_invoice_lines"}
+    allowed = tables_for_pages({"sales-invoices", "customers"})
+    validate_sql("SELECT c.name, sum(i.grand_total) FROM sales_invoices i JOIN customers c ON c.id = i.customer_id "
+                 "WHERE i.status = 'Submitted' GROUP BY c.name", allowed_tables=allowed)
+    with pytest.raises(SqlRejected, match="no permission"):
+        validate_sql("SELECT count(*) FROM work_orders", allowed_tables=allowed)

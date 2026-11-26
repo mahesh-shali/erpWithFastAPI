@@ -360,3 +360,60 @@ tr.reversal td { color: var(--muted); }
   .back { display: inline; }
   .bubble { max-width: 88%; }
 }
+
+/* ---- Sales flow: Customer P.O. -> Work Order -> Sales Invoice ---- */
+textarea { width: 100%; padding: .6rem .75rem; border: 1px solid var(--border); border-radius: 8px; font: inherit; resize: vertical; }
+fieldset:disabled textarea { background: var(--bg); color: var(--text); }
+.status-confirmed { background: var(--accent-weak); color: var(--accent); }
+.status-completed { background: #e7f5e7; color: #006300; }
+.stock-ok { background: #e7f5e7; color: #006300; }
+.stock-reorder { background: #fff4e5; color: #9a5b00; }
+.stock-short { background: #fdecea; color: var(--danger); }
+strong.out { color: var(--danger); }
+.doc-links { margin: 0 0 1rem; padding-left: 1.1rem; display: grid; gap: .3rem; }
+.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr) minmax(150px, 1fr)); gap: .35rem 1rem; margin: 0; }
+.facts dt { color: var(--muted); font-size: .85rem; }
+.facts dd { margin: 0; }
+section.card, div.card + div.card, .card + section.card { margin-top: 1rem; }
+
+/* Printable tax invoice (A4). The toolbar is hidden on paper. */
+.print-page { background: var(--bg); min-height: 100vh; padding: 1rem; }
+.print-toolbar { max-width: 210mm; margin: 0 auto 1rem; display: flex; justify-content: space-between; align-items: center; }
+.invoice { position: relative; max-width: 210mm; margin: 0 auto; background: #fff; color: #111; padding: 12mm; border: 1px solid var(--border);
+           font-size: .85rem; overflow: hidden; }
+.invoice h1 { margin: 0 0 .25rem; font-size: 1.35rem; }
+.invoice h2 { margin: 0 0 .5rem; font-size: 1.1rem; text-transform: uppercase; letter-spacing: .06em; }
+.invoice h3 { margin: 0 0 .3rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: #555; }
+.invoice p { margin: .1rem 0; }
+.invoice .pre { white-space: pre-line; }
+.invoice-head { display: flex; justify-content: space-between; gap: 1.5rem; border-bottom: 2px solid #111; padding-bottom: .75rem; }
+.invoice-title { text-align: right; }
+.invoice-title dl, .invoice-totals { display: grid; grid-template-columns: auto auto; gap: .15rem 1rem; margin: 0; justify-content: end; }
+.invoice-title dt, .invoice-totals dt { color: #555; }
+.invoice-title dd, .invoice-totals dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.invoice-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: .75rem 0; border-bottom: 1px solid #ccc; }
+.invoice table { background: transparent; font-size: .8rem; }
+.invoice-lines { margin: .75rem 0; }
+.invoice-lines th { background: #f2f2f2; }
+.invoice-lines th, .invoice-lines td, .tax-summary th, .tax-summary td { border: 1px solid #ccc; padding: .3rem .4rem; }
+.invoice-foot { display: flex; justify-content: space-between; gap: 1.5rem; align-items: flex-start; }
+.tax-summary { width: auto; }
+.invoice-totals .grand { font-size: 1.05rem; font-weight: 700; color: #111; border-top: 1px solid #111; padding-top: .25rem; }
+.invoice .words { margin-top: .75rem; }
+.invoice-sign { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 2.5rem; }
+.invoice-sign .sign-line { margin-top: 2.5rem; border-top: 1px solid #111; padding-top: .2rem; text-align: center; }
+.watermark { position: absolute; inset: 0; display: grid; place-items: center; font-size: 6rem; font-weight: 800; color: rgba(198, 40, 40, .12);
+             transform: rotate(-25deg); pointer-events: none; }
+@media (max-width: 700px) {
+  .invoice { padding: 1rem; }
+  .invoice-head, .invoice-foot { flex-direction: column; }
+  .invoice-title { text-align: left; }
+  .invoice-parties { grid-template-columns: 1fr; }
+}
+@media print {
+  @page { size: A4; margin: 10mm; }
+  body, .print-page { background: #fff; padding: 0; }
+  .no-print { display: none !important; }
+  .invoice { border: 0; padding: 0; max-width: none; }
+  .invoice-lines tr { break-inside: avoid; }
+}

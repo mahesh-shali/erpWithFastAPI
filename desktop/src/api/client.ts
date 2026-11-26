@@ -133,8 +133,150 @@ export interface SetRightsItem { pageId: number; useDefault: boolean; rights: Pa
 
 // ---------- Business data ----------
 export interface PagedResult<T> { items: T[]; page: number; pageSize: number; total: number }
-export interface Customer { id: string; name: string; email: string | null; city: string | null; country: string | null }
-export interface Product { id: string; sku: string; name: string; category: string | null; unitPrice: number; stockQuantity: number }
+export interface Customer {
+  id: string; name: string; email: string | null; city: string | null; country: string | null;
+  phone?: string | null; contactPerson?: string | null; taxId?: string | null; address?: string | null; state?: string | null;
+  postalCode?: string | null; paymentTermsDays?: number;
+}
+export type UpsertCustomer = Omit<Customer, 'id'>;
+export const ITEM_TYPES = ['Finished Good', 'Semi-Finished', 'Raw Material', 'Consumable'] as const;
+export type ItemType = typeof ITEM_TYPES[number];
+/** An item (page key "products"). unitPrice is the sales price. */
+export interface Product {
+  id: string; sku: string; name: string; category: string | null; unitPrice: number; stockQuantity: number;
+  uomId?: string | null; uom?: string | null;
+  itemType?: ItemType; description?: string | null; hsnCode?: string | null; taxRate?: number; standardCost?: number;
+  reorderLevel?: number; leadTimeDays?: number; drawingNo?: string | null; isActive?: boolean;
+}
+export interface UpsertProduct {
+  sku: string; name: string; category: string | null; unitPrice: number; stockQuantity: number; uomId: string | null;
+  itemType?: ItemType; description?: string | null; hsnCode?: string | null; taxRate?: number; standardCost?: number;
+  reorderLevel?: number; leadTimeDays?: number; drawingNo?: string | null; isActive?: boolean;
+}
+
+// ---------- Sales flow: Customer P.O. -> Work Order -> Sales Invoice ----------
+export interface Company { name: string; address: string | null; state: string | null; phone: string | null; email: string | null; taxId: string | null }
+export type PoStatus = 'Draft' | 'Confirmed' | 'Completed' | 'Cancelled';
+/** A related document (a P.O.'s work orders and invoices, open P.O.s in pickers). */
+export interface DocumentLink { id: string; number: string; status: string; date: string; amount: number; detail: string | null }
+export interface CustomerPoLine {
+  id: string; lineNo: number; productId: string; sku: string; productName: string; uom: string | null; hsnCode: string | null;
+  quantity: number; rate: number; taxRate: number; amount: number; taxAmount: number;
+  producedQty: number; invoicedQty: number; toProduce: number; toInvoice: number; inStock: number;
+}
+export interface CustomerPo {
+  id: string; number: string; customerId: string; customerName: string; customerPoNo: string; poDate: string;
+  deliveryDate: string | null; status: PoStatus; remarks: string | null; subTotal: number; taxTotal: number; grandTotal: number;
+  createdAt: string; confirmedAt: string | null; completedAt: string | null; cancelledAt: string | null;
+  lines: CustomerPoLine[]; workOrders: DocumentLink[]; invoices: DocumentLink[];
+}
+export interface CustomerPoSummary {
+  id: string; number: string; customerName: string; customerPoNo: string; poDate: string; deliveryDate: string | null;
+  status: PoStatus; lineCount: number; grandTotal: number; orderedQty: number; producedQty: number; invoicedQty: number; createdAt: string;
+}
+export interface UpsertCustomerPo {
+  customerId: string; customerPoNo: string; poDate: string | null; deliveryDate: string | null; remarks: string | null;
+  lines: { productId: string; quantity: number; rate: number; taxRate: number | null }[];
+}
+export interface WorkOrderMaterial { productId: string; sku: string; productName: string; uom: string | null; quantity: number; rate: number; amount: number; inStock: number }
+export interface WorkOrder {
+  id: string; number: string; status: DocStatus; postingDate: string;
+  customerPoId: string | null; customerPoNumber: string | null; customerName: string | null; customerPoLineId: string | null;
+  productId: string; sku: string; productName: string; uom: string | null; quantity: number;
+  storeId: string; store: string; materialStoreId: string; materialStore: string;
+  otherCost: number; materialCost: number; unitCost: number; totalCost: number; remarks: string | null;
+  createdAt: string; submittedAt: string | null; cancelledAt: string | null; materials: WorkOrderMaterial[];
+}
+export interface WorkOrderSummary {
+  id: string; number: string; status: DocStatus; postingDate: string; customerPoNumber: string | null; customerName: string | null;
+  sku: string; productName: string; quantity: number; store: string; totalCost: number; createdAt: string;
+}
+export interface UpsertWorkOrder {
+  customerPoLineId: string | null; productId: string | null; quantity: number; storeId: string; materialStoreId: string | null;
+  postingDate: string | null; otherCost: number; remarks: string | null; materials: { productId: string; quantity: number }[];
+}
+export interface SalesInvoiceLine {
+  lineNo: number; productId: string; sku: string; productName: string; uom: string | null; hsnCode: string | null;
+  customerPoLineId: string | null; quantity: number; rate: number; discountPercent: number; amount: number; taxRate: number;
+  taxAmount: number; total: number; costRate: number; inStock: number;
+}
+export interface TaxSummaryRow { taxRate: number; taxable: number; tax: number }
+export interface SalesInvoice {
+  id: string; number: string; status: DocStatus; invoiceDate: string; dueDate: string;
+  customerId: string; customerName: string; customerPoId: string | null; customerPoNumber: string | null; customerPoRef: string | null;
+  storeId: string; store: string; billingName: string; billingAddress: string | null; billingTaxId: string | null; billingState: string | null;
+  shippingAddress: string | null; remarks: string | null;
+  subTotal: number; discountTotal: number; taxTotal: number; roundOff: number; grandTotal: number; costOfGoods: number;
+  interState: boolean; amountInWords: string; taxSummary: TaxSummaryRow[];
+  createdAt: string; submittedAt: string | null; cancelledAt: string | null; lines: SalesInvoiceLine[];
+}
+export interface SalesInvoiceSummary {
+  id: string; number: string; status: DocStatus; invoiceDate: string; dueDate: string; customerName: string;
+  customerPoNumber: string | null; lineCount: number; grandTotal: number; createdAt: string;
+}
+export interface UpsertSalesInvoice {
+  customerId: string | null; customerPoId: string | null; invoiceDate: string | null; dueDate: string | null; storeId: string;
+  shippingAddress: string | null; remarks: string | null;
+  lines: { customerPoLineId: string | null; productId: string | null; quantity: number; rate: number; discountPercent: number; taxRate: number | null }[];
+}
+export interface InvoicePrint { company: Company; invoice: SalesInvoice }
+export type StockStatus = 'OK' | 'Reorder' | 'Short';
+export interface StockDetailsRow {
+  productId: string; sku: string; name: string; itemType: string; category: string | null; uom: string | null;
+  onHand: number; stockValue: number; committed: number; inProduction: number; available: number; reorderLevel: number; status: StockStatus;
+}
+export interface StoreBalance { storeId: string; store: string; quantity: number; valuationRate: number; stockValue: number }
+export interface ItemCommitment {
+  customerPoId: string; number: string; customerName: string; deliveryDate: string | null;
+  ordered: number; produced: number; invoiced: number; pending: number;
+}
+export interface StockItemDetails {
+  item: Product; summary: StockDetailsRow; stores: StoreBalance[]; commitments: ItemCommitment[];
+  openWorkOrders: DocumentLink[]; recentMovements: StockLedgerRow[];
+}
+
+// ---------- Inventory ----------
+export interface Uom { id: string; code: string; name: string; isActive: boolean }
+export interface Store { id: string; code: string; name: string; location: string | null; isDefault: boolean; isActive: boolean }
+export interface ItemLookup {
+  id: string; sku: string; name: string; uom: string | null; stockQuantity: number; unitPrice: number;
+  itemType?: string; taxRate?: number; hsnCode?: string | null;
+}
+export type StockEntryType = 'Receipt' | 'Issue' | 'Transfer';
+export type DocStatus = 'Draft' | 'Submitted' | 'Cancelled';
+export interface StockEntryLine { productId: string; sku: string; productName: string; uom: string | null; quantity: number; rate: number; amount: number }
+export interface StockEntry {
+  id: string; number: string; type: StockEntryType; status: DocStatus; postingDate: string;
+  sourceStoreId: string | null; sourceStore: string | null; targetStoreId: string | null; targetStore: string | null;
+  remarks: string | null; totalValue: number; createdAt: string; submittedAt: string | null; cancelledAt: string | null;
+  lines: StockEntryLine[];
+}
+export interface StockEntrySummary {
+  id: string; number: string; type: StockEntryType; status: DocStatus; postingDate: string;
+  sourceStore: string | null; targetStore: string | null; lineCount: number; totalValue: number; createdAt: string;
+}
+export interface UpsertStockEntry {
+  type: StockEntryType; postingDate: string | null; sourceStoreId: string | null; targetStoreId: string | null;
+  remarks: string | null; lines: { productId: string; quantity: number; rate: number | null }[];
+}
+export interface StockPositionRow {
+  productId: string; sku: string; name: string; category: string | null; uom: string | null;
+  storeId: string; store: string; quantity: number; valuationRate: number; stockValue: number;
+}
+export interface StockPosition extends PagedResult<StockPositionRow> { totalQuantity: number; totalValue: number }
+export interface StockLedgerRow {
+  id: number; postingDate: string; postedAt: string; productId: string; sku: string; productName: string;
+  storeId: string; store: string; voucherType: string; voucherId: string | null; voucherNo: string; isReversal: boolean;
+  qtyChange: number; qtyAfter: number; rate: number; valuationRate: number; valueChange: number; valueAfter: number;
+}
+
+/** Builds a query string from the non-empty values. */
+export const qs = (params: Record<string, string | number | boolean | null | undefined>) => {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v !== null && v !== undefined && v !== '' && v !== false) p.set(k, String(v));
+  const s = p.toString();
+  return s ? `?${s}` : '';
+};
 export interface Order { id: string; customerId: string; status: string; totalAmount: number; orderedAt: string; items: unknown[] }
 
 const json = (body: unknown) => JSON.stringify(body);
@@ -156,9 +298,82 @@ export const api = {
 
   customers: (page = 1) => request<PagedResult<Customer>>(`/api/customers?page=${page}&pageSize=25`),
   deleteCustomer: (id: string) => request<void>(`/api/customers/${id}`, { method: 'DELETE' }),
-  products: (page = 1) => request<PagedResult<Product>>(`/api/products?page=${page}&pageSize=25`),
+  saveCustomer: (c: UpsertCustomer, id?: string) =>
+    request<Customer>(id ? `/api/customers/${id}` : '/api/customers', { method: id ? 'PUT' : 'POST', body: json(c) }),
+  products: (page = 1, f: { search?: string; itemType?: string } = {}) =>
+    request<PagedResult<Product>>(`/api/products?page=${page}&pageSize=25${qs(f).replace('?', '&')}`),
   deleteProduct: (id: string) => request<void>(`/api/products/${id}`, { method: 'DELETE' }),
+  createProduct: (p: UpsertProduct) => request<Product>('/api/products', { method: 'POST', body: json(p) }),
+  updateProduct: (id: string, p: UpsertProduct) => request<Product>(`/api/products/${id}`, { method: 'PUT', body: json(p) }),
+
+  // Inventory masters (full lists for their own screens; lookups for everyone who can open an inventory screen)
+  uoms: (all = true) => request<Uom[]>(`/api/uoms${qs({ all })}`),
+  saveUom: (u: Omit<Uom, 'id'>, id?: string) =>
+    request<Uom>(id ? `/api/uoms/${id}` : '/api/uoms', { method: id ? 'PUT' : 'POST', body: json(u) }),
+  deleteUom: (id: string) => request<void>(`/api/uoms/${id}`, { method: 'DELETE' }),
+  stores: (all = true) => request<Store[]>(`/api/stores${qs({ all })}`),
+  saveStore: (s: Omit<Store, 'id'>, id?: string) =>
+    request<Store>(id ? `/api/stores/${id}` : '/api/stores', { method: id ? 'PUT' : 'POST', body: json(s) }),
+  deleteStore: (id: string) => request<void>(`/api/stores/${id}`, { method: 'DELETE' }),
+  lookupStores: () => request<Store[]>('/api/stock/stores'),
+  lookupUoms: () => request<Uom[]>('/api/stock/uoms'),
+  lookupItems: (search = '') => request<ItemLookup[]>(`/api/stock/items${qs({ search })}`),
+
+  // Stock entries: Draft -> Submitted -> Cancelled
+  stockEntries: (f: { status?: string; type?: string; page?: number } = {}) =>
+    request<PagedResult<StockEntrySummary>>(`/api/stock-entries${qs({ ...f, pageSize: 25 })}`),
+  stockEntry: (id: string) => request<StockEntry>(`/api/stock-entries/${id}`),
+  createStockEntry: (e: UpsertStockEntry) => request<StockEntry>('/api/stock-entries', { method: 'POST', body: json(e) }),
+  updateStockEntry: (id: string, e: UpsertStockEntry) =>
+    request<StockEntry>(`/api/stock-entries/${id}`, { method: 'PUT', body: json(e) }),
+  deleteStockEntry: (id: string) => request<void>(`/api/stock-entries/${id}`, { method: 'DELETE' }),
+  submitStockEntry: (id: string) => request<StockEntry>(`/api/stock-entries/${id}/submit`, { method: 'POST' }),
+  cancelStockEntry: (id: string) => request<StockEntry>(`/api/stock-entries/${id}/cancel`, { method: 'POST' }),
+
+  stockPosition: (f: { storeId?: string; search?: string; lowOnly?: boolean; page?: number } = {}) =>
+    request<StockPosition>(`/api/stock/position${qs({ ...f, pageSize: 50 })}`),
+  stockLedger: (f: { productId?: string; storeId?: string; from?: string; to?: string; page?: number } = {}) =>
+    request<PagedResult<StockLedgerRow>>(`/api/stock/ledger${qs({ ...f, pageSize: 50 })}`),
   orders: () => request<Order[]>('/api/orders?limit=25'),
+
+  // Sales flow
+  company: () => request<Company>('/api/company'),
+  saveCompany: (c: Company) => request<Company>('/api/company', { method: 'PUT', body: json(c) }),
+  lookupCustomers: () => request<Customer[]>('/api/sales/lookups/customers'),
+  lookupOpenPos: (customerId = '') => request<DocumentLink[]>(`/api/sales/lookups/open-pos${qs({ customerId })}`),
+
+  customerPos: (f: { status?: string; search?: string; page?: number } = {}) =>
+    request<PagedResult<CustomerPoSummary>>(`/api/customer-pos${qs({ ...f, pageSize: 25 })}`),
+  customerPo: (id: string) => request<CustomerPo>(`/api/customer-pos/${id}`),
+  createCustomerPo: (p: UpsertCustomerPo) => request<CustomerPo>('/api/customer-pos', { method: 'POST', body: json(p) }),
+  updateCustomerPo: (id: string, p: UpsertCustomerPo) => request<CustomerPo>(`/api/customer-pos/${id}`, { method: 'PUT', body: json(p) }),
+  deleteCustomerPo: (id: string) => request<void>(`/api/customer-pos/${id}`, { method: 'DELETE' }),
+  confirmCustomerPo: (id: string) => request<CustomerPo>(`/api/customer-pos/${id}/confirm`, { method: 'POST' }),
+  cancelCustomerPo: (id: string) => request<CustomerPo>(`/api/customer-pos/${id}/cancel`, { method: 'POST' }),
+
+  workOrders: (f: { status?: string; search?: string; page?: number } = {}) =>
+    request<PagedResult<WorkOrderSummary>>(`/api/work-orders${qs({ ...f, pageSize: 25 })}`),
+  workOrder: (id: string) => request<WorkOrder>(`/api/work-orders/${id}`),
+  createWorkOrder: (w: UpsertWorkOrder) => request<WorkOrder>('/api/work-orders', { method: 'POST', body: json(w) }),
+  updateWorkOrder: (id: string, w: UpsertWorkOrder) => request<WorkOrder>(`/api/work-orders/${id}`, { method: 'PUT', body: json(w) }),
+  deleteWorkOrder: (id: string) => request<void>(`/api/work-orders/${id}`, { method: 'DELETE' }),
+  submitWorkOrder: (id: string) => request<WorkOrder>(`/api/work-orders/${id}/submit`, { method: 'POST' }),
+  cancelWorkOrder: (id: string) => request<WorkOrder>(`/api/work-orders/${id}/cancel`, { method: 'POST' }),
+
+  salesInvoices: (f: { status?: string; search?: string; page?: number } = {}) =>
+    request<PagedResult<SalesInvoiceSummary>>(`/api/sales-invoices${qs({ ...f, pageSize: 25 })}`),
+  salesInvoice: (id: string) => request<SalesInvoice>(`/api/sales-invoices/${id}`),
+  invoicePrint: (id: string) => request<InvoicePrint>(`/api/sales-invoices/${id}/print`),
+  createSalesInvoice: (i: UpsertSalesInvoice) => request<SalesInvoice>('/api/sales-invoices', { method: 'POST', body: json(i) }),
+  updateSalesInvoice: (id: string, i: UpsertSalesInvoice) =>
+    request<SalesInvoice>(`/api/sales-invoices/${id}`, { method: 'PUT', body: json(i) }),
+  deleteSalesInvoice: (id: string) => request<void>(`/api/sales-invoices/${id}`, { method: 'DELETE' }),
+  submitSalesInvoice: (id: string) => request<SalesInvoice>(`/api/sales-invoices/${id}/submit`, { method: 'POST' }),
+  cancelSalesInvoice: (id: string) => request<SalesInvoice>(`/api/sales-invoices/${id}/cancel`, { method: 'POST' }),
+
+  stockDetails: (f: { search?: string; itemType?: string; attention?: boolean; page?: number } = {}) =>
+    request<PagedResult<StockDetailsRow>>(`/api/stock/details${qs({ ...f, pageSize: 50 })}`),
+  stockItemDetails: (productId: string) => request<StockItemDetails>(`/api/stock/details/${productId}`),
 
   pages: () => request<PageDto[]>('/api/master/pages'),
   roles: () => request<RoleDto[]>('/api/roles'),

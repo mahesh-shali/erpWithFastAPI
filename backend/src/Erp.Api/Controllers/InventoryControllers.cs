@@ -93,12 +93,14 @@ public class StockController(IInventoryService inv) : ControllerBase
         CancellationToken ct = default) => inv.LedgerAsync(productId, storeId, from, to, page, pageSize, ct);
 
     // Lookups for the inventory screens: whoever can open any of them may list active stores, units and items.
-    [HttpGet("stores"), RequireAnyPage(PageKeys.Stores, PageKeys.StockAddition, PageKeys.StockPosition, PageKeys.StockReport, PageKeys.Products)]
+    [HttpGet("stores"), RequireAnyPage(PageKeys.Stores, PageKeys.StockAddition, PageKeys.StockPosition, PageKeys.StockReport, PageKeys.Products,
+        PageKeys.StockDetails, PageKeys.WorkOrders, PageKeys.SalesInvoices)]
     public Task<IReadOnlyList<StoreDto>> Stores(CancellationToken ct) => inv.StoresAsync(false, ct);
 
     [HttpGet("uoms"), RequireAnyPage(PageKeys.Uom, PageKeys.Products)]
     public Task<IReadOnlyList<UomDto>> Uoms(CancellationToken ct) => inv.UomsAsync(false, ct);
 
-    [HttpGet("items"), RequireAnyPage(PageKeys.StockAddition, PageKeys.StockPosition, PageKeys.StockReport, PageKeys.Products)]
+    [HttpGet("items"), RequireAnyPage(PageKeys.StockAddition, PageKeys.StockPosition, PageKeys.StockReport, PageKeys.Products,
+        PageKeys.StockDetails, PageKeys.CustomerPos, PageKeys.WorkOrders, PageKeys.SalesInvoices)]
     public Task<IReadOnlyList<ItemLookupDto>> Items([FromQuery] string? search, CancellationToken ct) => inv.ItemsAsync(search, ct);
 }

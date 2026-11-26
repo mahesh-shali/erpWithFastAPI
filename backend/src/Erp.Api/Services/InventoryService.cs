@@ -316,11 +316,13 @@ public sealed class InventoryService(ErpDbContext db, IStockPosting posting, ITe
     // ---------------------------------------------------------------- Reports
     public async Task<IReadOnlyList<ItemLookupDto>> ItemsAsync(string? search, CancellationToken ct)
     {
-        var q = db.Products.AsNoTracking();
+        // Inactive items can't go on new documents, so they are left out of the pickers.
+        var q = db.Products.AsNoTracking().Where(p => p.IsActive);
         if (!string.IsNullOrWhiteSpace(search))
             q = q.Where(p => EF.Functions.ILike(p.Name, $"%{search}%") || EF.Functions.ILike(p.Sku, $"%{search}%"));
         return await q.OrderBy(p => p.Name).Take(500)
-            .Select(p => new ItemLookupDto(p.Id, p.Sku, p.Name, p.Uom!.Code, p.StockQuantity, p.UnitPrice)).ToListAsync(ct);
+            .Select(p => new ItemLookupDto(p.Id, p.Sku, p.Name, p.Uom!.Code, p.StockQuantity, p.UnitPrice, p.ItemType, p.TaxRate, p.HsnCode))
+            .ToListAsync(ct);
     }
 
     public async Task<StockPositionResult> PositionAsync(Guid? storeId, string? search, bool lowOnly, int page, int pageSize, CancellationToken ct)

@@ -235,7 +235,7 @@ describe('Stock ledger screen', () => {
   });
 });
 
-describe('Products screen: add and edit with unit', () => {
+describe('Items screen: add with unit', () => {
   it('adds a product with opening stock and a unit', async () => {
     let list = [{ id: 'p1', sku: 'SKU-1', name: 'Widget', category: 'Tools', unitPrice: 120, stockQuantity: 40, uomId: 'u1', uom: 'NOS' }];
     const { fetch } = renderScreen(<ProductsPage />, [perm('products', 'VRWUD')], [
@@ -244,8 +244,8 @@ describe('Products screen: add and edit with unit', () => {
       ['POST', '/api/products', (b: unknown) => { list = [...list, { ...(b as typeof list[0]), id: 'p9', uom: 'NOS' }]; return list[1]; }],
     ]);
     expect((await screen.findByText('Widget')).closest('tr')).toHaveTextContent('NOS');
-    await userEvent.click(screen.getByRole('button', { name: 'Add product' }));
-    const form = screen.getByRole('form', { name: 'Add product' });
+    await userEvent.click(screen.getByRole('button', { name: 'Add item' }));
+    const form = screen.getByRole('form', { name: 'Add item' });
     await userEvent.type(within(form).getByLabelText('SKU'), 'SKU-9');
     await userEvent.type(within(form).getByLabelText('Name'), 'Bolt');
     await screen.findByRole('option', { name: 'NOS · Numbers' });
@@ -257,6 +257,7 @@ describe('Products screen: add and edit with unit', () => {
 
     expect(await screen.findByText('Bolt')).toBeInTheDocument();
     expect(body(fetch, 'POST', '/api/products')).toEqual(
-      { sku: 'SKU-9', name: 'Bolt', category: null, unitPrice: 5, stockQuantity: 100, uomId: 'u1' });
+      { sku: 'SKU-9', name: 'Bolt', category: null, unitPrice: 5, stockQuantity: 100, uomId: 'u1', itemType: 'Finished Good',
+        description: null, hsnCode: null, taxRate: 18, standardCost: 0, reorderLevel: 0, leadTimeDays: 0, drawingNo: null, isActive: true });
   });
 });

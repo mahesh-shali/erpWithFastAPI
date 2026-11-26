@@ -21,7 +21,7 @@ describe('Customers screen', () => {
     const table = await screen.findByRole('table', { name: 'Customers' });
     expect(await within(table).findByText('Acme Traders')).toBeInTheDocument();
     const row = within(table).getByText('No Contact Ltd').closest('tr')!;
-    expect(within(row).getAllByText('—')).toHaveLength(3);
+    expect(within(row).getAllByText('—')).toHaveLength(7); // contact, email, phone, city, state, GSTIN, country
     expect(screen.getByText('Showing the first 25.')).toBeInTheDocument();
   });
 

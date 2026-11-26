@@ -11,6 +11,14 @@ public class Organization
     public Guid Id { get; set; }
     public string Name { get; set; } = default!;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // ---- Company details printed on invoices (Settings > Company) ----
+    public string? Address { get; set; }
+    public string? State { get; set; }
+    public string? Phone { get; set; }
+    public string? Email { get; set; }
+    /// <summary>GSTIN / VAT number.</summary>
+    public string? TaxId { get; set; }
 }
 
 public class User
@@ -159,6 +167,10 @@ public static class PageKeys
     public const string Attendance = "attendance";
     public const string SalesReport = "sales-report";
     public const string StockReport = "stock-report";
+    /// <summary>Inventory › Stock Position › Stock Details: on hand, committed to P.O.s, available, per item.</summary>
+    public const string StockDetails = "stock-details";
+    /// <summary>Sales › Orders › Customer P.O.: the purchase order a customer raises on us (drives production and invoicing).</summary>
+    public const string CustomerPos = "customer-pos";
     // Master
     public const string Uom = "uom";
     public const string Stores = "stores";
@@ -318,6 +330,16 @@ public class Customer : ITenantOwned
     public string? City { get; set; }
     public string? Country { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public string? Phone { get; set; }
+    public string? ContactPerson { get; set; }
+    /// <summary>GSTIN / VAT number, printed on invoices.</summary>
+    public string? TaxId { get; set; }
+    /// <summary>Billing address (street lines); City / State / PostalCode / Country are separate.</summary>
+    public string? Address { get; set; }
+    public string? State { get; set; }
+    public string? PostalCode { get; set; }
+    /// <summary>Invoice due date = invoice date + this many days.</summary>
+    public int PaymentTermsDays { get; set; }
 }
 
 public class Product : ITenantOwned
@@ -333,6 +355,30 @@ public class Product : ITenantOwned
     public Guid? UomId { get; set; }
     public Uom? Uom { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // ---- Item master details (Master > Inventory > Items) ----
+    public string ItemType { get; set; } = Domain.ItemType.FinishedGood;
+    public string? Description { get; set; }
+    /// <summary>HSN / SAC code, printed on invoices.</summary>
+    public string? HsnCode { get; set; }
+    /// <summary>GST % charged on sale, the default on P.O. and invoice lines.</summary>
+    public decimal TaxRate { get; set; }
+    /// <summary>Standard purchase / production cost per unit (reference; stock is valued by the ledger).</summary>
+    public decimal StandardCost { get; set; }
+    /// <summary>Stock Details flags the item when available stock falls below this.</summary>
+    public int ReorderLevel { get; set; }
+    public int LeadTimeDays { get; set; }
+    public string? DrawingNo { get; set; }
+    public bool IsActive { get; set; } = true;
+}
+
+public static class ItemType
+{
+    public const string FinishedGood = "Finished Good";
+    public const string SemiFinished = "Semi-Finished";
+    public const string RawMaterial = "Raw Material";
+    public const string Consumable = "Consumable";
+    public static readonly string[] All = [FinishedGood, SemiFinished, RawMaterial, Consumable];
 }
 
 public static class OrderStatus

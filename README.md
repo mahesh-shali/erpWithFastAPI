@@ -244,6 +244,12 @@ Current migrations:
 9. `AddInventory`: `uoms`, `stores`, `stock_entries` + `stock_entry_lines`, `stock_balances`, `stock_ledger_entries`,
    `document_series`, and `products.uom_id`. Marks Units of Measure, Stores, Stock Position, Stock Entries and Stock
    Ledger as implemented. No data is copied: each organization's Main Store and opening balances are created on first use.
+10. `AddSalesFlow`: `customer_pos` + `customer_po_lines`, `work_orders` + `work_order_materials`, `sales_invoices` +
+   `sales_invoice_lines`; item fields on `products` (type, HSN, GST %, standard cost, reorder level, lead time, drawing no.,
+   `is_active`, backfilled true), billing fields on `customers` (GSTIN, address, state, PIN, phone, contact, payment terms)
+   and company fields on `organizations`. Pages: **Customer P.O.** (53), **Stock Details** (52); Sales Invoices and Work
+   Orders become implemented; Products is renamed **Items** and moves to Master › Inventory (`/master/items`).
+11. `ExposeSalesFlowToAi`: row-level security + `GRANT SELECT … TO erp_ai_ro` on those six tables.
 
 ### Changing the schema
 
@@ -647,9 +653,62 @@ Lookups that several screens need (`/api/stock/stores`, `/uoms`, `/items`) accep
 | `GET /api/stock/position?storeId&search&lowOnly&page` | stock-position read |
 | `GET /api/stock/ledger?productId&storeId&from&to&page` | stock-report read |
 
-Next modules (planned, one at a time): Purchase (Vendors, Purchase Orders, Goods Receipt, Bills), Sales (Invoices,
-Delivery Challans), Accounts, and HR, with Indian GST on purchase and sales documents. Purchase and sales documents
-will post stock through the same service.
+Next modules (planned, one at a time): Purchase (Vendors, Purchase Orders, Goods Receipt, Bills), Delivery Challans,
+Accounts, and HR. Purchase documents will post stock through the same service.
+
+## Sales flow: Customer P.O. → Production → Invoice
+
+Make-to-order: a customer sends a purchase order, we produce it, then invoice (and print) it.
+
+| Screen | Route | Page key | What it does |
+|---|---|---|---|
+| Items | `/master/items` | `products` | Item master: type (Finished Good / Semi-Finished / Raw Material / Consumable), HSN, GST %, price, standard cost, reorder level, lead time, drawing no., active |
+| Customers | `/master/customers` | `customers` | Billing details: GSTIN, address, state, PIN, contact, payment terms (days) |
+| Customer P.O. | `/sales/customer-po` | `customer-pos` | The customer's order: Draft → **Confirmed** → Completed (all invoiced) / Cancelled |
+| Work Orders | `/production/work-orders` | `work-orders` | Production for a P.O. line (or for stock): Draft → Submitted ("Completed") → Cancelled |
+| Sales Invoices | `/sales/invoices` | `sales-invoices` | Tax invoice, usually from a P.O.: Draft → Submitted ("Issued") → Cancelled; **Print** at `/sales/invoices/{id}/print` |
+| Stock Details | `/inventory/stock-details` | `stock-details` | Per item: on hand, committed to P.O.s, available, in production, reorder status; item page with stores, P.O.s and movements |
+| Settings › Company | `/settings/company` | (SuperAdmin/Admin) | Company name, address, state, GSTIN printed on invoices |
+
+**Documents and numbers.** `CPO-00001`, `WO-00001`, `SI-00001` per organization (`document_series`). Only drafts can be
+edited or deleted. Each P.O. line keeps `produced_qty` and `invoiced_qty`; work orders and invoices row-lock the P.O.
+(`FOR UPDATE`) before changing them, then lock stock balances, so concurrent documents can't over-produce or over-invoice.
+
+**Stock.** All through `IStockPosting.PostAsync`, reversed on cancel like stock entries:
+- *Work order submit*: each material goes out of the material store at the moving average, then the finished item comes
+  into the output store at (materials consumed + labour/overhead) / quantity (`StockMovement.RateFromConsumed`, one
+  locked batch). A P.O. line can't be produced beyond its ordered quantity. Cancel is refused once the goods are sold.
+- *Invoice submit*: the items leave the chosen store at the moving average (cost of goods is recorded per line); P.O.
+  lines can't be invoiced beyond what was ordered; the P.O. becomes Completed when every line is fully invoiced.
+  Cancelling an invoice returns the stock and re-opens the P.O.
+- The old Sales Orders screen (`orders`) still issues stock directly on create; the P.O. flow does not touch it.
+
+**Tax.** Line: taxable = qty × rate − discount %, GST = taxable × GST %; grand total rounded to the rupee (round-off
+shown). Company state ≠ customer state (both set) → IGST, otherwise CGST + SGST (half each). Customer name, address,
+state and GSTIN are copied onto the invoice when it is saved and again when it is issued, so a print never changes.
+Amount in words uses Indian numbering (lakh, crore).
+
+**Rights** follow the stock-entry convention (Read · Write = draft · Update = edit, Confirm/Submit · Delete = delete
+draft, Cancel). Defaults: Admin everything (Manager without Delete); User: Customer P.O. `VRWU` and Stock Details `VR`,
+no Work Orders or Sales Invoices. `GET /api/customer-pos/{id}` is also readable with `work-orders` or `sales-invoices`
+(they are raised from it); pickers `GET /api/sales/lookups/customers` and `/open-pos` accept any of the sales pages.
+
+| Method & path | Right |
+|---|---|
+| `GET /api/customer-pos?status&customerId&search&page`, `GET /{id}` | customer-pos read |
+| `POST /api/customer-pos` · `PUT /{id}` · `POST /{id}/confirm` · `DELETE /{id}` · `POST /{id}/cancel` | write · update · update · delete · delete |
+| `GET/POST /api/work-orders`, `PUT/DELETE /{id}`, `POST /{id}/submit`, `POST /{id}/cancel` | work-orders (same pattern) |
+| `GET/POST /api/sales-invoices`, `PUT/DELETE /{id}`, `POST /{id}/submit`, `POST /{id}/cancel`, `GET /{id}/print` | sales-invoices (same pattern; print = read) |
+| `GET /api/stock/details?search&itemType&attention&page`, `GET /api/stock/details/{productId}` | stock-details read |
+| `GET /api/products/{id}`, `GET /api/products?search&itemType` · `PUT /api/customers/{id}` | products read · customers update |
+| `GET /api/company` · `PUT /api/company` | any signed-in user · SuperAdmin/Admin |
+
+**AI assistant.** Migration `ExposeSalesFlowToAi` adds row-level security and `SELECT` for `erp_ai_ro` on the six sales
+tables; `ai-service/app/schema.py` describes them and `sql_guard.py` maps them to page rights (`customer-pos` →
+`customer_pos`, `customer_po_lines`; `work-orders` → `work_orders`, `work_order_materials`; `sales-invoices` →
+`sales_invoices`, `sales_invoice_lines`), so people only get answers about documents they can open.
+
+The desktop app (1.5.0) has the same screens; the invoice print uses the system print dialog.
 
 ## Messages: end-to-end encrypted chat
 

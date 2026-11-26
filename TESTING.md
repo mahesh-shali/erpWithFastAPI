@@ -28,7 +28,7 @@ and `--no-run` rebuilds the page from the last results.
 | Backend | `backend/tests/Erp.Api.IntegrationTests` (xUnit + Testcontainers) | 69 | Every API endpoint against real Postgres built from the migrations: auth and sessions, customers, products, orders, dashboard, analytics, inventory (valuation, ledger, cancel, concurrency), users, roles, rights, tenant isolation |
 | AI service | `ai-service/tests` (pytest, LLM mocked) | 80 | Agent loop, SQL guard, chat API (auth, cache, rate limit, rights), production config checks |
 | AI service | `ai-service/tests/test_db_integration.py` | 11 | Row-level security and the read-only AI role on a real database |
-| End-to-end | `frontend/e2e/*.spec.ts` (Playwright) | 20 | One journey per screen in a real browser, for SuperAdmin and for the User role, including a full stock-entry cycle |
+| End-to-end | `frontend/e2e/*.spec.ts` (Playwright) | 22 | One journey per screen in a real browser, for SuperAdmin and for the User role, including a full stock-entry cycle and the sales flow (P.O. → work order → invoice → print, `sales.spec.ts`) |
 
 ## Commands
 

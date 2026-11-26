@@ -21,6 +21,11 @@ public sealed class OrganizationConfiguration : IEntityTypeConfiguration<Organiz
         e.Property(x => x.Id).HasDefaultValueSql(Sql.NewUuid);
         e.Property(x => x.Name).IsRequired();
         e.Property(x => x.CreatedAt).HasDefaultValueSql(Sql.Now);
+        e.Property(x => x.Address).HasMaxLength(500);
+        e.Property(x => x.State).HasMaxLength(100);
+        e.Property(x => x.Phone).HasMaxLength(30);
+        e.Property(x => x.Email).HasMaxLength(320);
+        e.Property(x => x.TaxId).HasMaxLength(20);
     }
 }
 
@@ -110,8 +115,16 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
     public void Configure(EntityTypeBuilder<Customer> e)
     {
+        e.ToTable(t => t.HasCheckConstraint("ck_customers_payment_terms", "payment_terms_days >= 0"));
         e.Property(x => x.Id).HasDefaultValueSql(Sql.NewUuid);
         e.Property(x => x.CreatedAt).HasDefaultValueSql(Sql.Now);
+        e.Property(x => x.Phone).HasMaxLength(30);
+        e.Property(x => x.ContactPerson).HasMaxLength(100);
+        e.Property(x => x.TaxId).HasMaxLength(20);
+        e.Property(x => x.Address).HasMaxLength(500);
+        e.Property(x => x.State).HasMaxLength(100);
+        e.Property(x => x.PostalCode).HasMaxLength(20);
+        e.Property(x => x.PaymentTermsDays).HasDefaultValue(0);
 
         e.HasIndex(x => x.OrganizationId).HasDatabaseName("ix_customers_org");
 
@@ -127,9 +140,22 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         {
             t.HasCheckConstraint("ck_products_unit_price", "unit_price >= 0");
             t.HasCheckConstraint("ck_products_stock_quantity", "stock_quantity >= 0");
+            t.HasCheckConstraint("ck_products_item_type", StockEntryConfiguration.In("item_type", ItemType.All));
+            t.HasCheckConstraint("ck_products_tax_rate", "tax_rate >= 0 AND tax_rate <= 100");
+            t.HasCheckConstraint("ck_products_standard_cost", "standard_cost >= 0");
+            t.HasCheckConstraint("ck_products_reorder_level", "reorder_level >= 0 AND lead_time_days >= 0");
         });
         e.Property(x => x.Id).HasDefaultValueSql(Sql.NewUuid);
         e.Property(x => x.UnitPrice).HasPrecision(12, 2);
+        e.Property(x => x.ItemType).HasMaxLength(20).HasDefaultValue(ItemType.FinishedGood);
+        e.Property(x => x.Description).HasMaxLength(1000);
+        e.Property(x => x.HsnCode).HasMaxLength(20);
+        e.Property(x => x.TaxRate).HasPrecision(5, 2).HasDefaultValue(0m);
+        e.Property(x => x.StandardCost).HasPrecision(12, 2).HasDefaultValue(0m);
+        e.Property(x => x.ReorderLevel).HasDefaultValue(0);
+        e.Property(x => x.LeadTimeDays).HasDefaultValue(0);
+        e.Property(x => x.DrawingNo).HasMaxLength(50);
+        // No HasDefaultValue(true): EF would skip an explicit false on insert. The migration backfills true.
         e.Property(x => x.StockQuantity).HasDefaultValue(0);
         e.Property(x => x.CreatedAt).HasDefaultValueSql(Sql.Now);
 

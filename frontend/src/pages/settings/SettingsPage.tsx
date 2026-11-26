@@ -1,7 +1,7 @@
 import QRCode from 'qrcode';
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { NavLink, Navigate, useParams } from 'react-router-dom';
-import type { OrgUser, RoleDto } from '../../api/client';
+import { api, type Company, type OrgUser, type RoleDto } from '../../api/client';
 import { settingsApi, type AccountInfo, type TwoFactorSetup } from '../../api/settings';
 import { useAuth } from '../../auth/AuthContext';
 import { usePermissions } from '../../auth/PermissionsContext';
@@ -23,6 +23,9 @@ export function SettingsPage() {
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Company details (printed on invoices) are changed by administrators only; the API checks the role too.
+  const canEditCompany = account?.role === 'SuperAdmin' || account?.role === 'Admin';
+
   const reload = useCallback(async () => {
     try {
       setAccount(await settingsApi.account());
@@ -37,10 +40,12 @@ export function SettingsPage() {
     ['profile', 'Profile'], ['password', 'Password'], ['security', 'Two-factor sign-in'],
     ...(canEditUsers ? [['users', 'Users'] as [string, string]] : []),
     ...(canSeePages ? [['pages', 'Pages'] as [string, string]] : []),
+    ...(canEditCompany ? [['company', 'Company'] as [string, string]] : []),
   ];
   const rightsTab = tab === 'users' || tab === 'pages';
-  // Wait for the rights before deciding that a rights-based tab is not allowed.
-  if (!tabs.some(([k]) => k === tab) && !(rightsTab && loading)) return <Navigate to="/settings" replace />;
+  // Wait for the rights (or, for Company, the account's role) before deciding that a tab is not allowed.
+  if (!tabs.some(([k]) => k === tab) && !(rightsTab && loading) && !(tab === 'company' && !account && !error))
+    return <Navigate to="/settings" replace />;
 
   return (
     <>
@@ -58,6 +63,7 @@ export function SettingsPage() {
           {tab === 'profile' && <ProfileTab account={account} onSaved={setAccount} />}
           {tab === 'password' && <PasswordTab />}
           {tab === 'security' && <TwoFactorTab account={account} onChanged={reload} />}
+          {tab === 'company' && canEditCompany && <CompanyTab />}
         </>
       )}
     </>
@@ -90,6 +96,36 @@ function ProfileTab({ account, onSaved }: { account: AccountInfo; onSaved: (a: A
         </label>
       )}
       <label>Role<input value={account.role} disabled /></label>
+    </SaveForm>
+  );
+}
+
+// ---------------- Company ----------------
+
+/** The organization's details on the printed invoice. GSTIN is upper-cased by the API. */
+function CompanyTab() {
+  const [company, setCompany] = useState<Company | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { api.company().then(setCompany).catch((e) => setError(message(e, 'Could not load the company'))); }, []);
+  if (error) return <p role="alert" className="error">{error}</p>;
+  if (!company) return <p className="hint">Loading…</p>;
+  const set = (k: keyof Company) => (e: { target: { value: string } }) => setCompany({ ...company, [k]: e.target.value });
+  const blank = (v: string | null) => (v && v.trim() ? v.trim() : null);
+
+  return (
+    <SaveForm label="Company" submitText="Save company" onSubmit={async () => {
+      const saved = await api.saveCompany({ name: company.name.trim(), address: blank(company.address), state: blank(company.state),
+        phone: blank(company.phone), email: blank(company.email), taxId: blank(company.taxId) });
+      setCompany(saved);
+      return 'Company details saved. They appear on every invoice print.';
+    }}>
+      <label>Company name<input required maxLength={200} value={company.name} onChange={set('name')} /></label>
+      <label>GSTIN<input maxLength={20} value={company.taxId ?? ''} onChange={set('taxId')} /></label>
+      <label>Address<textarea rows={3} maxLength={500} value={company.address ?? ''} onChange={set('address')} /></label>
+      <label>State<input maxLength={100} value={company.state ?? ''} onChange={set('state')} /></label>
+      <label>Phone<input maxLength={30} value={company.phone ?? ''} onChange={set('phone')} /></label>
+      <label>Email<input type="email" maxLength={320} value={company.email ?? ''} onChange={set('email')} /></label>
+      <p className="hint">The state decides the tax on each invoice: same state as the customer = CGST + SGST, another state = IGST.</p>
     </SaveForm>
   );
 }

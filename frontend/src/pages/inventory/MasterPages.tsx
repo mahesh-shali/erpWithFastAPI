@@ -3,7 +3,7 @@ import { api, type Store, type Uom } from '../../api/client';
 import { usePermissions } from '../../auth/PermissionsContext';
 import { errorText } from './format';
 
-/** Master › Inventory Setup › Units of Measure. Units used by products can only be deactivated. */
+/** Master › Inventory › Units of Measure. Units used by products can only be deactivated. */
 export function UomsPage() {
   const { can } = usePermissions();
   const [rows, setRows] = useState<Uom[]>([]);
@@ -76,7 +76,7 @@ function UomForm({ uom, onDone }: { uom: Uom | null; onDone: (saved: boolean) =>
   );
 }
 
-/** Master › Inventory Setup › Stores. One store is the default (Main Store): sales orders ship from it. */
+/** Master › Inventory › Stores. One store is the default (Main Store): sales orders ship from it. */
 export function StoresPage() {
   const { can } = usePermissions();
   const [rows, setRows] = useState<Store[]>([]);

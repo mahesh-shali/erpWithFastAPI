@@ -105,21 +105,42 @@ public record UpdateUserRequest(
 public record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSize, long Total);
 
 // ---------- Customers ----------
-public record CustomerDto(Guid Id, string Name, string? Email, string? City, string? Country);
+public record CustomerDto(Guid Id, string Name, string? Email, string? City, string? Country,
+    string? Phone = null, string? ContactPerson = null, string? TaxId = null, string? Address = null, string? State = null,
+    string? PostalCode = null, int PaymentTermsDays = 0);
 public record UpsertCustomerRequest(
-    [Required, MaxLength(200)] string Name, [EmailAddress] string? Email, string? City, string? Country);
+    [Required, MaxLength(200)] string Name, [EmailAddress, MaxLength(320)] string? Email, [MaxLength(100)] string? City,
+    [MaxLength(100)] string? Country,
+    [MaxLength(30)] string? Phone = null, [MaxLength(100)] string? ContactPerson = null, [MaxLength(20)] string? TaxId = null,
+    [MaxLength(500)] string? Address = null, [MaxLength(100)] string? State = null, [MaxLength(20)] string? PostalCode = null,
+    [Range(0, 365)] int PaymentTermsDays = 0);
 
 // ---------- Products ----------
+/// <summary>An item (page key "products"). UnitPrice is the sales price.</summary>
 public record ProductDto(Guid Id, string Sku, string Name, string? Category, decimal UnitPrice, int StockQuantity,
-    Guid? UomId = null, string? Uom = null);
-/// <summary>StockQuantity: on create, opening stock in the default store; on update, a change is posted there as an adjustment.</summary>
+    Guid? UomId = null, string? Uom = null,
+    string ItemType = "Finished Good", string? Description = null, string? HsnCode = null, decimal TaxRate = 0,
+    decimal StandardCost = 0, int ReorderLevel = 0, int LeadTimeDays = 0, string? DrawingNo = null, bool IsActive = true);
+/// <summary>
+/// StockQuantity: on create, opening stock in the default store; on update, a change is posted there as an adjustment.
+/// ItemType null = Finished Good.
+/// </summary>
 public record UpsertProductRequest(
     [Required, MaxLength(50)] string Sku,
     [Required, MaxLength(200)] string Name,
-    string? Category,
+    [MaxLength(100)] string? Category,
     [Range(0, 10_000_000)] decimal UnitPrice,
     [Range(0, int.MaxValue)] int StockQuantity,
-    Guid? UomId = null);
+    Guid? UomId = null,
+    [MaxLength(20)] string? ItemType = null,
+    [MaxLength(1000)] string? Description = null,
+    [MaxLength(20)] string? HsnCode = null,
+    [Range(0, 100)] decimal TaxRate = 0,
+    [Range(0, 10_000_000)] decimal StandardCost = 0,
+    [Range(0, 10_000_000)] int ReorderLevel = 0,
+    [Range(0, 3650)] int LeadTimeDays = 0,
+    [MaxLength(50)] string? DrawingNo = null,
+    bool IsActive = true);
 
 // ---------- Orders ----------
 public record OrderItemRequest([Required] Guid ProductId, [Range(1, 10_000)] int Quantity);
@@ -152,7 +173,8 @@ public record AnalyticsReport(
 
 // ---------- Inventory ----------
 public record UomDto(Guid Id, string Code, string Name, bool IsActive);
-public record ItemLookupDto(Guid Id, string Sku, string Name, string? Uom, int StockQuantity, decimal UnitPrice);
+public record ItemLookupDto(Guid Id, string Sku, string Name, string? Uom, int StockQuantity, decimal UnitPrice,
+    string ItemType = "Finished Good", decimal TaxRate = 0, string? HsnCode = null);
 public record UpsertUomRequest([Required, MaxLength(10)] string Code, [Required, MaxLength(50)] string Name, bool IsActive = true);
 
 public record StoreDto(Guid Id, string Code, string Name, string? Location, bool IsDefault, bool IsActive);
