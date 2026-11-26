@@ -235,18 +235,36 @@ export interface UpsertSalesInvoice {
   shippingAddress: string | null; remarks: string | null;
   lines: { customerPoLineId: string | null; productId: string | null; quantity: number; rate: number; discountPercent: number; taxRate: number | null }[];
 }
-/** template = the organization's own layout, rendered and sanitized on the server (null = built-in layout). */
-export interface InvoicePrint { company: Company; invoice: SalesInvoice; template?: RenderedTemplate | null; templateWarning?: string | null }
+/**
+ * template = the chosen print format, rendered and sanitized on the server (null = built-in layout).
+ * formats = what the print screen's format picker offers.
+ */
+export interface InvoicePrint {
+  company: Company; invoice: SalesInvoice; template?: RenderedTemplate | null; templateWarning?: string | null; formats?: PrintFormat[] | null;
+}
+/** A Customer P.O. or Work Order print: always rendered on the server (the built-in layout too). */
+export interface DocumentPrint {
+  pageKey: PrintPageKey; documentId: string; number: string; title: string; template: RenderedTemplate; formats: PrintFormat[];
+  templateWarning?: string | null;
+}
+/** A choice in a print screen's format picker; id null = the built-in layout. */
+export interface PrintFormat { id: string | null; name: string; version: number; isDefault: boolean; isIssuedWith: boolean }
 
 // ---------- Print templates (Settings › Print templates) ----------
-export type PrintDocumentType = 'sales-invoice';
+/** Pages that have print formats (Organization › Module › Group › Page). */
+export type PrintPageKey = 'customer-pos' | 'sales-invoices' | 'work-orders';
 /** html goes into a shadow root, css into a constructed stylesheet (both already sanitized by the API). */
 export interface RenderedTemplate { templateId: string | null; name: string; version: number; html: string; css: string }
 export interface PrintTemplateSummary {
-  id: string; familyId: string; documentType: PrintDocumentType; name: string; version: number; isDefault: boolean;
+  id: string; familyId: string; pageKey: PrintPageKey; name: string; version: number; isDefault: boolean;
   isArchived: boolean; createdAt: string;
 }
 export interface PrintTemplate extends PrintTemplateSummary { body: string }
+export interface PrintSetup {
+  isPlatformAdmin: boolean; currentOrganizationId: string; organizations: { id: string; name: string }[];
+  modules: { key: string; name: string; groups: { key: string; name: string; pages: PrintSetupPage[] }[] }[];
+}
+export interface PrintSetupPage { key: string; name: string; printable: boolean; formatCount: number }
 export type StockStatus = 'OK' | 'Reorder' | 'Short';
 export interface StockDetailsRow {
   productId: string; sku: string; name: string; itemType: string; category: string | null; uom: string | null;
@@ -378,6 +396,7 @@ export const api = {
   customerPos: (f: { status?: string; search?: string; page?: number } = {}) =>
     request<PagedResult<CustomerPoSummary>>(`/api/customer-pos${qs({ ...f, pageSize: 25 })}`),
   customerPo: (id: string) => request<CustomerPo>(`/api/customer-pos/${id}`),
+  customerPoPrint: (id: string, format: string | null = null) => request<DocumentPrint>(`/api/customer-pos/${id}/print${qs({ format })}`),
   createCustomerPo: (p: UpsertCustomerPo) => request<CustomerPo>('/api/customer-pos', { method: 'POST', body: json(p) }),
   updateCustomerPo: (id: string, p: UpsertCustomerPo) => request<CustomerPo>(`/api/customer-pos/${id}`, { method: 'PUT', body: json(p) }),
   deleteCustomerPo: (id: string) => request<void>(`/api/customer-pos/${id}`, { method: 'DELETE' }),
@@ -387,6 +406,7 @@ export const api = {
   workOrders: (f: { status?: string; search?: string; page?: number } = {}) =>
     request<PagedResult<WorkOrderSummary>>(`/api/work-orders${qs({ ...f, pageSize: 25 })}`),
   workOrder: (id: string) => request<WorkOrder>(`/api/work-orders/${id}`),
+  workOrderPrint: (id: string, format: string | null = null) => request<DocumentPrint>(`/api/work-orders/${id}/print${qs({ format })}`),
   createWorkOrder: (w: UpsertWorkOrder) => request<WorkOrder>('/api/work-orders', { method: 'POST', body: json(w) }),
   updateWorkOrder: (id: string, w: UpsertWorkOrder) => request<WorkOrder>(`/api/work-orders/${id}`, { method: 'PUT', body: json(w) }),
   deleteWorkOrder: (id: string) => request<void>(`/api/work-orders/${id}`, { method: 'DELETE' }),
@@ -396,7 +416,8 @@ export const api = {
   salesInvoices: (f: { status?: string; search?: string; page?: number } = {}) =>
     request<PagedResult<SalesInvoiceSummary>>(`/api/sales-invoices${qs({ ...f, pageSize: 25 })}`),
   salesInvoice: (id: string) => request<SalesInvoice>(`/api/sales-invoices/${id}`),
-  invoicePrint: (id: string) => request<InvoicePrint>(`/api/sales-invoices/${id}/print`),
+  /** format: null = the usual one, 'built-in', or a print template id. */
+  invoicePrint: (id: string, format: string | null = null) => request<InvoicePrint>(`/api/sales-invoices/${id}/print${qs({ format })}`),
   createSalesInvoice: (i: UpsertSalesInvoice) => request<SalesInvoice>('/api/sales-invoices', { method: 'POST', body: json(i) }),
   updateSalesInvoice: (id: string, i: UpsertSalesInvoice) =>
     request<SalesInvoice>(`/api/sales-invoices/${id}`, { method: 'PUT', body: json(i) }),
@@ -404,22 +425,28 @@ export const api = {
   submitSalesInvoice: (id: string) => request<SalesInvoice>(`/api/sales-invoices/${id}/submit`, { method: 'POST' }),
   cancelSalesInvoice: (id: string) => request<SalesInvoice>(`/api/sales-invoices/${id}/cancel`, { method: 'POST' }),
 
-  printTemplates: (documentType: PrintDocumentType = 'sales-invoice') =>
-    request<PrintTemplateSummary[]>(`/api/print-templates${qs({ documentType })}`),
-  printTemplate: (id: string) => request<PrintTemplate>(`/api/print-templates/${id}`),
-  printTemplateStarter: (documentType: PrintDocumentType = 'sales-invoice') =>
-    request<{ documentType: PrintDocumentType; body: string }>(`/api/print-templates/starter${qs({ documentType })}`),
-  createPrintTemplate: (t: { documentType: PrintDocumentType; name: string; body: string; makeDefault: boolean }) =>
-    request<PrintTemplate>('/api/print-templates', { method: 'POST', body: json(t) }),
+  // organizationId: null = the signed-in organization; another one only for a platform admin.
+  printSetup: (organizationId: string | null = null) => request<PrintSetup>(`/api/print-templates/setup${qs({ organizationId })}`),
+  printTemplates: (pageKey: PrintPageKey, organizationId: string | null = null) =>
+    request<PrintTemplateSummary[]>(`/api/print-templates${qs({ pageKey, organizationId })}`),
+  printTemplate: (id: string, organizationId: string | null = null) =>
+    request<PrintTemplate>(`/api/print-templates/${id}${qs({ organizationId })}`),
+  printTemplateStarter: (pageKey: PrintPageKey) =>
+    request<{ pageKey: PrintPageKey; body: string }>(`/api/print-templates/starter${qs({ pageKey })}`),
+  createPrintTemplate: (t: { pageKey: PrintPageKey; name: string; body: string; makeDefault: boolean }, organizationId: string | null = null) =>
+    request<PrintTemplate>(`/api/print-templates${qs({ organizationId })}`, { method: 'POST', body: json(t) }),
   /** Saves a new version (the result has a new id). */
-  updatePrintTemplate: (id: string, t: { name: string; body: string }) =>
-    request<PrintTemplate>(`/api/print-templates/${id}`, { method: 'PUT', body: json(t) }),
-  setDefaultPrintTemplate: (id: string) => request<PrintTemplate>(`/api/print-templates/${id}/default`, { method: 'POST' }),
-  useBuiltInPrint: (documentType: PrintDocumentType = 'sales-invoice') =>
-    request<void>(`/api/print-templates/use-built-in${qs({ documentType })}`, { method: 'POST' }),
-  archivePrintTemplate: (id: string) => request<void>(`/api/print-templates/${id}`, { method: 'DELETE' }),
-  previewPrintTemplate: (p: { documentType: PrintDocumentType; body: string; invoiceId: string | null }) =>
-    request<RenderedTemplate>('/api/print-templates/preview', { method: 'POST', body: json(p) }),
+  updatePrintTemplate: (id: string, t: { name: string; body: string }, organizationId: string | null = null) =>
+    request<PrintTemplate>(`/api/print-templates/${id}${qs({ organizationId })}`, { method: 'PUT', body: json(t) }),
+  setDefaultPrintTemplate: (id: string, organizationId: string | null = null) =>
+    request<PrintTemplate>(`/api/print-templates/${id}/default${qs({ organizationId })}`, { method: 'POST' }),
+  useBuiltInPrint: (pageKey: PrintPageKey, organizationId: string | null = null) =>
+    request<void>(`/api/print-templates/use-built-in${qs({ pageKey, organizationId })}`, { method: 'POST' }),
+  archivePrintTemplate: (id: string, organizationId: string | null = null) =>
+    request<void>(`/api/print-templates/${id}${qs({ organizationId })}`, { method: 'DELETE' }),
+  /** documentId: one of the signed-in organization's documents of the page; null = sample data. */
+  previewPrintTemplate: (p: { pageKey: PrintPageKey; body: string; documentId: string | null }, organizationId: string | null = null) =>
+    request<RenderedTemplate>(`/api/print-templates/preview${qs({ organizationId })}`, { method: 'POST', body: json(p) }),
 
   stockDetails: (f: { search?: string; itemType?: string; attention?: boolean; page?: number } = {}) =>
     request<PagedResult<StockDetailsRow>>(`/api/stock/details${qs({ ...f, pageSize: 50 })}`),

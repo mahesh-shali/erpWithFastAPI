@@ -134,14 +134,22 @@ on hand − committed (confirmed P.O.s not yet invoiced) = available. Domain in 
 new record past the first page looks as if saving failed.
 
 **Print templates** (Settings › Print templates, **SuperAdmin only**: `[Authorize(Roles = SuperAdmin)]` on
-`PrintTemplatesController` and `canEditPrintTemplates` in `SettingsPage.tsx`; Admins keep Settings › Company). Each
-organization may replace the built-in invoice layout with its own HTML/CSS using Scriban placeholders; new templates start
-from `PrintTemplateStarter`. The API renders and sanitizes (`PrintTemplateRenderer` → `RenderedTemplateDto { Html, Css }`
-in `InvoicePrintDto.Template`); the client shows it with `components/TemplateView.tsx` (shadow root + constructed
-stylesheet). The editor (`pages/settings/PrintTemplatesTab.tsx`) sits next to a live A4 preview that re-renders via
+`PrintTemplatesController` and `canEditPrintTemplates` in `SettingsPage.tsx`; Admins keep Settings › Company). Formats
+belong to **Organization › Module › Group › Page**: `print_templates.page_key` is one of `PrintablePages.All`
+(`customer-pos`, `sales-invoices`, `work-orders`); `GET /api/print-templates/setup` gives the tree. A page has any number
+of formats, at most one default (none = built-in layout); the print screens (`InvoicePrintPage`, `pages/DocumentPrintPage.tsx`)
+have a `PrintFormatPicker` (`?format=built-in|<id>`), resolved by `IPrintTemplateService.ChooseAsync`. Invoices keep a
+built-in React layout; Customer P.O. / Work Order always come back rendered (`DocumentPrintService`, built-in = the
+page's `PrintTemplateStarter`). The API renders and sanitizes (`PrintTemplateRenderer` → `RenderedTemplateDto { Html, Css }`);
+the client shows it with `components/TemplateView.tsx` (shadow root + constructed stylesheet). The editor
+(`pages/settings/PrintTemplatesTab.tsx`) sits next to a live A4 preview that re-renders via
 `POST /api/print-templates/preview` `PREVIEW_DELAY_MS` after typing stops and keeps the last good preview on errors.
 Rows are immutable versions (`family_id`, `version`); an issued invoice freezes `sales_invoices.print_template_id`,
-drafts use the current default. Templates are per organization (tenant filter); nothing is shared across organizations.
+drafts use the current default. Templates are per organization (tenant filter). The one cross-organization path is the
+**platform admin** (`users.is_platform_admin`, set only by `--platform-admin <email>` / `--revoke-platform-admin`, read
+from the DB per request): `?organizationId=` on the print-template endpoints makes `PrintTemplateScope` build a separate
+`ErpDbContext` with that organization as tenant. Keep it confined to print templates; previews of another organization
+use sample data only.
 
 **Frontend.** `src/api/client.ts` handles 401 → single shared `/api/auth/refresh` → retry. `PermissionsContext`
 loads `GET /api/me/permissions` to build the menu and guard routes (UI-only; the API is the real check).
@@ -201,8 +209,11 @@ separate profiles. Don't relax the hardening in `security.ts`/`ipc.ts` or the El
   external URLs; images only `data:image/png|jpeg|gif|webp`), CSS loses `@import` and remote `url()`. Never render a
   template with `dangerouslySetInnerHTML`, an iframe, or `<style>`: use `TemplateView`. Don't relax either CSP for it
   (web `style-src 'self'`, desktop `default-src 'none'`); constructed stylesheets work under both, which is why
-  `style=""` attributes are converted to generated classes. A new variable goes in `InvoiceModel`, the starter
-  (`PrintTemplateStarter`) and the `VARIABLES` list in `PrintTemplatesTab.tsx`. Never edit a template row in place:
+  `style=""` attributes are converted to generated classes. A new variable goes in the page's model (`InvoiceModel`,
+  `CustomerPoModel`, `WorkOrderModel`), its starter (`PrintTemplateStarter`) and `PAGES[page].variables` in
+  `PrintTemplatesTab.tsx`. A new printable page needs all of: `PrintablePages.All` + a migration for the
+  `ck_print_templates_page_key` check, a model + sample + starter, a `/print` endpoint, a case in
+  `DocumentPrintService.PreviewModelAsync`, `PAGES` in the tab, and a print route. Never edit a template row in place:
   `UpdateAsync` adds version n+1 and archives the old one so frozen invoices reprint identically.
 - **Stock changes only through `IStockPosting.PostAsync`** (inside a transaction, after `EnsureDefaultStoreAsync`). Never
   update `products.stock_quantity` or `stock_balances` directly: the invariant is stock_quantity = sum of balances, and

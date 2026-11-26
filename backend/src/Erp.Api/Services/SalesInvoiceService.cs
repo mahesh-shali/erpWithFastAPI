@@ -11,7 +11,8 @@ public interface ISalesInvoiceService
     Task<PagedResult<SalesInvoiceSummaryDto>> ListAsync(string? status, Guid? customerId, Guid? customerPoId, string? search,
         int page, int pageSize, CancellationToken ct);
     Task<SalesInvoiceDto> GetAsync(Guid id, CancellationToken ct);
-    Task<InvoicePrintDto> PrintAsync(Guid id, CancellationToken ct);
+    /// <param name="format">null = the usual format, "built-in", or a print template id (the print screen's picker).</param>
+    Task<InvoicePrintDto> PrintAsync(Guid id, string? format, CancellationToken ct);
     Task<SalesInvoiceDto> CreateAsync(UpsertSalesInvoiceRequest req, CancellationToken ct);
     Task<SalesInvoiceDto> UpdateAsync(Guid id, UpsertSalesInvoiceRequest req, CancellationToken ct);
     Task DeleteAsync(Guid id, CancellationToken ct);
@@ -56,25 +57,28 @@ public sealed class SalesInvoiceService(ErpDbContext db, IStockPosting posting, 
 
     /// <summary>
     /// Issued and cancelled invoices print with the template version frozen when they were issued (none = built-in);
-    /// drafts with the organization's current default. A template that fails to render falls back to the built-in layout.
+    /// drafts with the organization's current default. The print screen may pick any other current format of the page
+    /// (<paramref name="format"/>). A template that fails to render falls back to the built-in layout.
     /// </summary>
-    public async Task<InvoicePrintDto> PrintAsync(Guid id, CancellationToken ct)
+    public async Task<InvoicePrintDto> PrintAsync(Guid id, string? format, CancellationToken ct)
     {
         var company = await CompanyAsync(ct);
         var entity = await LoadAsync(id, ct);
         var dto = ToDto(entity, company.State);
-        var template = entity.Status == DocStatus.Draft ? await templates.DefaultAsync(PrintDocumentType.SalesInvoice, ct)
-            : entity.PrintTemplateId is { } frozen ? await templates.FindAsync(frozen, ct) : null;
-        if (template is null) return new InvoicePrintDto(company, dto);
+        var issued = entity.Status != DocStatus.Draft;
+        var choice = await templates.ChooseAsync(PageKeys.SalesInvoices, format, issued, issued ? entity.PrintTemplateId : null, ct);
+        if (choice.Template is not { } template) return new InvoicePrintDto(company, dto, null, null, choice.Formats);
         try
         {
             var r = PrintTemplateRenderer.Render(template.Body, PrintTemplateRenderer.InvoiceModel(company, dto));
-            return new InvoicePrintDto(company, dto, new RenderedTemplateDto(template.Id, template.Name, template.Version, r.Html, r.Css));
+            return new InvoicePrintDto(company, dto, new RenderedTemplateDto(template.Id, template.Name, template.Version, r.Html, r.Css),
+                null, choice.Formats);
         }
         catch (DomainException e)
         {
             return new InvoicePrintDto(company, dto, null,
-                $"Template \"{template.Name}\" (version {template.Version}) could not be used: {e.Message} Printed with the built-in layout.");
+                $"Template \"{template.Name}\" (version {template.Version}) could not be used: {e.Message} Printed with the built-in layout.",
+                choice.Formats);
         }
     }
 
@@ -161,7 +165,7 @@ public sealed class SalesInvoiceService(ErpDbContext db, IStockPosting posting, 
             for (var i = 0; i < lines.Count; i++) lines[i].CostRate = posted[i].Rate;
             inv.CostOfGoods = posted.Sum(p => Math.Abs(p.ValueChange));
             // Freeze the print layout: later template edits never change how an issued invoice reprints.
-            inv.PrintTemplateId = (await templates.DefaultAsync(PrintDocumentType.SalesInvoice, ct))?.Id;
+            inv.PrintTemplateId = (await templates.DefaultAsync(PageKeys.SalesInvoices, ct))?.Id;
             inv.Status = DocStatus.Submitted;
             inv.SubmittedAt = clock.GetUtcNow().UtcDateTime;
             await db.SaveChangesAsync(ct);
@@ -301,11 +305,17 @@ public sealed class SalesInvoiceService(ErpDbContext db, IStockPosting posting, 
     private static void Snapshot(SalesInvoice inv, Customer c)
     {
         inv.BillingName = c.Name;
-        var cityLine = string.Join(" ", new[] { c.City, c.PostalCode }.Where(s => !string.IsNullOrWhiteSpace(s)));
-        var parts = new[] { c.Address, cityLine, c.State, c.Country }.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
-        inv.BillingAddress = parts.Count == 0 ? null : string.Join(Environment.NewLine, parts);
+        inv.BillingAddress = PostalAddress(c);
         inv.BillingTaxId = c.TaxId;
         inv.BillingState = c.State;
+    }
+
+    /// <summary>The customer's address as printed: street, "city PIN", state, country, one per line (null if none).</summary>
+    public static string? PostalAddress(Customer c)
+    {
+        var cityLine = string.Join(" ", new[] { c.City, c.PostalCode }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        var parts = new[] { c.Address, cityLine, c.State, c.Country }.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+        return parts.Count == 0 ? null : string.Join(Environment.NewLine, parts);
     }
 
     private async Task<SalesInvoice> LoadAsync(Guid id, CancellationToken ct) =>

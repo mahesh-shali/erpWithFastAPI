@@ -45,6 +45,24 @@ public static class DatabaseInitializer
     ///   Bootstrap__OrganizationName, Bootstrap__Email, Bootstrap__Password, Bootstrap__FullName
     /// Idempotent: does nothing if that email already exists. Remove the secrets after the first run.
     /// </summary>
+    /// <summary>
+    /// <c>--platform-admin &lt;email&gt;</c> / <c>--revoke-platform-admin &lt;email&gt;</c>: grants or removes the platform-admin
+    /// flag (print formats of every organization). Deliberately a one-off command and not an API endpoint.
+    /// </summary>
+    public static async Task SetPlatformAdminAsync(IServiceProvider services, string email, bool grant, CancellationToken ct = default)
+    {
+        await using var scope = services.CreateAsyncScope();
+        var sp = scope.ServiceProvider;
+        var log = sp.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(DatabaseInitializer));
+        await using var db = new ErpDbContext(sp.GetRequiredService<DbContextOptions<ErpDbContext>>(), new FixedTenantContext(Guid.Empty));
+        var normalized = email.Trim().ToLowerInvariant();
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == normalized, ct)
+                   ?? throw new InvalidOperationException($"No user with the email {normalized}.");
+        user.IsPlatformAdmin = grant;
+        await db.SaveChangesAsync(ct);
+        log.LogWarning("Platform admin {Action} for {Email}.", grant ? "granted" : "revoked", normalized);
+    }
+
     private static async Task BootstrapOwnerAsync(DbContextOptions<ErpDbContext> options, IConfiguration cfg,
         IPasswordHasher hasher, ILogger log, CancellationToken ct)
     {
@@ -164,6 +182,7 @@ public static class DatabaseInitializer
             {
                 Id = Guid.NewGuid(), OrganizationId = DemoOrgId, Email = DemoAdminEmail,
                 PasswordHash = hasher.Hash(DemoAdminPassword), FullName = "Demo Admin", RoleId = Roles.SuperAdminId,
+                IsPlatformAdmin = true,   // demo: manages print formats of every organization
             },
             new User
             {

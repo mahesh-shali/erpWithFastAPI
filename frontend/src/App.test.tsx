@@ -6,6 +6,12 @@ import { TOKEN_KEY } from './api/client';
 import { calls, jsonResponse, mockApi, perm, renderWithProviders, signIn, type Route } from './test/utils';
 
 /** Every screen's data endpoint answers with empty data; only routing and guards are under test. */
+/** A server-rendered print (Customer P.O. / Work Order) for the print routes. */
+const printed = (pageKey: string, documentId: string, number: string) => ({
+  pageKey, documentId, number, title: number, formats: [],
+  template: { templateId: null, name: 'Built-in layout', version: 0, html: `<div class="print-root">${number}</div>`, css: '' },
+});
+
 const EMPTY: Route[] = [
   ['GET', '/api/dashboard/stats', { customers: 1, products: 2, orders: 3, revenue: 4, lowStockProducts: 0 }],
   ['GET', '/api/analytics*', jsonResponse({ title: 'not needed' }, 500)],
@@ -24,11 +30,15 @@ const EMPTY: Route[] = [
   ['GET', '/api/stock/ledger*', { items: [], page: 1, pageSize: 50, total: 0 }],
   ['GET', '/api/stock/details*', { items: [], page: 1, pageSize: 50, total: 0 }],
   ['GET', '/api/stock/*', []],
+  // Print screens (before the list mocks, which share the prefix)
+  ['GET', '/api/customer-pos/p1/print*', printed('customer-pos', 'p1', 'CPO-00001')],
+  ['GET', '/api/work-orders/w1/print*', printed('work-orders', 'w1', 'WO-00001')],
   ['GET', '/api/customer-pos*', { items: [], page: 1, pageSize: 25, total: 0 }],
   ['GET', '/api/work-orders*', { items: [], page: 1, pageSize: 25, total: 0 }],
   ['GET', '/api/sales-invoices*', { items: [], page: 1, pageSize: 25, total: 0 }],
   ['GET', '/api/sales/lookups/*', []],
   ['GET', '/api/account', { id: 'u1', email: 'admin@demo.com', fullName: 'Demo Admin', role: 'SuperAdmin', twoFactorEnabled: false, recoveryCodesLeft: 0 }],
+  ['GET', '/api/print-templates/setup*', { isPlatformAdmin: false, currentOrganizationId: 'o1', organizations: [{ id: 'o1', name: 'Demo Corp' }], modules: [] }],
   ['GET', '/api/print-templates*', []],
   ['GET', '/api/stock-entries*', { items: [], page: 1, pageSize: 25, total: 0 }],
   ['GET', '/api/chat/keys/me', undefined],
@@ -98,6 +108,16 @@ describe('App routing', () => {
   ])('%s opens the %s screen', async (route, heading) => {
     renderApp(route);
     expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['/sales/customer-po/p1/print', 'CPO-00001'],
+    ['/production/work-orders/w1/print', 'WO-00001'],
+  ])('%s opens the print screen of %s (no menu)', async (route, number) => {
+    renderApp(route);
+    expect(await screen.findByRole('link', { name: `‹ Back to ${number}` })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Print' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
   });
 
   it('a page without a screen shows Coming soon', async () => {

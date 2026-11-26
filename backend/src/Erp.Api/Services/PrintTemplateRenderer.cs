@@ -153,11 +153,7 @@ public static class PrintTemplateRenderer
     {
         decimal Half(decimal v) => Math.Round(v / 2, 2, MidpointRounding.AwayFromZero);
         var inter = inv.InterState;
-        var company = new ScriptObject
-        {
-            ["name"] = E(co.Name), ["address"] = E(co.Address), ["address_html"] = Lines(co.Address), ["state"] = E(co.State),
-            ["phone"] = E(co.Phone), ["email"] = E(co.Email), ["gstin"] = E(co.TaxId),
-        };
+        var company = Company(co);
         var customer = new ScriptObject
         {
             ["name"] = E(inv.BillingName), ["address"] = E(inv.BillingAddress), ["address_html"] = Lines(inv.BillingAddress),
@@ -194,16 +190,86 @@ public static class PrintTemplateRenderer
             ["igst_total"] = inter ? inv.TaxTotal : 0m, ["round_off"] = inv.RoundOff, ["grand_total"] = inv.GrandTotal,
             ["amount_in_words"] = E(inv.AmountInWords), ["line_count"] = inv.Lines.Count,
         };
+        return new ScriptObject
+        {
+            ["company"] = company, ["customer"] = customer, ["invoice"] = invoice, ["lines"] = lines, ["tax_summary"] = taxes,
+            ["fmt"] = Formatters(),
+        };
+    }
+
+    /// <summary>The variables a Customer P.O. template can use (kept in step with VARIABLES in PrintTemplatesTab.tsx).</summary>
+    public static ScriptObject CustomerPoModel(CompanyDto co, PrintPartyDto party, CustomerPoDto po)
+    {
+        var lines = new ScriptArray();
+        foreach (var l in po.Lines)
+            lines.Add(new ScriptObject
+            {
+                ["no"] = l.LineNo, ["sku"] = E(l.Sku), ["name"] = E(l.ProductName), ["hsn"] = E(l.HsnCode), ["unit"] = E(l.Uom),
+                ["quantity"] = l.Quantity, ["rate"] = l.Rate, ["amount"] = l.Amount, ["tax_rate"] = l.TaxRate,
+                ["tax_amount"] = l.TaxAmount, ["total"] = l.Amount + l.TaxAmount,
+                ["produced_qty"] = l.ProducedQty, ["invoiced_qty"] = l.InvoicedQty, ["to_invoice"] = l.ToInvoice,
+            });
+        var order = new ScriptObject
+        {
+            ["number"] = E(po.Number), ["customer_po_no"] = E(po.CustomerPoNo), ["status"] = E(po.Status),
+            ["is_draft"] = po.Status == "Draft", ["is_cancelled"] = po.Status == "Cancelled",
+            ["date"] = Date(po.PoDate), ["delivery_date"] = po.DeliveryDate is { } d ? Date(d) : "",
+            ["remarks"] = E(po.Remarks), ["sub_total"] = po.SubTotal, ["tax_total"] = po.TaxTotal, ["grand_total"] = po.GrandTotal,
+            ["amount_in_words"] = E(AmountInWords.Rupees(po.GrandTotal)), ["line_count"] = po.Lines.Count,
+            ["total_quantity"] = po.Lines.Sum(l => l.Quantity),
+        };
+        var customer = new ScriptObject
+        {
+            ["name"] = E(party.Name), ["address"] = E(party.Address), ["address_html"] = Lines(party.Address),
+            ["gstin"] = E(party.TaxId), ["state"] = E(party.State), ["phone"] = E(party.Phone), ["email"] = E(party.Email),
+        };
+        return new ScriptObject
+        {
+            ["company"] = Company(co), ["customer"] = customer, ["po"] = order, ["lines"] = lines, ["fmt"] = Formatters(),
+        };
+    }
+
+    /// <summary>The variables a Work Order (job sheet) template can use (kept in step with VARIABLES in PrintTemplatesTab.tsx).</summary>
+    public static ScriptObject WorkOrderModel(CompanyDto co, WorkOrderDto wo)
+    {
+        var materials = new ScriptArray();
+        var n = 0;
+        foreach (var m in wo.Materials)
+            materials.Add(new ScriptObject
+            {
+                ["no"] = ++n, ["sku"] = E(m.Sku), ["name"] = E(m.ProductName), ["unit"] = E(m.Uom), ["quantity"] = m.Quantity,
+                ["rate"] = m.Rate, ["amount"] = m.Amount,
+            });
+        var order = new ScriptObject
+        {
+            ["number"] = E(wo.Number), ["status"] = E(wo.Status == "Submitted" ? "Completed" : wo.Status),
+            ["is_draft"] = wo.Status == "Draft", ["is_cancelled"] = wo.Status == "Cancelled", ["date"] = Date(wo.PostingDate),
+            ["customer_po_number"] = E(wo.CustomerPoNumber), ["customer_name"] = E(wo.CustomerName),
+            ["item_sku"] = E(wo.Sku), ["item_name"] = E(wo.ProductName), ["unit"] = E(wo.Uom), ["quantity"] = wo.Quantity,
+            ["store"] = E(wo.Store), ["material_store"] = E(wo.MaterialStore), ["material_cost"] = wo.MaterialCost,
+            ["other_cost"] = wo.OtherCost, ["unit_cost"] = wo.UnitCost, ["total_cost"] = wo.TotalCost, ["remarks"] = E(wo.Remarks),
+            ["material_count"] = wo.Materials.Count,
+        };
+        return new ScriptObject
+        {
+            ["company"] = Company(co), ["work_order"] = order, ["materials"] = materials, ["fmt"] = Formatters(),
+        };
+    }
+
+    private static ScriptObject Company(CompanyDto co) => new()
+    {
+        ["name"] = E(co.Name), ["address"] = E(co.Address), ["address_html"] = Lines(co.Address), ["state"] = E(co.State),
+        ["phone"] = E(co.Phone), ["email"] = E(co.Email), ["gstin"] = E(co.TaxId),
+    };
+
+    private static string Date(DateOnly d) => d.ToString("dd MMM yyyy", CultureInfo.InvariantCulture);
+
+    private static ScriptObject Formatters()
+    {
         var fmt = new ScriptObject();
         fmt.Import("money", new Func<object?, string>(v => "₹" + IndianNumber(ToDecimal(v), 2)));
         fmt.Import("number", new Func<object?, string>(v => IndianNumber(ToDecimal(v), ToDecimal(v) % 1 == 0 ? 0 : 2)));
-
-        var model = new ScriptObject
-        {
-            ["company"] = company, ["customer"] = customer, ["invoice"] = invoice, ["lines"] = lines, ["tax_summary"] = taxes,
-            ["fmt"] = fmt,
-        };
-        return model;
+        return fmt;
     }
 
     private static decimal ToDecimal(object? v) => v switch
@@ -250,11 +316,43 @@ public static class PrintTemplateRenderer
             sub, disc, tax, roundOff, grand, 0m, SalesInvoiceService.IsInterState(company.State, "Maharashtra"),
             AmountInWords.Rupees(grand), [new TaxSummaryRow(12m, 900m, 108m), new TaxSummaryRow(18m, 24660m, 4438.80m)],
             DateTime.UtcNow, DateTime.UtcNow, null, lines);
-        var co = company with
+        return (SampleCompany(company), inv);
+    }
+
+    private static CompanyDto SampleCompany(CompanyDto company) => company with
+    {
+        Address = company.Address ?? "Your company address", State = company.State ?? "Maharashtra",
+        TaxId = company.TaxId ?? "27AAAAA0000A1Z5",
+    };
+
+    /// <summary>A realistic Customer P.O. for previews when no real one is chosen.</summary>
+    public static (CompanyDto Company, PrintPartyDto Customer, CustomerPoDto Po) SampleCustomerPo(CompanyDto company)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var lines = new List<CustomerPoLineDto>
         {
-            Address = company.Address ?? "Your company address", State = company.State ?? "Maharashtra",
-            TaxId = company.TaxId ?? "27AAAAA0000A1Z5",
+            new(Guid.Empty, 1, Guid.Empty, "FG-1001", "Ball valve 2\" forged brass", "NOS", "8481", 10, 1250m, 18m, 12500m, 2250m, 10, 4, 0, 6, 0),
+            new(Guid.Empty, 2, Guid.Empty, "FG-2040", "Gate valve 4\" cast iron", "NOS", "8481", 4, 3200m, 18m, 12800m, 2304m, 0, 0, 4, 4, 0),
         };
-        return (co, inv);
+        var po = new CustomerPoDto(Guid.Empty, "CPO-00017", Guid.Empty, "Sample Customer Pvt Ltd", "PO/2026/0815", today, today.AddDays(21),
+            "Confirmed", "Deliver in wooden crates.", 25300m, 4554m, 29854m, DateTime.UtcNow, DateTime.UtcNow, null, null, lines, [], []);
+        var customer = new PrintPartyDto("Sample Customer Pvt Ltd", "Plot 7, MIDC Industrial Area\nPune 411019\nMaharashtra\nIndia",
+            "27ABCDE1234F1Z5", "Maharashtra", "+91 20 5555 0100", "purchase@sample.example");
+        return (SampleCompany(company), customer, po);
+    }
+
+    /// <summary>A realistic work order for previews when no real one is chosen.</summary>
+    public static (CompanyDto Company, WorkOrderDto WorkOrder) SampleWorkOrder(CompanyDto company)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var materials = new List<WorkOrderMaterialDto>
+        {
+            new(Guid.Empty, "RM-0101", "Brass bar 50 mm", "KG", 18, 520m, 9360m, 0),
+            new(Guid.Empty, "RM-0230", "PTFE seat ring", "NOS", 20, 35m, 700m, 0),
+        };
+        var wo = new WorkOrderDto(Guid.Empty, "WO-00008", "Draft", today, Guid.Empty, "CPO-00017", "Sample Customer Pvt Ltd", Guid.Empty,
+            Guid.Empty, "FG-1001", "Ball valve 2\" forged brass", "NOS", 10, Guid.Empty, "Finished Goods", Guid.Empty, "Raw Material",
+            1500m, 10060m, 1156m, 11560m, "Pressure-test every valve.", DateTime.UtcNow, null, null, materials);
+        return (SampleCompany(company), wo);
     }
 }

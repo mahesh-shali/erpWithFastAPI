@@ -32,6 +32,12 @@ public class User
     public Role? Role { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? LastLoginAt { get; set; }
+    /// <summary>
+    /// Platform owner: may manage print formats of every organization (Settings › Print templates). Granted only by the
+    /// one-off command <c>--platform-admin &lt;email&gt;</c>, never through the API, and checked against this row on every
+    /// request (not a JWT claim), so revoking it takes effect at once.
+    /// </summary>
+    public bool IsPlatformAdmin { get; set; }
 
     // ---- Two-factor sign-in (authenticator app, TOTP RFC 6238) ----
     /// <summary>On = sign-in needs a 6-digit authenticator code (or a recovery code) after the password.</summary>

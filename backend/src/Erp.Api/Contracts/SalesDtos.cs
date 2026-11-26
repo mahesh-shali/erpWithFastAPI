@@ -98,29 +98,57 @@ public record SalesInvoiceDto(Guid Id, string Number, string Status, DateOnly In
 public record SalesInvoiceSummaryDto(Guid Id, string Number, string Status, DateOnly InvoiceDate, DateOnly DueDate,
     string CustomerName, string? CustomerPoNumber, int LineCount, decimal GrandTotal, DateTime CreatedAt);
 /// <summary>
-/// Everything the print layout needs in one call. Template = the organization's custom layout, already rendered and
-/// sanitized (null = use the built-in layout). TemplateWarning explains a fall-back to the built-in layout.
+/// Everything the invoice print screen needs in one call. Template = the chosen print format, already rendered and
+/// sanitized (null = the built-in layout). TemplateWarning explains a fall-back to the built-in layout.
+/// Formats = what the screen's format picker offers (built-in first).
 /// </summary>
 public record InvoicePrintDto(CompanyDto Company, SalesInvoiceDto Invoice, RenderedTemplateDto? Template = null,
-    string? TemplateWarning = null);
+    string? TemplateWarning = null, IReadOnlyList<PrintFormatDto>? Formats = null);
 
-// ---------- Print templates (Settings > Print templates) ----------
+/// <summary>
+/// A Customer P.O. or Work Order print: always rendered on the server (the built-in layout is the starter template).
+/// </summary>
+public record DocumentPrintDto(string PageKey, Guid DocumentId, string Number, string Title, RenderedTemplateDto Template,
+    IReadOnlyList<PrintFormatDto> Formats, string? TemplateWarning = null);
+
+/// <summary>A choice in a print screen's format picker. Id null = the built-in layout.</summary>
+/// <param name="IsDefault">What the page prints with unless the user picks another.</param>
+/// <param name="IsIssuedWith">The (possibly older) version an issued document froze.</param>
+public record PrintFormatDto(Guid? Id, string Name, int Version, bool IsDefault, bool IsIssuedWith = false);
+
+/// <summary>Customer details printed on a Customer P.O.</summary>
+public record PrintPartyDto(string Name, string? Address, string? TaxId, string? State, string? Phone, string? Email);
+
+// ---------- Print templates (Settings › Print templates) ----------
 /// <param name="Html">Sanitized HTML for a shadow root; <paramref name="Css"/> goes into a constructed stylesheet.</param>
 public record RenderedTemplateDto(Guid? TemplateId, string Name, int Version, string Html, string Css);
-public record PrintTemplateSummaryDto(Guid Id, Guid FamilyId, string DocumentType, string Name, int Version, bool IsDefault,
+public record PrintTemplateSummaryDto(Guid Id, Guid FamilyId, string PageKey, string Name, int Version, bool IsDefault,
     bool IsArchived, DateTime CreatedAt);
-public record PrintTemplateDto(Guid Id, Guid FamilyId, string DocumentType, string Name, int Version, bool IsDefault,
+public record PrintTemplateDto(Guid Id, Guid FamilyId, string PageKey, string Name, int Version, bool IsDefault,
     bool IsArchived, DateTime CreatedAt, string Body);
 public record CreatePrintTemplateRequest(
-    [Required, MaxLength(30)] string DocumentType,
+    [Required, MaxLength(64)] string PageKey,
     [Required, MaxLength(100)] string Name,
     [Required, MaxLength(200_000)] string Body,
     bool MakeDefault = false);
 public record UpdatePrintTemplateRequest([Required, MaxLength(100)] string Name, [Required, MaxLength(200_000)] string Body);
-/// <param name="InvoiceId">Preview with this invoice's data; null = sample data.</param>
-public record PreviewPrintTemplateRequest([Required, MaxLength(30)] string DocumentType, [Required, MaxLength(200_000)] string Body,
-    Guid? InvoiceId = null);
-public record PrintTemplateStarterDto(string DocumentType, string Body);
+/// <param name="DocumentId">Preview with this document of the signed-in organization (an invoice, P.O. or work order of
+/// <paramref name="PageKey"/>); null = sample data.</param>
+public record PreviewPrintTemplateRequest([Required, MaxLength(64)] string PageKey, [Required, MaxLength(200_000)] string Body,
+    Guid? DocumentId = null);
+public record PrintTemplateStarterDto(string PageKey, string Body);
+
+/// <summary>
+/// The Organization › Module › Group › Page tree of the print templates screen. Organizations = the signed-in one, or
+/// every organization for a platform admin. Pages are the whole menu; Printable marks those that have print formats.
+/// </summary>
+public record PrintSetupDto(bool IsPlatformAdmin, Guid CurrentOrganizationId, IReadOnlyList<PrintOrganizationDto> Organizations,
+    IReadOnlyList<PrintModuleDto> Modules);
+public record PrintOrganizationDto(Guid Id, string Name);
+public record PrintModuleDto(string Key, string Name, IReadOnlyList<PrintGroupDto> Groups);
+public record PrintGroupDto(string Key, string Name, IReadOnlyList<PrintPageDto> Pages);
+/// <param name="FormatCount">Current (not archived) formats of the selected organization.</param>
+public record PrintPageDto(string Key, string Name, bool Printable, int FormatCount);
 
 // ---------- Stock details (Inventory > Stock Position > Stock Details) ----------
 /// <param name="Committed">Still to be invoiced on confirmed customer P.O.s.</param>

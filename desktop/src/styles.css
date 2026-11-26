@@ -415,6 +415,10 @@ section.card, div.card + div.card, .card + section.card { margin-top: 1rem; }
 .print-warning { max-width: 210mm; margin: 0 auto 1rem; }
 .print-toolbar .hint { margin: 0 auto 0 1rem; }
 .settings-card.wide { max-width: none; }
+/* Print format pickers: Organization › Module › Submodule › Page, and the print screens' format choice. */
+.print-scope { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .5rem 1rem; margin: .5rem 0; }
+.print-scope label { display: flex; flex-direction: column; gap: .25rem; }
+.print-format { display: flex; align-items: center; gap: .5rem; margin-left: 1rem; }
 tr.selected td { background: var(--accent-weak); }
 /* Print template editor: template on the left, live A4 preview on the right (stacked on narrow screens). */
 .template-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 1rem; margin-top: 1rem; align-items: start; }

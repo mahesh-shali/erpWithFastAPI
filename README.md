@@ -712,19 +712,33 @@ tables; `ai-service/app/schema.py` describes them and `sql_guard.py` maps them t
 
 The desktop app (1.5.0) has the same screens; the invoice print uses the system print dialog.
 
-### Custom print templates
+### Print formats (custom print templates)
 
-Organizations whose invoice must follow their own format write it in **Settings › Print templates** (SuperAdmin only;
-Admins keep Settings › Company):
-HTML and CSS with [Scriban](https://github.com/scriban/scriban) placeholders, starting from a copy of the built-in
-layout (`{{ invoice.number }}`, `{{ for line in lines }}…{{ end }}`, `{{ invoice.grand_total | fmt.money }}`; the tab
-lists every variable). A **live preview** next to the editor re-renders a moment after you stop typing, with sample data
-or a real invoice and a zoom control; if the template breaks, the last good preview stays and the error is shown. One
-template per organization is the default (none = built-in layout).
+Print formats are organized like the menu: **Settings › Print templates** (SuperAdmin only; Admins keep Settings ›
+Company) starts with four pickers, **Organization › Module › Submodule › Page**, e.g.
+*Demo Corp › Sales & Labour Work › Orders › Customer P.O. › Print*. Pages that can print today are **Customer P.O.**,
+**Sales Invoices** and **Work Orders**; every other page is listed but greyed out ("no print yet"). A page can have any
+number of formats: one is its **default** (none = the built-in layout) and the document's print screen has a **Format**
+dropdown to switch to any other format of that page (the choice goes into the URL as `?format=`).
+
+A format is HTML and CSS with [Scriban](https://github.com/scriban/scriban) placeholders, starting from a copy of the
+page's built-in layout (`{{ invoice.number }}`, `{{ po.customer_po_no }}`, `{{ work_order.item_name }}`,
+`{{ for line in lines }}…{{ end }}`, `{{ value | fmt.money }}`; the tab lists every variable of the chosen page). A
+**live preview** next to the editor re-renders a moment after you stop typing, with sample data or one of your recent
+documents of that page, and a zoom control; if the template breaks, the last good preview stays and the error is shown.
 
 - **Versions.** Saving creates version n+1 and archives the previous one. Issuing an invoice records the version in use,
-  so a reprint never changes; drafts print with the current default. A template that fails to render falls back to the
-  built-in layout with a warning on screen.
+  so a reprint never changes (its picker marks that version "issued with"); drafts print with the current default. A
+  format that fails to render falls back to the built-in layout with a warning on screen.
+- **Built-in layouts.** Invoices have a built-in React layout; Customer P.O. ("Order Acknowledgement") and Work Order
+  (job sheet) print their starter template, rendered on the server.
+- **Platform admin.** Organizations are isolated tenants, so normally the Organization picker shows only your own. A
+  user with `users.is_platform_admin` gets a dropdown of every organization and can manage any organization's formats
+  (the API takes `?organizationId=`; the service then runs on a DbContext whose tenant is that organization, so the
+  usual tenant filter still applies). Previews of another organization use sample data with its company details; its
+  real documents are never read. The flag is checked in the database on every call (not a JWT claim) and is only set
+  from the command line: `dotnet run --project backend/src/Erp.Api -- --platform-admin <email>` (or
+  `--revoke-platform-admin <email>`; after `--migrate` when both are given). The demo seed makes `admin@demo.com` one.
 - **Safety.** Rendering happens on the server: values are HTML-escaped first, Scriban runs without file access and with
   loop, recursion, size and time limits, and the output is sanitized (no scripts, event handlers, frames, forms, links or
   outside URLs; logos as embedded `data:image/…` only). The browser shows it in a shadow root with a constructed
@@ -732,10 +746,15 @@ template per organization is the default (none = built-in layout).
 
 | Method & path | Who |
 |---|---|
-| `GET /api/print-templates?documentType&includeArchived`, `GET /{id}`, `GET /starter` | SuperAdmin |
-| `POST /api/print-templates` · `PUT /{id}` (new version) · `POST /{id}/default` · `POST /use-built-in` · `DELETE /{id}` (archive) | SuperAdmin |
-| `POST /api/print-templates/preview` (sample data or `invoiceId`) | SuperAdmin |
-| `GET /api/sales-invoices/{id}/print` → `template` (rendered) or `templateWarning` | sales-invoices read |
+| `GET /api/print-templates/setup` → organizations + module › group › page tree with `printable` and format counts | SuperAdmin |
+| `GET /api/print-templates?pageKey&includeArchived`, `GET /{id}`, `GET /starter?pageKey` | SuperAdmin |
+| `POST /api/print-templates` · `PUT /{id}` (new version) · `POST /{id}/default` · `POST /use-built-in?pageKey` · `DELETE /{id}` (archive) | SuperAdmin |
+| `POST /api/print-templates/preview` (`pageKey`, `body`, sample data or `documentId`) | SuperAdmin |
+| every call above with `?organizationId=` of another organization | SuperAdmin + platform admin |
+| `GET /api/sales-invoices/{id}/print?format=` → `template` (rendered) or `templateWarning`, `formats` | sales-invoices read |
+| `GET /api/customer-pos/{id}/print?format=` · `GET /api/work-orders/{id}/print?format=` → rendered `template`, `formats` | that page's read |
+
+`format` is `built-in` or a print template id; without it the document's usual format is used.
 
 ## Messages: end-to-end encrypted chat
 

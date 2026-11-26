@@ -602,8 +602,14 @@
     "url": "http://localhost:5173/settings/print-templates",
     "checks": [
       {
+        "title": "Pick Organization › Module › Submodule › Page",
+        "steps": ["Sign in as the SuperAdmin; open Settings (gear) › Print templates", "Change Module, Submodule and Page"],
+        "expect": "It opens at Sales & Labour Work › Orders › Customer P.O.; the line under the pickers reads e.g. Demo Corp › Sales & Labour Work › Orders › Customer P.O. › Print. Pages without a print screen are greyed out (— no print yet); a page's format count is shown next to its name.",
+        "auto": "PrintTemplatesTab.test.tsx › picks Organization › Module › Submodule › Page; PrintTemplatesTests › Setup lists the menu"
+      },
+      {
         "title": "Own layout from the starter",
-        "steps": ["Sign in as the SuperAdmin; open Settings (gear) › Print templates", "New template: change the heading, add a logo as data:image/png;base64,…", "Watch the live preview on the right, then Save and use for invoices"],
+        "steps": ["Choose Sales & Labour Work › Invoices › Sales Invoices", "New format: change the heading, add a logo as data:image/png;base64,…", "Watch the live preview on the right, then Save as default"],
         "expect": "The live preview updates about half a second after you stop typing; a broken template keeps the last good preview and shows the error. After saving, invoices print with it (version 1).",
         "auto": "PrintTemplatesTab.test.tsx; PrintTemplatesTests; e2e print-templates.spec.ts"
       },
@@ -618,6 +624,18 @@
         "steps": ["Issue an invoice and print it", "Edit the template (Save new version)", "Print the same invoice again, and a new draft"],
         "expect": "The issued invoice still prints with the old version; the draft uses the new one. Use built-in layout switches drafts back.",
         "auto": "PrintTemplatesTests › Invoices print with the default template"
+      },
+      {
+        "title": "Several formats per page, picked when printing",
+        "steps": ["Customer P.O.: add two formats, make one the default", "Open a Customer P.O. and click Print", "Switch the Format dropdown; do the same on a Work Order and an invoice"],
+        "expect": "The print opens with the default (or the built-in layout when there is none); the dropdown lists Built-in layout and every format of that page only, and switching re-renders at once. An issued invoice marks its version as 'issued with'.",
+        "auto": "PrintTemplatesTests › The print screens format picker; › Customer_po_and_work_order_print; e2e print-templates.spec.ts › Customer P.O. format"
+      },
+      {
+        "title": "Platform admin: every organization",
+        "steps": ["Grant: dotnet run --project backend/src/Erp.Api -- --platform-admin admin@demo.com (the demo seed already does)", "Open Settings › Print templates and choose Other Tenant Ltd in Organization", "Add a Customer P.O. format; sign in as that organization's SuperAdmin and print a P.O."],
+        "expect": "Organization is a dropdown of all organizations (a plain box for everyone else). Another organization's previews use sample data with its company name; its documents print with the new format. --revoke-platform-admin takes the dropdown away at the next page load.",
+        "auto": "PrintTemplatesTests › A_platform_admin_manages_the_formats_of_any_organization; PrintTemplatesTab.test.tsx › a platform admin"
       },
       {
         "title": "SuperAdmin only",

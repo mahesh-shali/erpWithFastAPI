@@ -135,6 +135,7 @@ export function CustomerPoPage() {
                 && act('Deleted.', () => api.deleteCustomerPo(po.id), () => navigate(PO_ROUTE))}>Delete draft</button>
             )}
             {canInvoice && <Link className="button" to={`${INVOICE_ROUTE}/new?poId=${po.id}`}>Create invoice</Link>}
+            <Link className="button" to={`${PO_ROUTE}/${po.id}/print`}>Print</Link>
             {po.status === 'Confirmed' && can(PAGE, 'delete') && (
               <button className="link danger" disabled={busy} onClick={() => confirm(`Cancel ${po.number}?`)
                 && act('Cancelled.', () => api.cancelCustomerPo(po.id), fill)}>Cancel P.O.</button>

@@ -5,6 +5,7 @@ import {
   type UpsertSalesInvoice,
 } from '../../api/client';
 import { usePermissions } from '../../auth/PermissionsContext';
+import { PrintFormatPicker, useRequestedFormat } from '../../components/PrintFormatPicker';
 import { TemplateView } from '../../components/TemplateView';
 import { errorText, fmtDate, inr, num, today } from '../inventory/format';
 import { DocPill, INVOICE_ROUTE, PO_ROUTE, Pager, useDocAction, useSalesLookups } from './shared';
@@ -292,12 +293,16 @@ export function SalesInvoicePage() {
   );
 }
 
-/** /sales/invoices/:id/print — a clean A4 tax invoice; the browser's print dialog makes the paper or PDF copy. */
+/**
+ * /sales/invoices/:id/print — a clean A4 tax invoice; the browser's print dialog makes the paper or PDF copy.
+ * Prints with the format the invoice was issued with (drafts: the default); the picker switches to another format.
+ */
 export function InvoicePrintPage() {
   const { id } = useParams();
+  const [format, setFormat] = useRequestedFormat();
   const [data, setData] = useState<InvoicePrint | null>(null);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => { api.invoicePrint(id!).then(setData).catch((e) => setError(errorText(e))); }, [id]);
+  useEffect(() => { api.invoicePrint(id!, format).then(setData).catch((e) => setError(errorText(e))); }, [id, format]);
   useEffect(() => { if (data) document.title = `${data.invoice.number} · ${data.invoice.billingName}`; }, [data]);
 
   if (error) return <p role="alert" className="error">{error}</p>;
@@ -307,6 +312,7 @@ export function InvoicePrintPage() {
   const toolbar = (
     <div className="print-toolbar no-print">
       <Link to={`${INVOICE_ROUTE}/${inv.id}`}>‹ Back to {inv.number}</Link>
+      <PrintFormatPicker formats={data.formats} selected={template?.templateId ?? null} onChange={setFormat} />
       <span className="hint">{template ? `Layout: ${template.name} (version ${template.version})` : 'Built-in layout'}</span>
       <button onClick={() => window.print()}>Print</button>
     </div>
